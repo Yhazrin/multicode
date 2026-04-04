@@ -13,6 +13,17 @@ const (
 	ticketPrefix  = "wst_"
 )
 
+// TicketStore is the interface for one-time-use short-lived WebSocket auth tickets.
+// Implementations: MemoryTicketStore (in-process), or a future Redis-backed store.
+type TicketStore interface {
+	// Generate creates a new ticket for the given workspace and user, returns the ticket string.
+	Generate(workspaceID, userID string) string
+	// Validate checks a ticket: returns (workspaceID, userID, true) if valid and not expired,
+	// or ("", "", false) if missing, expired, or workspace mismatch.
+	// The ticket is consumed (deleted) on successful validation.
+	Validate(ticket, workspaceID string) (string, string, bool)
+}
+
 // ticketEntry stores a ticket with its expiration and workspace context.
 type ticketEntry struct {
 	workspaceID string
@@ -20,34 +31,34 @@ type ticketEntry struct {
 	expiresAt   time.Time
 }
 
-// TicketStore holds one-time-use short-lived tickets for WebSocket auth.
-// It uses an in-memory sync.Map with a background goroutine that cleans up
-// expired tickets every 30 seconds. If Redis becomes available, this can be
-// replaced with a Redis-backed implementation.
-type TicketStore struct {
+// MemoryTicketStore is an in-memory TicketStore backed by sync.Map.
+// A background goroutine cleans up expired tickets every 30 seconds.
+type MemoryTicketStore struct {
 	tickets sync.Map // map[string]*ticketEntry
 	stopCh  chan struct{}
-	wg      sync.Once
 }
 
-var globalTicketStore *TicketStore
+var globalTicketStore TicketStore
 
 // InitTicketStore initializes the global ticket store and starts the cleanup goroutine.
 func InitTicketStore() {
-	globalTicketStore = &TicketStore{
+	store := &MemoryTicketStore{
 		stopCh: make(chan struct{}),
 	}
-	go globalTicketStore.cleanupLoop()
+	go store.cleanupLoop()
+	globalTicketStore = store
 }
 
-// StopTicketStore stops the cleanup goroutine. For testing/ graceful shutdown.
+// StopTicketStore stops the cleanup goroutine. For testing / graceful shutdown.
 func StopTicketStore() {
 	if globalTicketStore != nil {
-		close(globalTicketStore.stopCh)
+		if ms, ok := globalTicketStore.(*MemoryTicketStore); ok {
+			close(ms.stopCh)
+		}
 	}
 }
 
-func (ts *TicketStore) cleanupLoop() {
+func (ts *MemoryTicketStore) cleanupLoop() {
 	ticker := time.NewTicker(ticketCleanup)
 	defer ticker.Stop()
 	for {
@@ -60,7 +71,7 @@ func (ts *TicketStore) cleanupLoop() {
 	}
 }
 
-func (ts *TicketStore) cleanup() {
+func (ts *MemoryTicketStore) cleanup() {
 	now := time.Now()
 	ts.tickets.Range(func(key, value any) bool {
 		entry := value.(*ticketEntry)
@@ -71,8 +82,7 @@ func (ts *TicketStore) cleanup() {
 	})
 }
 
-// Generate creates a new ticket for the given workspace and user, returns the ticket string.
-func (ts *TicketStore) Generate(workspaceID, userID string) string {
+func (ts *MemoryTicketStore) Generate(workspaceID, userID string) string {
 	bytes := make([]byte, 16)
 	rand.Read(bytes)
 	ticket := ticketPrefix + hex.EncodeToString(bytes)
@@ -85,9 +95,7 @@ func (ts *TicketStore) Generate(workspaceID, userID string) string {
 	return ticket
 }
 
-// Validate checks a ticket: returns (workspaceID, userID, true) if valid and not expired,
-// or ("", "", false) if missing, expired, or workspace mismatch.
-func (ts *TicketStore) Validate(ticket, workspaceID string) (string, string, bool) {
+func (ts *MemoryTicketStore) Validate(ticket, workspaceID string) (string, string, bool) {
 	value, ok := ts.tickets.Load(ticket)
 	if !ok {
 		return "", "", false
@@ -106,6 +114,6 @@ func (ts *TicketStore) Validate(ticket, workspaceID string) (string, string, boo
 }
 
 // TicketStoreFor returns the global ticket store instance.
-func TicketStoreFor() *TicketStore {
+func TicketStoreFor() TicketStore {
 	return globalTicketStore
 }
