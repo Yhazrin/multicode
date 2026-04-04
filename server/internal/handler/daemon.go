@@ -324,6 +324,31 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Build the full collaborative shared context for prompt injection.
+	// This includes colleagues, pending messages, dependencies, workspace
+	// memory, and the last checkpoint — giving the agent multi-agent awareness.
+	if resp.WorkspaceID != "" {
+		// Use issue title + description as query text for hybrid BM25 memory search.
+		queryText := ""
+		if issue, err := h.Queries.GetIssue(r.Context(), task.IssueID); err == nil {
+			queryText = issue.Title
+			if issue.Description.Valid {
+				queryText += " " + issue.Description.String
+			}
+		}
+		sc, err := h.CollaborationService.BuildSharedContext(
+			r.Context(),
+			parseUUID(resp.WorkspaceID),
+			task.AgentID,
+			task.ID,
+			nil,       // no embedding available at claim time
+			queryText, // issue title+description for BM25 hybrid search
+		)
+		if err == nil && sc != nil {
+			resp.SharedContext = sc
+		}
+	}
+
 	writeJSON(w, http.StatusOK, map[string]any{"task": resp})
 }
 

@@ -44,7 +44,7 @@ export function BoardColumn({
   );
 
   return (
-    <div className={`flex w-[280px] shrink-0 flex-col rounded-xl ${cfg.columnBg} p-2`}>
+    <div role="region" aria-label={`${cfg.label} column, ${issues.length} issues`} className={`flex min-w-[260px] max-w-[320px] flex-1 shrink-0 flex-col overflow-hidden rounded-xl ${cfg.columnBg} p-2`}>
       <div className="mb-2 flex items-center justify-between px-1.5">
         {/* Left: status badge + count */}
         <div className="flex items-center gap-2">
@@ -103,9 +103,20 @@ export function BoardColumn({
           ))}
         </SortableContext>
         {issues.length === 0 && (
-          <p className="py-8 text-center text-xs text-muted-foreground">
-            No issues
-          </p>
+          <div className="flex flex-col items-center gap-2 py-8">
+            <p className="text-center text-xs text-muted-foreground">
+              No issues
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs text-muted-foreground border border-dashed"
+              onClick={() => useModalStore.getState().open("create-issue", { status })}
+            >
+              <Plus className="size-3 mr-1" />
+              Add issue
+            </Button>
+          </div>
         )}
       </div>
     </div>

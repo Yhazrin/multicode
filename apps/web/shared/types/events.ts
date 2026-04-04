@@ -23,6 +23,9 @@ export type WSEventType =
   | "task:failed"
   | "task:message"
   | "task:cancelled"
+  | "task:chained"
+  | "task:in_review"
+  | "task:reviewed"
   | "inbox:new"
   | "inbox:read"
   | "inbox:archived"
@@ -44,7 +47,13 @@ export type WSEventType =
   | "reaction:added"
   | "reaction:removed"
   | "issue_reaction:added"
-  | "issue_reaction:removed";
+  | "issue_reaction:removed"
+  | "agent:message"
+  | "task_dep:created"
+  | "task_dep:deleted"
+  | "task:checkpoint"
+  | "memory:stored"
+  | "memory:recalled";
 
 export interface WSMessage<T = unknown> {
   type: WSEventType;
@@ -214,4 +223,60 @@ export interface IssueReactionRemovedPayload {
   emoji: string;
   actor_type: string;
   actor_id: string;
+}
+
+// --- Collaboration event payloads ---
+
+export interface AgentMessagePayload {
+  message_id: string;
+  from_agent_id: string;
+  to_agent_id: string;
+  task_id?: string;
+  content: string;
+  message_type: string;
+  reply_to_id?: string;
+}
+
+export interface TaskDependencyPayload {
+  task_id: string;
+  depends_on_task_id: string;
+}
+
+export interface TaskCheckpointPayload {
+  checkpoint_id: string;
+  task_id: string;
+  label: string;
+}
+
+export interface MemoryStoredPayload {
+  memory_id: string;
+  agent_id: string;
+  workspace_id: string;
+  content: string;
+}
+
+export interface MemoryRecalledPayload {
+  workspace_id: string;
+  query: string;
+  count: number;
+}
+
+export interface TaskChainedPayload {
+  task_id: string;
+  source_task_id: string;
+  issue_id: string;
+}
+
+export interface TaskInReviewPayload {
+  task_id: string;
+  issue_id: string;
+  review_id: string;
+}
+
+export interface TaskReviewedPayload {
+  task_id: string;
+  issue_id: string;
+  review_id: string;
+  approved: boolean;
+  score: number;
 }

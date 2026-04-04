@@ -5,6 +5,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   pointerWithin,
@@ -75,7 +76,8 @@ export function BoardView({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 5 },
-    })
+    }),
+    useSensor(KeyboardSensor)
   );
 
   // Pre-sort issues by position per status for position calculations
@@ -170,7 +172,7 @@ export function BoardView({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="flex flex-1 min-h-0 gap-4 overflow-x-auto p-4">
+      <div className="flex flex-1 min-h-0 gap-3 overflow-x-auto p-4 pb-2">
         {visibleStatuses.map((status) => (
           <BoardColumn
             key={status}
@@ -189,7 +191,7 @@ export function BoardView({
 
       <DragOverlay>
         {activeIssue ? (
-          <div className="w-[280px] rotate-1 cursor-grabbing opacity-95 shadow-md">
+          <div className="w-[280px] cursor-grabbing opacity-95 shadow-lg scale-[1.02]">
             <BoardCardContent issue={activeIssue} />
           </div>
         ) : null}

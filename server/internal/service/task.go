@@ -273,6 +273,9 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 
 	slog.Info("task completed", "task_id", util.UUIDToString(completed.ID), "issue_id", util.UUIDToString(completed.IssueID))
 
+	// Check if any dependent tasks are now unblocked.
+	s.checkAndLogReadyDependents(ctx, completed.ID)
+
 	// Post agent output as a comment, but only for assignment-triggered tasks.
 	// Comment-triggered tasks: the agent replies via CLI with --parent, so
 	// posting here would create a duplicate.
@@ -515,6 +518,63 @@ func (s *TaskService) broadcastTaskEvent(ctx context.Context, eventType string, 
 			"status":   task.Status,
 		},
 	})
+}
+
+// checkAndLogReadyDependents checks if any tasks depending on the completed task
+// are now fully unblocked (all dependencies satisfied). Logs and publishes events
+// for tasks that become ready.
+func (s *TaskService) checkAndLogReadyDependents(ctx context.Context, completedTaskID pgtype.UUID) {
+	dependents, err := s.Queries.GetTaskDependents(ctx, completedTaskID)
+	if err != nil {
+		slog.Warn("failed to check dependents", "task_id", util.UUIDToString(completedTaskID), "error", err)
+		return
+	}
+
+	for _, dep := range dependents {
+		// Check if ALL dependencies for this dependent task are now satisfied.
+		deps, err := s.Queries.GetTaskDependencies(ctx, dep.TaskID)
+		if err != nil {
+			continue
+		}
+		allSatisfied := true
+		for _, d := range deps {
+			if depTask, err := s.Queries.GetAgentTask(ctx, d.DependsOnTaskID); err != nil || (depTask.Status != "completed" && depTask.Status != "failed" && depTask.Status != "cancelled") {
+				allSatisfied = false
+				break
+			}
+		}
+		if !allSatisfied {
+			continue
+		}
+
+		// All dependencies satisfied — log and publish event.
+		readyTask, err := s.Queries.GetAgentTask(ctx, dep.TaskID)
+		if err != nil {
+			continue
+		}
+		slog.Info("dependent task unblocked",
+			"task_id", util.UUIDToString(readyTask.ID),
+			"issue_id", util.UUIDToString(readyTask.IssueID),
+			"unblocked_by", util.UUIDToString(completedTaskID),
+		)
+
+		workspaceID := ""
+		if issue, err := s.Queries.GetIssue(ctx, readyTask.IssueID); err == nil {
+			workspaceID = util.UUIDToString(issue.WorkspaceID)
+		}
+		if workspaceID != "" {
+			s.Bus.Publish(events.Event{
+				Type:        "task:dependencies_satisfied",
+				WorkspaceID: workspaceID,
+				ActorType:   "system",
+				ActorID:     "",
+				Payload: map[string]any{
+					"task_id":        util.UUIDToString(readyTask.ID),
+					"unblocked_by":   util.UUIDToString(completedTaskID),
+				},
+			})
+		}
+	}
 }
 
 func (s *TaskService) broadcastIssueUpdated(issue db.Issue) {

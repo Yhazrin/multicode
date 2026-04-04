@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useMemo } from "react";
 import { toast } from "sonner";
-import { ChevronRight, ListTodo } from "lucide-react";
+import { ChevronRight, ListTodo, Plus } from "lucide-react";
 import type { IssueStatus } from "@/shared/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbSeparator, BreadcrumbPage } from "@/components/ui/breadcrumb";
 import { useIssueStore } from "@/features/issues/store";
 import { useIssueViewStore, initFilterWorkspaceSync } from "@/features/issues/stores/view-store";
 import { useIssuesScopeStore } from "@/features/issues/stores/issues-scope-store";
@@ -15,6 +17,7 @@ import { useWorkspaceStore } from "@/features/workspace";
 import { WorkspaceAvatar } from "@/features/workspace";
 import { api } from "@/shared/api";
 import { useIssueSelectionStore } from "@/features/issues/stores/selection-store";
+import { useModalStore } from "@/features/modals";
 import { IssuesHeader } from "./issues-header";
 import { BoardView } from "./board-view";
 import { ListView } from "./list-view";
@@ -118,12 +121,20 @@ export function IssuesPage() {
     <div className="flex flex-1 min-h-0 flex-col">
       {/* Header 1: Workspace breadcrumb */}
       <div className="flex h-12 shrink-0 items-center gap-1.5 border-b px-4">
-        <WorkspaceAvatar name={workspace?.name ?? "W"} size="sm" />
-        <span className="text-sm text-muted-foreground">
-          {workspace?.name ?? "Workspace"}
-        </span>
-        <ChevronRight className="h-3 w-3 text-muted-foreground" />
-        <span className="text-sm font-medium">Issues</span>
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <WorkspaceAvatar name={workspace?.name ?? "W"} size="sm" />
+              <span className="text-sm text-muted-foreground ml-1.5">
+                {workspace?.name ?? "Workspace"}
+              </span>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage className="text-sm font-medium">Issues</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
       </div>
 
       {/* Header 2: Scope tabs + filters */}
@@ -132,10 +143,19 @@ export function IssuesPage() {
       {/* Content: scrollable */}
       <ViewStoreProvider store={useIssueViewStore}>
         {scopedIssues.length === 0 ? (
-          <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-2 text-muted-foreground">
+          <div className="flex flex-1 min-h-0 flex-col items-center justify-center gap-3 text-muted-foreground">
             <ListTodo className="h-10 w-10 text-muted-foreground/40" />
             <p className="text-sm">No issues yet</p>
             <p className="text-xs">Create an issue to get started.</p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1"
+              onClick={() => useModalStore.getState().open("create-issue")}
+            >
+              <Plus className="size-3.5 mr-1" />
+              New issue
+            </Button>
           </div>
         ) : (
           <div className="flex flex-col flex-1 min-h-0">
