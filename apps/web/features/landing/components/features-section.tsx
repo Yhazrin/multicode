@@ -160,7 +160,7 @@ function TeammatesVisual() {
   };
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
+    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl dark:shadow-none">
       {/* Header bar */}
       <div className="flex h-10 shrink-0 items-center border-b bg-background px-4 text-sm">
         <div className="flex items-center gap-1.5 min-w-0 text-xs">
@@ -239,7 +239,7 @@ function TeammatesVisual() {
                 <div className="relative">
                   <PropRow label="Status">
                     <button
-                      className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                      className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-expanded={statusOpen}
                       aria-haspopup="listbox"
                       onClick={() => { setStatusOpen(!statusOpen); setPriorityOpen(false); }}
@@ -249,7 +249,7 @@ function TeammatesVisual() {
                     </button>
                   </PropRow>
                   {statusOpen && (
-                    <div className="absolute left-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md">
+                    <div className="absolute left-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md dark:shadow-none">
                       {statusCycle.map((s) => (
                         <button
                           key={s}
@@ -272,7 +272,7 @@ function TeammatesVisual() {
                 <div className="relative">
                   <PropRow label="Priority">
                     <button
-                      className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                      className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                       aria-expanded={priorityOpen}
                       aria-haspopup="listbox"
                       onClick={() => { setPriorityOpen(!priorityOpen); setStatusOpen(false); }}
@@ -282,7 +282,7 @@ function TeammatesVisual() {
                     </button>
                   </PropRow>
                   {priorityOpen && (
-                    <div className="absolute left-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md">
+                    <div className="absolute left-0 top-full z-10 mt-1 w-44 overflow-hidden rounded-md border bg-popover shadow-md dark:shadow-none">
                       {priorityCycle.map((p) => (
                         <button
                           key={p}
@@ -304,7 +304,7 @@ function TeammatesVisual() {
                 {/* Assignee — clickable to toggle picker */}
                 <PropRow label="Assignee">
                   <button
-                    className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                    className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     aria-expanded={pickerOpen}
                     aria-haspopup="listbox"
                     onClick={() => { setPickerOpen(!pickerOpen); setStatusOpen(false); setPriorityOpen(false); }}
@@ -324,7 +324,7 @@ function TeammatesVisual() {
 
             {/* Assignee picker — togglable */}
             {pickerOpen && (
-              <div className="overflow-hidden rounded-md border bg-popover shadow-md">
+              <div className="overflow-hidden rounded-md border bg-popover shadow-md dark:shadow-none">
                 <div className="border-b px-3 py-1.5 text-xs text-muted-foreground">
                   Assign to...
                 </div>
@@ -417,7 +417,7 @@ function AutonomousVisual() {
   const [expanded, setExpanded] = useState<number | null>(null);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
+    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl dark:shadow-none">
       {/* Header bar */}
       <div className="flex h-10 shrink-0 items-center border-b bg-background px-4 text-sm">
         <div className="flex items-center gap-1.5 min-w-0 text-xs">
@@ -541,7 +541,7 @@ function SkillsVisual() {
   const [selectedFile, setSelectedFile] = useState("SKILL.md");
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
+    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl dark:shadow-none">
       <div className="flex h-full">
         {/* Skills list panel */}
         <div className="hidden sm:block w-[200px] shrink-0 border-r flex flex-col">
@@ -808,7 +808,7 @@ function RuntimesVisual() {
   const svgHeight = 12 + 7 * (CELL_SIZE + CELL_GAP);
 
   return (
-    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
+    <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl dark:shadow-none">
       <div className="flex h-full">
         {/* Runtime list */}
         <div className="hidden sm:block w-[200px] shrink-0 border-r flex flex-col">
@@ -1012,7 +1012,7 @@ export function FeaturesSection() {
                   onClick={() => scrollToPanel(i)}
                   aria-current={i === activeIndex ? "true" : undefined}
                   className={cn(
-                    "group flex items-center gap-3 rounded-lg px-4 py-3 text-left text-[11px] font-semibold tracking-[0.12em] transition-colors",
+                    "group flex items-center gap-3 rounded-lg px-4 py-3 text-left text-[11px] font-semibold tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                     i === activeIndex
                       ? "text-foreground"
                       : "text-muted-foreground/60 hover:text-muted-foreground",
@@ -1073,7 +1073,7 @@ export function FeaturesSection() {
                       <div className="aspect-[16/9] w-full" />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="flex flex-col items-center gap-4 text-center">
-                          <div className="grid size-14 place-items-center rounded-2xl border border-border bg-background shadow-sm">
+                          <div className="grid size-14 place-items-center rounded-2xl border border-border bg-background shadow-sm dark:shadow-none">
                             <ImageIcon className="size-6 text-muted-foreground/50" aria-hidden="true" />
                           </div>
                           <p className="text-[13px] text-muted-foreground/60">

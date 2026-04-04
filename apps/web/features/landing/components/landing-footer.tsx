@@ -80,7 +80,7 @@ export function LandingFooter() {
                 aria-label={`Switch to ${localeLabels[l]}`}
                 aria-current={l === locale ? "true" : undefined}
                 className={cn(
-                  "px-3 py-2 text-[12px] font-medium transition-colors",
+                  "px-3 py-2 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded",
                   l === locale
                     ? "text-landing-dark-foreground/70"
                     : "text-landing-dark-foreground/30 hover:text-landing-dark-foreground/50",
