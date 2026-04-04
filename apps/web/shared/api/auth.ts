@@ -49,4 +49,8 @@ export const authApi = {
       body: JSON.stringify(data),
     });
   },
+
+  async logout(): Promise<void> {
+    await apiFetch("/auth/logout", { method: "POST" });
+  },
 };

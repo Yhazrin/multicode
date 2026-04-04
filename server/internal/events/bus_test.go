@@ -144,3 +144,49 @@ func TestEventFieldsPassedThrough(t *testing.T) {
 		t.Errorf("expected ActorID user-456, got %s", received.ActorID)
 	}
 }
+
+func TestPriorityOrdering(t *testing.T) {
+	bus := New()
+	var order []string
+
+	// Register in reverse priority order to verify sorting
+	bus.SubscribeWithPriority("test:prio", 30, func(e Event) {
+		order = append(order, "third")
+	})
+	bus.SubscribeWithPriority("test:prio", 10, func(e Event) {
+		order = append(order, "first")
+	})
+	bus.SubscribeWithPriority("test:prio", 20, func(e Event) {
+		order = append(order, "second")
+	})
+
+	bus.Publish(Event{Type: "test:prio"})
+
+	if len(order) != 3 {
+		t.Fatalf("expected 3 handlers, got %d", len(order))
+	}
+	if order[0] != "first" || order[1] != "second" || order[2] != "third" {
+		t.Fatalf("expected [first, second, third], got %v", order)
+	}
+}
+
+func TestPriorityGlobalHandlers(t *testing.T) {
+	bus := New()
+	var order []string
+
+	bus.SubscribeAllWithPriority(30, func(e Event) {
+		order = append(order, "global-last")
+	})
+	bus.SubscribeAllWithPriority(10, func(e Event) {
+		order = append(order, "global-first")
+	})
+
+	bus.Publish(Event{Type: "test"})
+
+	if len(order) != 2 {
+		t.Fatalf("expected 2 handlers, got %d", len(order))
+	}
+	if order[0] != "global-first" || order[1] != "global-last" {
+		t.Fatalf("expected [global-first, global-last], got %v", order)
+	}
+}

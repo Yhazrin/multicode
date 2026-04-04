@@ -71,6 +71,7 @@ export DATABASE_URL="postgres://user:pass@host:5432/multicode"
           <Switch
             checked={useTunnel}
             onCheckedChange={setUseTunnel}
+            aria-label="Enable tunnel"
           />
         </div>
 
@@ -92,7 +93,7 @@ export DATABASE_URL="postgres://user:pass@host:5432/multicode"
             </div>
 
             <div className="space-y-2">
-              <Label>Quick start with ngrok</Label>
+              <p className="text-xs font-medium text-muted-foreground">Quick start with ngrok</p>
               <div className="bg-muted/50 p-3 rounded-lg font-mono text-xs space-y-1">
                 <p className="text-muted-foreground"># Install ngrok (macOS)</p>
                 <p>brew install ngrok</p>
@@ -103,7 +104,7 @@ export DATABASE_URL="postgres://user:pass@host:5432/multicode"
 
             {tunnelUrl && (
               <div className="space-y-2">
-                <Label>Client connection command</Label>
+                <p className="text-xs font-medium text-muted-foreground">Client connection command</p>
                 <div className="flex items-center gap-2">
                   <code className="flex-1 bg-muted/50 p-2 rounded text-xs overflow-x-auto">
                     export MULTICODE_SERVER_URL=&quot;{tunnelUrl}&quot;
@@ -113,6 +114,7 @@ export DATABASE_URL="postgres://user:pass@host:5432/multicode"
                   <Button
                     size="icon"
                     variant="outline"
+                    aria-label="Copy command"
                     onClick={() =>
                       handleCopyCommand(
                         `export MULTICODE_SERVER_URL="${tunnelUrl}"\nmulticode daemon start`

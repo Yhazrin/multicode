@@ -49,7 +49,7 @@ export const BoardColumn = memo(function BoardColumn({
         {/* Left: status badge + count */}
         <div className="flex items-center gap-2">
           <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold ${cfg.badgeBg} ${cfg.badgeText}`}>
-            <StatusIcon status={status} className="h-3 w-3" inheritColor />
+            <StatusIcon status={status} className="h-3 w-3" inheritColor aria-hidden="true" />
             {cfg.label}
           </span>
           <span className="text-xs text-muted-foreground">
@@ -62,14 +62,14 @@ export const BoardColumn = memo(function BoardColumn({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon-sm" className="rounded-full text-muted-foreground">
-                  <MoreHorizontal className="size-3.5" />
+                <Button variant="ghost" size="icon-sm" className="rounded-full text-muted-foreground" aria-label="Column options">
+                  <MoreHorizontal className="size-3.5" aria-hidden="true" />
                 </Button>
               }
             />
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => viewStoreApi.getState().hideStatus(status)}>
-                <EyeOff className="size-3.5" />
+                <EyeOff className="size-3.5" aria-hidden="true" />
                 Hide column
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -82,8 +82,9 @@ export const BoardColumn = memo(function BoardColumn({
                   size="icon-sm"
                   className="rounded-full text-muted-foreground"
                   onClick={() => useModalStore.getState().open("create-issue", { status })}
+                  aria-label="Add issue"
                 >
-                  <Plus className="size-3.5" />
+                  <Plus className="size-3.5" aria-hidden="true" />
                 </Button>
               }
             />
@@ -113,7 +114,7 @@ export const BoardColumn = memo(function BoardColumn({
               className="h-7 text-xs text-muted-foreground border border-dashed"
               onClick={() => useModalStore.getState().open("create-issue", { status })}
             >
-              <Plus className="size-3 mr-1" />
+              <Plus className="size-3 mr-1" aria-hidden="true" />
               Add issue
             </Button>
           </div>

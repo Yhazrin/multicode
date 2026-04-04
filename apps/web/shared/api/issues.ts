@@ -140,14 +140,14 @@ export const issuesApi = {
   async resolveIssue(id: string): Promise<Issue> {
     return apiFetch(`/api/issues/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status: "resolved" }),
+      body: JSON.stringify({ status: "done" }),
     });
   },
 
   async reopenIssue(id: string): Promise<Issue> {
     return apiFetch(`/api/issues/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status: "open" }),
+      body: JSON.stringify({ status: "todo" }),
     });
   },
 

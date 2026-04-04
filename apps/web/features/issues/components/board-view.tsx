@@ -200,7 +200,7 @@ export function BoardView({
 
       <DragOverlay>
         {activeIssue ? (
-          <div className="w-[260px] sm:w-[280px] lg:w-[300px] cursor-grabbing opacity-95 shadow-lg scale-[1.02]">
+          <div className="w-[260px] sm:w-[280px] lg:w-[300px] cursor-grabbing opacity-95 shadow-lg dark:shadow-none scale-[1.02]">
             <BoardCardContent issue={activeIssue} />
           </div>
         ) : null}
@@ -254,8 +254,9 @@ const HiddenColumnsPanel = memo(function HiddenColumnsPanel({
                         variant="ghost"
                         size="icon-sm"
                         className="rounded-full text-muted-foreground"
+                        aria-label="Column options"
                       >
-                        <MoreHorizontal className="size-3.5" />
+                        <MoreHorizontal className="size-3.5" aria-hidden="true" />
                       </Button>
                     }
                   />
@@ -265,7 +266,7 @@ const HiddenColumnsPanel = memo(function HiddenColumnsPanel({
                         viewStoreApi.getState().showStatus(status)
                       }
                     >
-                      <Eye className="size-3.5" />
+                      <Eye className="size-3.5" aria-hidden="true" />
                       Show column
                     </DropdownMenuItem>
                   </DropdownMenuContent>

@@ -46,13 +46,25 @@ func (q *Queries) CreateTaskCheckpoint(ctx context.Context, arg CreateTaskCheckp
 	return i, err
 }
 
-const getTaskCheckpoint = `-- name: GetTaskCheckpoint :one
-SELECT id, task_id, workspace_id, label, state, files_changed, created_at FROM task_checkpoint
-WHERE id = $1
+const deleteTaskCheckpoints = `-- name: DeleteTaskCheckpoints :exec
+DELETE FROM task_checkpoint
+WHERE task_id = $1
 `
 
-func (q *Queries) GetTaskCheckpoint(ctx context.Context, id pgtype.UUID) (TaskCheckpoint, error) {
-	row := q.db.QueryRow(ctx, getTaskCheckpoint, id)
+func (q *Queries) DeleteTaskCheckpoints(ctx context.Context, taskID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteTaskCheckpoints, taskID)
+	return err
+}
+
+const getLatestCheckpoint = `-- name: GetLatestCheckpoint :one
+SELECT id, task_id, workspace_id, label, state, files_changed, created_at FROM task_checkpoint
+WHERE task_id = $1
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+func (q *Queries) GetLatestCheckpoint(ctx context.Context, taskID pgtype.UUID) (TaskCheckpoint, error) {
+	row := q.db.QueryRow(ctx, getLatestCheckpoint, taskID)
 	var i TaskCheckpoint
 	err := row.Scan(
 		&i.ID,
@@ -66,15 +78,13 @@ func (q *Queries) GetTaskCheckpoint(ctx context.Context, id pgtype.UUID) (TaskCh
 	return i, err
 }
 
-const getLatestCheckpoint = `-- name: GetLatestCheckpoint :one
+const getTaskCheckpoint = `-- name: GetTaskCheckpoint :one
 SELECT id, task_id, workspace_id, label, state, files_changed, created_at FROM task_checkpoint
-WHERE task_id = $1
-ORDER BY created_at DESC
-LIMIT 1
+WHERE id = $1
 `
 
-func (q *Queries) GetLatestCheckpoint(ctx context.Context, taskID pgtype.UUID) (TaskCheckpoint, error) {
-	row := q.db.QueryRow(ctx, getLatestCheckpoint, taskID)
+func (q *Queries) GetTaskCheckpoint(ctx context.Context, id pgtype.UUID) (TaskCheckpoint, error) {
+	row := q.db.QueryRow(ctx, getTaskCheckpoint, id)
 	var i TaskCheckpoint
 	err := row.Scan(
 		&i.ID,
@@ -120,14 +130,4 @@ func (q *Queries) ListTaskCheckpoints(ctx context.Context, taskID pgtype.UUID) (
 		return nil, err
 	}
 	return items, nil
-}
-
-const deleteTaskCheckpoints = `-- name: DeleteTaskCheckpoints :exec
-DELETE FROM task_checkpoint
-WHERE task_id = $1
-`
-
-func (q *Queries) DeleteTaskCheckpoints(ctx context.Context, taskID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteTaskCheckpoints, taskID)
-	return err
 }

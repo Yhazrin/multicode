@@ -2,142 +2,112 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
-	"sort"
-	"strings"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/multica-ai/multicode/server/internal/logger"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
+	"github.com/pressly/goose/v3/lock"
+
+	"github.com/multica-ai/multicode/server/pkg/migrations"
 )
 
 func main() {
-	logger.Init()
-
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run ./cmd/migrate <up|down>")
+		fmt.Println("Usage: go run ./cmd/migrate <up|down|status|redo>")
 		os.Exit(1)
 	}
 
-	direction := os.Args[1]
-	if direction != "up" && direction != "down" {
-		fmt.Println("Usage: go run ./cmd/migrate <up|down>")
-		os.Exit(1)
-	}
+	command := os.Args[1]
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
 		dbURL = "postgres://multicode:multicode@localhost:5432/multicode?sslmode=disable"
 	}
 
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, dbURL)
+	db, err := sql.Open("pgx", dbURL)
 	if err != nil {
 		slog.Error("unable to connect to database", "error", err)
 		os.Exit(1)
 	}
-	defer pool.Close()
+	defer db.Close()
 
-	if err := pool.Ping(ctx); err != nil {
+	if err := db.Ping(); err != nil {
 		slog.Error("unable to ping database", "error", err)
 		os.Exit(1)
 	}
 
-	// Create migrations tracking table
-	_, err = pool.Exec(ctx, `
-		CREATE TABLE IF NOT EXISTS schema_migrations (
-			version TEXT PRIMARY KEY,
-			applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-		)
-	`)
+	ctx := context.Background()
+
+	// Create a session-level advisory lock so concurrent migration runs don't
+	// collide. The lock is held for the duration of the migration and released
+	// automatically when the connection closes (even on crash).
+	sessionLocker, err := lock.NewPostgresSessionLocker(
+		lock.WithLockTimeout(5, 60), // retry every 5s, up to 60 times (5 min total)
+	)
 	if err != nil {
-		slog.Error("failed to create migrations table", "error", err)
+		slog.Error("failed to create session locker", "error", err)
 		os.Exit(1)
 	}
 
-	// Find migration files
-	migrationsDir := "migrations"
-	if _, err := os.Stat(migrationsDir); os.IsNotExist(err) {
-		// Try from server/ directory
-		migrationsDir = "server/migrations"
-	}
-
-	suffix := "." + direction + ".sql"
-	files, err := filepath.Glob(filepath.Join(migrationsDir, "*"+suffix))
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		db,
+		migrations.EmbedMigrations,
+		goose.WithSessionLocker(sessionLocker),
+	)
 	if err != nil {
-		slog.Error("failed to find migration files", "error", err)
+		slog.Error("failed to create goose provider", "error", err)
 		os.Exit(1)
 	}
 
-	if direction == "up" {
-		sort.Strings(files)
-	} else {
-		sort.Sort(sort.Reverse(sort.StringSlice(files)))
-	}
-
-	for _, file := range files {
-		version := extractVersion(file)
-
-		if direction == "up" {
-			// Check if already applied
-			var exists bool
-			err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)", version).Scan(&exists)
-			if err != nil {
-				slog.Error("failed to check migration status", "version", version, "error", err)
-				os.Exit(1)
-			}
-			if exists {
-				fmt.Printf("  skip  %s (already applied)\n", version)
-				continue
-			}
-		} else {
-			// Check if applied (only rollback applied ones)
-			var exists bool
-			err := pool.QueryRow(ctx, "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version = $1)", version).Scan(&exists)
-			if err != nil {
-				slog.Error("failed to check migration status", "version", version, "error", err)
-				os.Exit(1)
-			}
-			if !exists {
-				fmt.Printf("  skip  %s (not applied)\n", version)
-				continue
-			}
-		}
-
-		sql, err := os.ReadFile(file)
+	switch command {
+	case "up":
+		results, err := provider.Up(ctx)
 		if err != nil {
-			slog.Error("failed to read migration file", "file", file, "error", err)
+			slog.Error("migration up failed", "error", err)
 			os.Exit(1)
 		}
-
-		_, err = pool.Exec(ctx, string(sql))
+		for _, r := range results {
+			slog.Info("migrated", "version", r.Source.Version, "direction", r.Direction, "duration", r.Duration)
+		}
+	case "down":
+		result, err := provider.Down(ctx)
 		if err != nil {
-			slog.Error("failed to run migration", "file", file, "error", err)
+			slog.Error("migration down failed", "error", err)
 			os.Exit(1)
 		}
-
-		if direction == "up" {
-			_, err = pool.Exec(ctx, "INSERT INTO schema_migrations (version) VALUES ($1)", version)
-		} else {
-			_, err = pool.Exec(ctx, "DELETE FROM schema_migrations WHERE version = $1", version)
-		}
+		slog.Info("rolled back", "version", result.Source.Version, "direction", result.Direction, "duration", result.Duration)
+	case "redo":
+		downResult, err := provider.Down(ctx)
 		if err != nil {
-			slog.Error("failed to record migration", "version", version, "error", err)
+			slog.Error("migration redo (down) failed", "error", err)
 			os.Exit(1)
 		}
-
-		fmt.Printf("  %s  %s\n", direction, version)
+		slog.Info("redo down", "version", downResult.Source.Version, "duration", downResult.Duration)
+		upResults, err := provider.Up(ctx)
+		if err != nil {
+			slog.Error("migration redo (up) failed", "error", err)
+			os.Exit(1)
+		}
+		for _, r := range upResults {
+			slog.Info("redo up", "version", r.Source.Version, "duration", r.Duration)
+		}
+	case "status":
+		statuses, err := provider.Status(ctx)
+		if err != nil {
+			slog.Error("migration status failed", "error", err)
+			os.Exit(1)
+		}
+		for _, s := range statuses {
+			fmt.Printf("%-6s  %s  %s\n", s.State, s.Source.Version, s.Source.Path)
+		}
+	default:
+		fmt.Println("Usage: go run ./cmd/migrate <up|down|status|redo>")
+		os.Exit(1)
 	}
 
 	fmt.Println("Done.")
-}
-
-func extractVersion(filename string) string {
-	base := filepath.Base(filename)
-	// Remove .up.sql or .down.sql
-	base = strings.TrimSuffix(base, ".up.sql")
-	base = strings.TrimSuffix(base, ".down.sql")
-	return base
 }

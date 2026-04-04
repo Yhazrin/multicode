@@ -13,21 +13,9 @@ import { useRuntimeStore } from "@/features/runtimes";
  * queryClient.invalidateQueries({ queryKey: ['issues'] })
  */
 
-/** Clears all secondary stores to their empty初始状态. Called BEFORE workspace identity switches. */
+/** Clears all secondary stores to their initial state. Called BEFORE workspace identity switches. */
 export function resetStores() {
   useIssueStore.getState().reset();
   useInboxStore.getState().reset();
   useRuntimeStore.getState().reset();
-}
-
-/**
- * Resets stores AND re-fetches their data for the given workspace.
- * Use this when performing a full workspace switch where you want immediate refetch.
- */
-export function switchWorkspace(_workspaceId: string) {
-  resetStores();
-
-  useIssueStore.getState().fetch();
-  useInboxStore.getState().fetch();
-  useRuntimeStore.getState().fetchRuntimes();
 }

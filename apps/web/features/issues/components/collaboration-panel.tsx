@@ -43,7 +43,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
   if (!taskId && !agentId) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
-        <Bot className="h-8 w-8 text-muted-foreground/40 mb-3" />
+        <Bot className="h-8 w-8 text-muted-foreground/40 mb-3" aria-hidden="true" />
         <p className="text-sm font-medium text-muted-foreground">
           No active collaboration session
         </p>

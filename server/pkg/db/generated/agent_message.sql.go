@@ -11,9 +11,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countUnreadAgentMessages = `-- name: CountUnreadAgentMessages :one
+SELECT count(*) FROM agent_message
+WHERE to_agent_id = $1 AND read_at IS NULL
+`
+
+func (q *Queries) CountUnreadAgentMessages(ctx context.Context, toAgentID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countUnreadAgentMessages, toAgentID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createAgentMessage = `-- name: CreateAgentMessage :one
 INSERT INTO agent_message (workspace_id, from_agent_id, to_agent_id, task_id, content, metadata, message_type, reply_to_id)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $7, $4, $5, $6, $8)
 RETURNING id, workspace_id, from_agent_id, to_agent_id, task_id, content, metadata, created_at, message_type, read_at, reply_to_id
 `
 
@@ -21,10 +33,10 @@ type CreateAgentMessageParams struct {
 	WorkspaceID pgtype.UUID `json:"workspace_id"`
 	FromAgentID pgtype.UUID `json:"from_agent_id"`
 	ToAgentID   pgtype.UUID `json:"to_agent_id"`
-	TaskID      pgtype.UUID `json:"task_id"`
 	Content     string      `json:"content"`
 	Metadata    []byte      `json:"metadata"`
 	MessageType string      `json:"message_type"`
+	TaskID      pgtype.UUID `json:"task_id"`
 	ReplyToID   pgtype.UUID `json:"reply_to_id"`
 }
 
@@ -33,10 +45,10 @@ func (q *Queries) CreateAgentMessage(ctx context.Context, arg CreateAgentMessage
 		arg.WorkspaceID,
 		arg.FromAgentID,
 		arg.ToAgentID,
-		arg.TaskID,
 		arg.Content,
 		arg.Metadata,
 		arg.MessageType,
+		arg.TaskID,
 		arg.ReplyToID,
 	)
 	var i AgentMessage
@@ -203,18 +215,6 @@ func (q *Queries) ListAgentMessagesForWorkspace(ctx context.Context, arg ListAge
 		return nil, err
 	}
 	return items, nil
-}
-
-const countUnreadAgentMessages = `-- name: CountUnreadAgentMessages :one
-SELECT count(*) FROM agent_message
-WHERE to_agent_id = $1 AND read_at IS NULL
-`
-
-func (q *Queries) CountUnreadAgentMessages(ctx context.Context, toAgentID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countUnreadAgentMessages, toAgentID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }
 
 const markAgentMessageRead = `-- name: MarkAgentMessageRead :exec

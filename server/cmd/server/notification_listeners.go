@@ -277,7 +277,8 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	ctx := context.Background()
 
 	// issue:created — Direct notification to assignee if assignee != actor
-	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
+	// PriorityNotification ensures this runs after subscriber listeners have written rows.
+	bus.SubscribeWithPriority(protocol.EventIssueCreated, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -312,7 +313,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// issue:updated — handle assignee changes, status changes, priority, due date
-	bus.Subscribe(protocol.EventIssueUpdated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventIssueUpdated, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -451,7 +452,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// comment:created — notify all subscribers except the commenter
-	bus.Subscribe(protocol.EventCommentCreated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventCommentCreated, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -499,7 +500,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// issue_reaction:added — notify the issue creator
-	bus.Subscribe(protocol.EventIssueReactionAdded, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventIssueReactionAdded, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -534,7 +535,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// reaction:added — notify the comment author
-	bus.Subscribe(protocol.EventReactionAdded, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventReactionAdded, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -576,7 +577,7 @@ func registerNotificationListeners(bus *events.Bus, queries *db.Queries) {
 	// task:completed — no inbox notification (completion is visible from status change)
 
 	// task:failed — notify all subscribers except the agent
-	bus.Subscribe(protocol.EventTaskFailed, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventTaskFailed, events.PriorityNotification, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return

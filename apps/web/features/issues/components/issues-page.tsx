@@ -96,7 +96,7 @@ export function IssuesPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-1 min-h-0 flex-col">
+      <div className="flex flex-1 min-h-0 flex-col" role="status" aria-label="Loading issues">
         <div className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-4 w-32" />
@@ -147,7 +147,7 @@ export function IssuesPage() {
           <Empty className="flex-1 border-0">
             <EmptyHeader>
               <EmptyMedia variant="icon">
-                <ListTodo />
+                <ListTodo aria-hidden="true" />
               </EmptyMedia>
               <EmptyTitle>No issues yet</EmptyTitle>
               <EmptyDescription>Create an issue to get started.</EmptyDescription>
@@ -157,7 +157,7 @@ export function IssuesPage() {
               size="sm"
               onClick={() => useModalStore.getState().open("create-issue")}
             >
-              <Plus className="size-3.5 mr-1" />
+              <Plus className="size-3.5 mr-1" aria-hidden="true" />
               New issue
             </Button>
           </Empty>

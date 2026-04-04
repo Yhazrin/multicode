@@ -50,6 +50,7 @@ export class WSClient {
   private readonly _unauthorizedHandlers = new Set<() => void>();
 
   private _visibilityHidden = false;
+  private _intentionalClose = false;
 
   constructor(url: string, options?: { logger?: Logger }) {
     this.baseUrl = url;
@@ -92,8 +93,8 @@ export class WSClient {
     return () => this._unauthorizedHandlers.delete(handler);
   }
 
-  setAuth(token: string, workspaceId: string) {
-    this.token = token;
+  setAuth(token: string | undefined, workspaceId: string) {
+    this.token = token ?? null;
     this.workspaceId = workspaceId;
   }
 
@@ -148,6 +149,8 @@ export class WSClient {
 
     this.ws = new WebSocket(url.toString());
 
+    this._intentionalClose = false;
+
     this.ws.onopen = () => {
       this.logger.info("connected");
       this.reconnectAttempt = 0;
@@ -173,6 +176,16 @@ export class WSClient {
         return;
       }
       this.logger.debug("received", msg.type);
+      if (isAuthExpired(msg)) {
+        this.logger.error("auth expired, stopping reconnect");
+        this._setState(ConnectionState.Unauthorized);
+        for (const cb of this._unauthorizedHandlers) {
+          try { cb(); } catch { /* ignore */ }
+        }
+        this._intentionalClose = true;
+        this.ws?.close();
+        return;
+      }
       const eventHandlers = this.handlers.get(msg.type);
       if (eventHandlers) {
         for (const handler of eventHandlers) {
@@ -185,12 +198,8 @@ export class WSClient {
     };
 
     this.ws.onclose = () => {
-      const baseDelay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
-      const jitter = baseDelay * (0.7 + Math.random() * 0.6); // 70%-130% of base
-      const delay = Math.round(jitter);
-      this.reconnectAttempt++;
-      this.logger.warn(`disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
-      this.reconnectTimer = setTimeout(() => this.connect(), delay);
+      if (this._intentionalClose) return;
+      this._scheduleReconnect();
     };
 
     this.ws.onerror = () => {
@@ -214,6 +223,8 @@ export class WSClient {
       return;
     }
 
+    this._setState(ConnectionState.Reconnecting);
+
     const backoffMs = this.baseReconnectDelay * 2 ** this.reconnectAttempt;
     const cappedMs = Math.min(backoffMs, this.maxReconnectDelay);
     const jitter = 0.2;
@@ -229,6 +240,7 @@ export class WSClient {
 
   disconnect() {
     this._stopReconnect();
+    this._intentionalClose = true;
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.onerror = null;

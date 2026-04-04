@@ -17,7 +17,7 @@ import { api } from "@/shared/api";
 import type { RuntimeHourlyActivity } from "@/shared/types";
 
 const hourlyChartConfig = {
-  count: { label: "Tasks", color: "hsl(var(--chart-2))" },
+  count: { label: "Tasks", color: "var(--chart-2)" },
 } satisfies ChartConfig;
 
 export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {

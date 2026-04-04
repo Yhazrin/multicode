@@ -17,10 +17,10 @@ import type { DailyTokenData } from "../../utils";
 import { formatTokens } from "../../utils";
 
 const tokenChartConfig = {
-  input: { label: "Input", color: "hsl(var(--chart-1))" },
-  output: { label: "Output", color: "hsl(var(--chart-2))" },
-  cacheRead: { label: "Cache Read", color: "hsl(var(--chart-3))" },
-  cacheWrite: { label: "Cache Write", color: "hsl(var(--chart-4))" },
+  input: { label: "Input", color: "var(--chart-1)" },
+  output: { label: "Output", color: "var(--chart-2)" },
+  cacheRead: { label: "Cache Read", color: "var(--chart-3)" },
+  cacheWrite: { label: "Cache Write", color: "var(--chart-4)" },
 } satisfies ChartConfig;
 
 export function DailyTokenChart({ data }: { data: DailyTokenData[] }) {

@@ -82,8 +82,6 @@ export class ApiClient {
 
   private handleUnauthorized() {
     if (typeof window !== "undefined") {
-      localStorage.removeItem("multicode_token");
-      localStorage.removeItem("multicode_workspace_id");
       this.token = null;
       this.workspaceId = null;
       if (window.location.pathname !== "/") {
@@ -192,6 +190,12 @@ export class ApiClient {
       method: "PATCH",
       body: JSON.stringify(data),
     });
+  }
+
+  async logout(): Promise<void> {
+    await this.fetch("/auth/logout", { method: "POST" });
+    this.token = null;
+    this.workspaceId = null;
   }
 
   // Issues

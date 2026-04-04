@@ -83,16 +83,16 @@ export function BatchActionToolbar() {
 
   return (
     <>
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-lg border bg-background px-2 py-1.5 shadow-lg animate-in slide-in-from-bottom-4 fade-in duration-200">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 rounded-lg border bg-background px-2 py-1.5 shadow-lg dark:shadow-none animate-in slide-in-from-bottom-4 fade-in duration-200">
         <div className="flex items-center gap-1.5 pl-1 pr-2 border-r mr-1">
           <span className="text-sm font-medium">{count} selected</span>
           <button
             type="button"
             aria-label="Clear selection"
             onClick={clear}
-            className="rounded p-0.5 hover:bg-accent transition-colors"
+            className="rounded p-0.5 hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <X className="size-3.5 text-muted-foreground" />
+            <X className="size-3.5 text-muted-foreground" aria-hidden="true" />
           </button>
         </div>
 
@@ -103,7 +103,7 @@ export function BatchActionToolbar() {
               <Button variant="ghost" size="sm" disabled={loading} />
             }
           >
-            <StatusIcon status="todo" className="h-3.5 w-3.5 mr-1" />
+            <StatusIcon status="todo" className="h-3.5 w-3.5 mr-1" aria-hidden="true" />
             Status
           </PopoverTrigger>
           <PopoverContent align="center" className="w-44 p-1">
@@ -117,9 +117,9 @@ export function BatchActionToolbar() {
                     handleBatchUpdate({ status: s });
                     setStatusOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm ${cfg.hoverBg} transition-colors`}
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm ${cfg.hoverBg} transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
                 >
-                  <StatusIcon status={s} className="h-3.5 w-3.5" />
+                  <StatusIcon status={s} className="h-3.5 w-3.5" aria-hidden="true" />
                   <span>{cfg.label}</span>
                 </button>
               );
@@ -134,7 +134,7 @@ export function BatchActionToolbar() {
               <Button variant="ghost" size="sm" disabled={loading} />
             }
           >
-            <PriorityIcon priority="high" className="mr-1" />
+            <PriorityIcon priority="high" className="mr-1" aria-hidden="true" />
             Priority
           </PopoverTrigger>
           <PopoverContent align="center" className="w-44 p-1">
@@ -148,10 +148,10 @@ export function BatchActionToolbar() {
                     handleBatchUpdate({ priority: p });
                     setPriorityOpen(false);
                   }}
-                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${cfg.badgeBg} ${cfg.badgeText}`}>
-                    <PriorityIcon priority={p} className="h-3 w-3" inheritColor />
+                    <PriorityIcon priority={p} className="h-3 w-3" inheritColor aria-hidden="true" />
                     {cfg.label}
                   </span>
                 </button>
@@ -180,7 +180,7 @@ export function BatchActionToolbar() {
           onClick={() => setDeleteOpen(true)}
           className="text-destructive hover:text-destructive"
         >
-          <Trash2 className="size-3.5 mr-1" />
+          <Trash2 className="size-3.5 mr-1" aria-hidden="true" />
           Delete
         </Button>
       </div>

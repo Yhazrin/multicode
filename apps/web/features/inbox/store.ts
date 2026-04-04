@@ -52,9 +52,9 @@ interface InboxState {
   addItem: (item: InboxItem) => void;
   markRead: (id: string) => void;
   archive: (id: string) => void;
-  markAllRead: () => void;
-  archiveAll: () => void;
-  archiveAllRead: () => void;
+  markAllRead: () => Promise<void>;
+  archiveAll: () => Promise<void>;
+  archiveAllRead: () => Promise<void>;
   updateIssueStatus: (issueId: string, status: IssueStatus) => void;
 }
 
@@ -109,23 +109,47 @@ export const useInboxStore = create<InboxState>((set, get) => ({
       );
       return { items, ...deriveInboxState(items) };
     }),
-  markAllRead: () =>
+  markAllRead: async () => {
+    try {
+      await api.markAllInboxRead();
+    } catch (err) {
+      logger.error("markAllRead failed", err);
+      toast.error("Failed to mark all as read");
+      return;
+    }
     set((s) => {
       const items = s.items.map((i) => (!i.archived ? { ...i, read: true } : i));
       return { items, ...deriveInboxState(items) };
-    }),
-  archiveAll: () =>
+    });
+  },
+  archiveAll: async () => {
+    try {
+      await api.archiveAllInbox();
+    } catch (err) {
+      logger.error("archiveAll failed", err);
+      toast.error("Failed to archive all");
+      return;
+    }
     set((s) => {
       const items = s.items.map((i) => (!i.archived ? { ...i, archived: true } : i));
       return { items, ...deriveInboxState(items) };
-    }),
-  archiveAllRead: () =>
+    });
+  },
+  archiveAllRead: async () => {
+    try {
+      await api.archiveAllReadInbox();
+    } catch (err) {
+      logger.error("archiveAllRead failed", err);
+      toast.error("Failed to archive read items");
+      return;
+    }
     set((s) => {
       const items = s.items.map((i) =>
         i.read && !i.archived ? { ...i, archived: true } : i
       );
       return { items, ...deriveInboxState(items) };
-    }),
+    });
+  },
   updateIssueStatus: (issueId, status) =>
     set((s) => {
       const items = s.items.map((i) =>

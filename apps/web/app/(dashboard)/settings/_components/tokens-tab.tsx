@@ -100,7 +100,7 @@ export function TokensTab() {
     <div className="space-y-8">
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <Key className="h-4 w-4 text-muted-foreground" />
+          <Key className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold">API Tokens</h2>
         </div>
 
@@ -168,7 +168,7 @@ export function TokensTab() {
                           disabled={tokenRevoking === t.id}
                           aria-label={`Revoke ${t.name}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         </Button>
                       }
                     />
@@ -220,7 +220,7 @@ export function TokensTab() {
               <TooltipTrigger
                 render={
                   <Button variant="outline" size="icon" onClick={handleCopyToken}>
-                    {tokenCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {tokenCopied ? <Check className="h-4 w-4" aria-hidden="true" /> : <Copy className="h-4 w-4" aria-hidden="true" />}
                   </Button>
                 }
               />

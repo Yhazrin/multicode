@@ -61,7 +61,7 @@ const workspaceNav = [
 function DraftDot() {
   const hasDraft = useIssueDraftStore((s) => !!(s.draft.title || s.draft.description));
   if (!hasDraft) return null;
-  return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />;
+  return <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" aria-hidden="true" />;
 }
 
 export function AppSidebar() {
@@ -96,7 +96,7 @@ export function AppSidebar() {
                         <span className="flex-1 truncate font-medium">
                           {workspace?.name ?? "Multicode"}
                         </span>
-                        <ChevronDown className="size-3 text-muted-foreground" />
+                        <ChevronDown className="size-3 text-muted-foreground" aria-hidden="true" />
                       </SidebarMenuButton>
                     }
                   />
@@ -117,10 +117,11 @@ export function AppSidebar() {
                       Workspaces
                       <Tooltip>
                         <TooltipTrigger
-                          className="ml-auto opacity-0 group-hover/ws-section:opacity-100 transition-opacity rounded hover:bg-accent p-0.5"
+                          aria-label="Create workspace"
+                          className="ml-auto opacity-0 group-hover/ws-section:opacity-100 transition-opacity rounded hover:bg-accent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                           onClick={() => useModalStore.getState().open("create-workspace")}
                         >
-                          <Plus className="h-3.5 w-3.5" />
+                          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                         </TooltipTrigger>
                         <TooltipContent side="right">
                           Create workspace
@@ -139,7 +140,7 @@ export function AppSidebar() {
                         <WorkspaceAvatar name={ws.name} size="sm" />
                         <span className="flex-1 truncate">{ws.name}</span>
                         {ws.id === workspace?.id && (
-                          <Check className="h-3.5 w-3.5 text-primary" />
+                          <Check className="h-3.5 w-3.5 text-primary" aria-hidden="true" />
                         )}
                       </DropdownMenuItem>
                     ))}
@@ -147,7 +148,7 @@ export function AppSidebar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuItem variant="destructive" onClick={logout}>
-                      <LogOut className="h-3.5 w-3.5" />
+                      <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
                       Log out
                     </DropdownMenuItem>
                   </DropdownMenuGroup>
@@ -157,10 +158,11 @@ export function AppSidebar() {
             </SidebarMenu>
             <Tooltip>
               <TooltipTrigger
-                className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-sm hover:bg-accent"
+                aria-label="New issue"
+                className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-sm dark:shadow-none hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => useModalStore.getState().open("create-issue")}
               >
-                <SquarePen className="size-3.5" />
+                <SquarePen className="size-3.5" aria-hidden="true" />
                 <DraftDot />
               </TooltipTrigger>
               <TooltipContent side="bottom">New issue</TooltipContent>
@@ -182,7 +184,7 @@ export function AppSidebar() {
                         render={<Link href={item.href} />}
                         className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                       >
-                        <item.icon />
+                        <item.icon aria-hidden="true" />
                         <span>{item.label}</span>
                         {item.label === "Inbox" && unreadCount > 0 && (
                           <span className="ml-auto text-xs">
@@ -209,7 +211,7 @@ export function AppSidebar() {
                         render={<Link href={item.href} />}
                         className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground"
                       >
-                        <item.icon />
+                        <item.icon aria-hidden="true" />
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                     </SidebarMenuItem>
@@ -219,7 +221,9 @@ export function AppSidebar() {
             </SidebarGroupContent>
           </SidebarGroup>
         </SidebarContent>
-        <SidebarFooter />
+        <SidebarFooter>
+          <div className="h-px" />
+        </SidebarFooter>
         <SidebarRail />
       </Sidebar>
   );

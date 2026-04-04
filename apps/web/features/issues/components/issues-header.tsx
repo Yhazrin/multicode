@@ -73,7 +73,7 @@ function HoverCheck({ checked }: { checked: boolean }) {
       className="border-input data-[selected=true]:border-primary data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground pointer-events-none size-4 shrink-0 rounded-[4px] border transition-all select-none *:[svg]:opacity-0 data-[selected=true]:*:[svg]:opacity-100 opacity-0 group-hover/fitem:opacity-100 group-focus/fitem:opacity-100 data-[selected=true]:opacity-100"
       data-selected={checked}
     >
-      <Check className="size-3.5 text-current" />
+      <Check className="size-3.5 text-current" aria-hidden="true" />
     </div>
   );
 }
@@ -177,7 +177,7 @@ function ActorSubContent({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter..."
-          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none"
+          className="w-full bg-transparent text-sm placeholder:text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
           autoFocus
         />
       </div>
@@ -191,7 +191,7 @@ function ActorSubContent({
               className={FILTER_ITEM_CLASS}
             >
               <HoverCheck checked={includeNoAssignee ?? false} />
-              <UserMinus className="size-3.5 text-muted-foreground" />
+              <UserMinus className="size-3.5 text-muted-foreground" aria-hidden="true" />
               No assignee
               {(noAssigneeCount ?? 0) > 0 && (
                 <span className="ml-auto text-xs text-muted-foreground">
@@ -350,8 +350,8 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm" className="relative text-muted-foreground">
-                      <Filter className="size-4" />
+                    <Button variant="outline" size="icon-sm" className="relative text-muted-foreground" aria-label="Filter issues">
+                      <Filter className="size-4" aria-hidden="true" />
                       {hasActiveFilters && (
                         <span className="absolute top-0 right-0 size-1.5 rounded-full bg-brand" />
                       )}
@@ -366,7 +366,7 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
             {/* Status */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <CircleDot className="size-3.5" />
+                <CircleDot className="size-3.5" aria-hidden="true" />
                 <span className="flex-1">Status</span>
                 {statusFilters.length > 0 && (
                   <span className="text-xs text-primary font-medium">
@@ -402,7 +402,7 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
             {/* Priority */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <SignalHigh className="size-3.5" />
+                <SignalHigh className="size-3.5" aria-hidden="true" />
                 <span className="flex-1">Priority</span>
                 {priorityFilters.length > 0 && (
                   <span className="text-xs text-primary font-medium">
@@ -438,7 +438,7 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
             {/* Assignee */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <User className="size-3.5" />
+                <User className="size-3.5" aria-hidden="true" />
                 <span className="flex-1">Assignee</span>
                 {(assigneeFilters.length > 0 || includeNoAssignee) && (
                   <span className="text-xs text-primary font-medium">
@@ -462,7 +462,7 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
             {/* Creator */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <UserPen className="size-3.5" />
+                <UserPen className="size-3.5" aria-hidden="true" />
                 <span className="flex-1">Creator</span>
                 {creatorFilters.length > 0 && (
                   <span className="text-xs text-primary font-medium">
@@ -498,8 +498,8 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm" className="text-muted-foreground">
-                      <SlidersHorizontal className="size-4" />
+                    <Button variant="outline" size="icon-sm" className="text-muted-foreground" aria-label="Display settings">
+                      <SlidersHorizontal className="size-4" aria-hidden="true" />
                     </Button>
                   }
                 />
@@ -522,7 +522,7 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
                         className="flex-1 justify-between text-xs"
                       >
                         {sortLabel}
-                        <ChevronDown className="size-3 text-muted-foreground" />
+                        <ChevronDown className="size-3 text-muted-foreground" aria-hidden="true" />
                       </Button>
                     }
                   />
@@ -543,12 +543,12 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
                   onClick={() =>
                     act.setSortDirection(sortDirection === "asc" ? "desc" : "asc")
                   }
-                  title={sortDirection === "asc" ? "Ascending" : "Descending"}
+                  aria-label={sortDirection === "asc" ? "Sort ascending" : "Sort descending"}
                 >
                   {sortDirection === "asc" ? (
-                    <ArrowUp className="size-3.5" />
+                    <ArrowUp className="size-3.5" aria-hidden="true" />
                   ) : (
-                    <ArrowDown className="size-3.5" />
+                    <ArrowDown className="size-3.5" aria-hidden="true" />
                   )}
                 </Button>
               </div>
@@ -562,10 +562,12 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
                 {CARD_PROPERTY_OPTIONS.map((opt) => (
                   <label
                     key={opt.key}
+                    htmlFor={`card-prop-${opt.key}`}
                     className="flex cursor-pointer items-center justify-between"
                   >
                     <span className="text-sm">{opt.label}</span>
                     <Switch
+                      id={`card-prop-${opt.key}`}
                       size="sm"
                       checked={cardProperties[opt.key]}
                       onCheckedChange={() => act.toggleCardProperty(opt.key)}
@@ -584,11 +586,11 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
               render={
                 <TooltipTrigger
                   render={
-                    <Button variant="outline" size="icon-sm" className="text-muted-foreground">
+                    <Button variant="outline" size="icon-sm" className="text-muted-foreground" aria-label={viewMode === "board" ? "Board view" : "List view"}>
                       {viewMode === "board" ? (
-                        <Columns3 className="size-4" />
+                        <Columns3 className="size-4" aria-hidden="true" />
                       ) : (
-                        <List className="size-4" />
+                        <List className="size-4" aria-hidden="true" />
                       )}
                     </Button>
                   }
@@ -603,11 +605,11 @@ export function IssuesHeader({ scopedIssues }: { scopedIssues: Issue[] }) {
             <DropdownMenuGroup>
               <DropdownMenuLabel>View</DropdownMenuLabel>
               <DropdownMenuItem onClick={() => act.setViewMode("board")}>
-                <Columns3 />
+                <Columns3 aria-hidden="true" />
                 Board
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => act.setViewMode("list")}>
-                <List />
+                <List aria-hidden="true" />
                 List
               </DropdownMenuItem>
             </DropdownMenuGroup>

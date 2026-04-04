@@ -20,7 +20,7 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 	ctx := context.Background()
 
 	// issue:created — record "created" activity
-	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventIssueCreated, events.PriorityActivity, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -48,7 +48,7 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// issue:updated — record specific changes as separate activities
-	bus.Subscribe(protocol.EventIssueUpdated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventIssueUpdated, events.PriorityActivity, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -212,12 +212,12 @@ func registerActivityListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// task:completed — record "task_completed" activity
-	bus.Subscribe(protocol.EventTaskCompleted, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventTaskCompleted, events.PriorityActivity, func(e events.Event) {
 		handleTaskActivity(ctx, bus, queries, e, "task_completed")
 	})
 
 	// task:failed — record "task_failed" activity
-	bus.Subscribe(protocol.EventTaskFailed, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventTaskFailed, events.PriorityActivity, func(e events.Event) {
 		handleTaskActivity(ctx, bus, queries, e, "task_failed")
 	})
 }
@@ -260,14 +260,16 @@ func handleTaskActivity(ctx context.Context, bus *events.Bus, queries *db.Querie
 }
 
 // publishActivityEvent sends an activity:created event for WS broadcasting.
-// Payload matches frontend ActivityCreatedPayload: { issue_id, entry: TimelineEntry }
+// Uses PublishAsync to avoid nested synchronous dispatch (activity listeners
+// are already inside a Publish call, so a synchronous re-publish would create
+// fragile ordering dependencies).
 func publishActivityEvent(bus *events.Bus, original events.Event, activity db.ActivityLog) {
 	actorType := ""
 	if activity.ActorType.Valid {
 		actorType = activity.ActorType.String
 	}
 	action := activity.Action
-	bus.Publish(events.Event{
+	bus.PublishAsync(events.Event{
 		Type:        protocol.EventActivityCreated,
 		WorkspaceID: original.WorkspaceID,
 		ActorType:   original.ActorType,

@@ -86,206 +86,43 @@ func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Route
 	})
 
 	// Auth (public)
-	r.Post("/auth/send-code", h.SendCode)
-	r.Post("/auth/verify-code", h.VerifyCode)
-	r.With(middleware.Auth(queries)).Post("/auth/ws-ticket", h.WsTicket)
+	registerAuthRoutes(r, h, queries)
 
-	// Daemon API routes (all require a valid token)
-	r.Route("/api/daemon", func(r chi.Router) {
-		r.Use(middleware.Auth(queries))
-
-		r.Post("/register", h.DaemonRegister)
-		r.Post("/deregister", h.DaemonDeregister)
-		r.Post("/heartbeat", h.DaemonHeartbeat)
-
-		r.Post("/runtimes/{runtimeId}/tasks/claim", h.ClaimTaskByRuntime)
-		r.Get("/runtimes/{runtimeId}/tasks/pending", h.ListPendingTasksByRuntime)
-		r.Post("/runtimes/{runtimeId}/usage", h.ReportRuntimeUsage)
-		r.Post("/runtimes/{runtimeId}/ping/{pingId}/result", h.ReportPingResult)
-		r.Post("/runtimes/{runtimeId}/update/{updateId}/result", h.ReportUpdateResult)
-
-		r.Get("/tasks/{taskId}/status", h.GetTaskStatus)
-		r.Post("/tasks/{taskId}/start", h.StartTask)
-		r.Post("/tasks/{taskId}/progress", h.ReportTaskProgress)
-		r.Post("/tasks/{taskId}/complete", h.CompleteTask)
-		r.Post("/tasks/{taskId}/fail", h.FailTask)
-		r.Post("/tasks/{taskId}/messages", h.ReportTaskMessages)
-		r.Get("/tasks/{taskId}/messages", h.ListTaskMessages)
-	})
+	// Daemon API routes
+	registerDaemonRoutes(r, h, queries)
 
 	// Protected API routes
 	r.Group(func(r chi.Router) {
 		r.Use(middleware.Auth(queries))
 		r.Use(middleware.RefreshCloudFrontCookies(cfSigner))
 
-		// --- User-scoped routes (no workspace context required) ---
+		// User-scoped routes (no workspace context required)
 		r.Get("/api/me", h.GetMe)
 		r.Patch("/api/me", h.UpdateMe)
 
-		r.Route("/api/workspaces", func(r chi.Router) {
-			r.Get("/", h.ListWorkspaces)
-			r.Post("/", h.CreateWorkspace)
-			r.Route("/{id}", func(r chi.Router) {
-				// Member-level access
-				r.Group(func(r chi.Router) {
-					r.Use(middleware.RequireWorkspaceMemberFromURL(queries, "id"))
-					r.Get("/", h.GetWorkspace)
-					r.Get("/members", h.ListMembersWithUser)
-					r.Post("/leave", h.LeaveWorkspace)
-				})
-				// Admin-level access
-				r.Group(func(r chi.Router) {
-					r.Use(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner", "admin"))
-					r.Put("/", h.UpdateWorkspace)
-					r.Patch("/", h.UpdateWorkspace)
-					r.Post("/members", h.CreateMember)
-					r.Route("/members/{memberId}", func(r chi.Router) {
-						r.Patch("/", h.UpdateMember)
-						r.Delete("/", h.DeleteMember)
-					})
-				})
-				// Owner-only access
-				r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
-			})
-		})
-
+		// Workspace management
+		registerWorkspaceRoutes(r, h, queries)
+		// Personal access tokens
 		r.Route("/api/tokens", func(r chi.Router) {
 			r.Get("/", h.ListPersonalAccessTokens)
 			r.Post("/", h.CreatePersonalAccessToken)
 			r.Delete("/{id}", h.RevokePersonalAccessToken)
 		})
 
-		// --- Workspace-scoped routes (all require workspace membership) ---
+		// Workspace-scoped routes
 		r.Group(func(r chi.Router) {
 			r.Use(middleware.RequireWorkspaceMember(queries))
 
 			r.Post("/api/upload-file", h.UploadFile)
-			// Issues
-			r.Route("/api/issues", func(r chi.Router) {
-				r.Get("/", h.ListIssues)
-				r.Post("/", h.CreateIssue)
-				r.Post("/batch-update", h.BatchUpdateIssues)
-				r.Post("/batch-delete", h.BatchDeleteIssues)
-				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", h.GetIssue)
-					r.Put("/", h.UpdateIssue)
-					r.Delete("/", h.DeleteIssue)
-					r.Post("/comments", h.CreateComment)
-					r.Get("/comments", h.ListComments)
-					r.Get("/timeline", h.ListTimeline)
-					r.Get("/subscribers", h.ListIssueSubscribers)
-					r.Post("/subscribe", h.SubscribeToIssue)
-					r.Post("/unsubscribe", h.UnsubscribeFromIssue)
-					r.Get("/active-task", h.GetActiveTaskForIssue)
-					r.Post("/tasks/{taskId}/cancel", h.CancelTask)
-					r.Get("/task-runs", h.ListTasksByIssue)
-					r.Post("/reactions", h.AddIssueReaction)
-					r.Delete("/reactions", h.RemoveIssueReaction)
-					r.Get("/attachments", h.ListAttachments)
-				})
-			})
 
-			// Attachments
-			r.Get("/api/attachments/{id}", h.GetAttachmentByID)
-			r.Delete("/api/attachments/{id}", h.DeleteAttachment)
-
-			// Comments
-			r.Route("/api/comments/{commentId}", func(r chi.Router) {
-				r.Put("/", h.UpdateComment)
-				r.Delete("/", h.DeleteComment)
-				r.Post("/reactions", h.AddReaction)
-				r.Delete("/reactions", h.RemoveReaction)
-			})
-
-			// Agents
-			r.Route("/api/agents", func(r chi.Router) {
-				r.Get("/", h.ListAgents)
-				r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/", h.CreateAgent)
-				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", h.GetAgent)
-					r.Put("/", h.UpdateAgent)
-					r.Post("/archive", h.ArchiveAgent)
-					r.Post("/restore", h.RestoreAgent)
-					r.Get("/tasks", h.ListAgentTasks)
-					r.Get("/skills", h.ListAgentSkills)
-					r.Put("/skills", h.SetAgentSkills)
-				})
-			})
-
-			// Agent collaboration (messaging, memory)
-			r.Route("/api/agents/{id}/messages", func(r chi.Router) {
-				r.Post("/", h.SendAgentMessage)
-				r.Get("/", h.ListAgentMessages)
-				r.Post("/read", h.MarkAgentMessagesRead)
-			})
-			r.Route("/api/agents/{id}/memory", func(r chi.Router) {
-				r.Post("/", h.StoreAgentMemory)
-				r.Post("/recall", h.RecallAgentMemory)
-				r.Get("/", h.ListAgentMemory)
-				r.Delete("/{memoryId}", h.DeleteAgentMemory)
-			})
-
-			// Task dependencies (DAG) and checkpoints
-			r.Route("/api/tasks/{taskId}/dependencies", func(r chi.Router) {
-				r.Post("/", h.AddTaskDependency)
-				r.Delete("/", h.RemoveTaskDependency)
-				r.Get("/", h.ListTaskDependencies)
-			})
-			r.Route("/api/tasks/{taskId}/checkpoints", func(r chi.Router) {
-				r.Post("/", h.SaveTaskCheckpoint)
-				r.Get("/", h.ListTaskCheckpoints)
-				r.Get("/latest", h.GetLatestCheckpoint)
-			})
-
-			// Ready tasks (all dependencies satisfied)
-			r.Get("/api/tasks/ready", h.GetReadyTasks)
-
-			// Workspace memory recall
-			r.Post("/api/workspace/memory/recall", h.RecallWorkspaceMemory)
-
-			// Task review (manual)
-			r.Post("/api/tasks/{taskId}/review", h.SubmitReview)
-
-			// Task chaining
-			r.Post("/api/tasks/{taskId}/chain", h.ChainTask)
-
-			// Skills
-			r.Route("/api/skills", func(r chi.Router) {
-				r.Get("/", h.ListSkills)
-				r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/", h.CreateSkill)
-				r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/import", h.ImportSkill)
-				r.Route("/{id}", func(r chi.Router) {
-					r.Get("/", h.GetSkill)
-					r.Put("/", h.UpdateSkill)
-					r.Delete("/", h.DeleteSkill)
-					r.Get("/files", h.ListSkillFiles)
-					r.Put("/files", h.UpsertSkillFile)
-					r.Delete("/files/{fileId}", h.DeleteSkillFile)
-				})
-			})
-
-			// Runtimes
-			r.Route("/api/runtimes", func(r chi.Router) {
-				r.Get("/", h.ListAgentRuntimes)
-				r.Get("/{runtimeId}/usage", h.GetRuntimeUsage)
-				r.Get("/{runtimeId}/activity", h.GetRuntimeTaskActivity)
-				r.Post("/{runtimeId}/ping", h.InitiatePing)
-				r.Get("/{runtimeId}/ping/{pingId}", h.GetPing)
-				r.Post("/{runtimeId}/update", h.InitiateUpdate)
-				r.Get("/{runtimeId}/update/{updateId}", h.GetUpdate)
-			})
-
-			// Inbox
-			r.Route("/api/inbox", func(r chi.Router) {
-				r.Get("/", h.ListInbox)
-				r.Get("/unread-count", h.CountUnreadInbox)
-				r.Post("/mark-all-read", h.MarkAllInboxRead)
-				r.Post("/archive-all", h.ArchiveAllInbox)
-				r.Post("/archive-all-read", h.ArchiveAllReadInbox)
-				r.Post("/archive-completed", h.ArchiveCompletedInbox)
-				r.Post("/{id}/read", h.MarkInboxRead)
-				r.Post("/{id}/archive", h.ArchiveInboxItem)
-			})
+			registerIssueRoutes(r, h, queries)
+			registerAttachmentRoutes(r, h, queries)
+			registerCommentRoutes(r, h, queries)
+			registerAgentRoutes(r, h, queries)
+			registerSkillRoutes(r, h, queries)
+			registerRuntimeRoutes(r, h, queries)
+			registerInboxRoutes(r, h, queries)
+			registerRunRoutes(r, h, queries)
 		})
 	})
 

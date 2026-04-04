@@ -91,6 +91,7 @@ export function RepositoriesTab() {
                     variant="ghost"
                     size="icon"
                     className="mt-0.5 shrink-0 text-muted-foreground hover:text-destructive"
+                    aria-label="Remove repository"
                     onClick={() => handleRemoveRepo(index)}
                   >
                     <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
