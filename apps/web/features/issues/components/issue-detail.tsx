@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import {
   ChevronDown,
   ChevronLeft,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -20,7 +21,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "@/components/ui/command";
 import { AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
 import { ActorAvatar } from "@/components/common/actor-avatar";
-import { Users } from "lucide-react";
 import type { UpdateIssueRequest } from "@/shared/types";
 import { AgentLiveCard, TaskRunHistory } from "./agent-live-card";
 import { CollaborationPanel } from "./collaboration-panel";
