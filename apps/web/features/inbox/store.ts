@@ -11,15 +11,8 @@ const logger = createLogger("inbox-store");
 /**
  * Deduplicate inbox items by issue_id (one entry per issue, Linear-style),
  * keep latest, sort by time DESC.
- * Memoized by reference — returns the same array if `items` hasn't changed.
  */
-let _prevItems: InboxItem[] = [];
-let _prevDeduped: InboxItem[] = [];
-
 function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
-  if (items === _prevItems) return _prevDeduped;
-  _prevItems = items;
-
   const active = items.filter((i) => !i.archived);
   const groups = new Map<string, InboxItem[]>();
   active.forEach((item) => {
@@ -36,16 +29,16 @@ function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
     );
     if (sorted[0]) merged.push(sorted[0]);
   });
-  _prevDeduped = merged.sort(
+  return merged.sort(
     (a, b) =>
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
-  return _prevDeduped;
 }
 
 interface InboxState {
   items: InboxItem[];
   loading: boolean;
+  dedupedItems: InboxItem[];
   fetch: () => Promise<void>;
   setItems: (items: InboxItem[]) => void;
   addItem: (item: InboxItem) => void;
@@ -55,13 +48,12 @@ interface InboxState {
   archiveAll: () => void;
   archiveAllRead: () => void;
   updateIssueStatus: (issueId: string, status: IssueStatus) => void;
-  dedupedItems: () => InboxItem[];
-  unreadCount: () => number;
 }
 
 export const useInboxStore = create<InboxState>((set, get) => ({
   items: [],
   loading: true,
+  dedupedItems: [],
 
   fetch: async () => {
     logger.debug("fetch start");
@@ -70,7 +62,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     try {
       const data = await api.listInbox();
       logger.info("fetched", data.length, "items");
-      set({ items: data, loading: false });
+      set({ items: data, loading: false, dedupedItems: deduplicateInboxItems(data) });
     } catch (err) {
       logger.error("fetch failed", err);
       toast.error("Failed to load inbox");
@@ -78,50 +70,51 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     }
   },
 
-  setItems: (items) => set({ items }),
+  setItems: (items) => set({ items, dedupedItems: deduplicateInboxItems(items) }),
   addItem: (item) =>
-    set((s) => ({
-      items: s.items.some((i) => i.id === item.id)
+    set((s) => {
+      const items = s.items.some((i) => i.id === item.id)
         ? s.items
-        : [item, ...s.items],
-    })),
+        : [item, ...s.items];
+      return { items, dedupedItems: deduplicateInboxItems(items) };
+    }),
   markRead: (id) =>
-    set((s) => ({
-      items: s.items.map((i) => (i.id === id ? { ...i, read: true } : i)),
-    })),
+    set((s) => {
+      const items = s.items.map((i) => (i.id === id ? { ...i, read: true } : i));
+      return { items, dedupedItems: deduplicateInboxItems(items) };
+    }),
   archive: (id) =>
     set((s) => {
       const target = s.items.find((i) => i.id === id);
       const issueId = target?.issue_id;
-      return {
-        items: s.items.map((i) =>
-          i.id === id || (issueId && i.issue_id === issueId)
-            ? { ...i, archived: true }
-            : i,
-        ),
-      };
+      const items = s.items.map((i) =>
+        i.id === id || (issueId && i.issue_id === issueId)
+          ? { ...i, archived: true }
+          : i,
+      );
+      return { items, dedupedItems: deduplicateInboxItems(items) };
     }),
   markAllRead: () =>
-    set((s) => ({
-      items: s.items.map((i) => (!i.archived ? { ...i, read: true } : i)),
-    })),
+    set((s) => {
+      const items = s.items.map((i) => (!i.archived ? { ...i, read: true } : i));
+      return { items, dedupedItems: deduplicateInboxItems(items) };
+    }),
   archiveAll: () =>
-    set((s) => ({
-      items: s.items.map((i) => (!i.archived ? { ...i, archived: true } : i)),
-    })),
+    set((s) => {
+      const items = s.items.map((i) => (!i.archived ? { ...i, archived: true } : i));
+      return { items, dedupedItems: deduplicateInboxItems(items) };
+    }),
   archiveAllRead: () =>
-    set((s) => ({
-      items: s.items.map((i) =>
+    set((s) => {
+      const items = s.items.map((i) =>
         i.read && !i.archived ? { ...i, archived: true } : i
-      ),
-    })),
+      );
+      return { items, dedupedItems: deduplicateInboxItems(items) };
+    }),
   updateIssueStatus: (issueId, status) =>
     set((s) => ({
       items: s.items.map((i) =>
         i.issue_id === issueId ? { ...i, issue_status: status } : i
       ),
     })),
-  dedupedItems: () => deduplicateInboxItems(get().items),
-  unreadCount: () =>
-    get().dedupedItems().filter((i) => !i.read).length,
 }));

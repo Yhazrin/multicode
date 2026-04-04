@@ -45,6 +45,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ActorAvatar } from "@/components/common/actor-avatar";
 import { statusConfig, getRuntimeDevice, generateId } from "./agent-configs";
 import { TasksTab } from "./agent-task-list";
@@ -607,7 +608,6 @@ export function AgentDetail({
 }) {
   const st = statusConfig[agent.status];
   const runtimeDevice = getRuntimeDevice(agent, runtimes);
-  const [activeTab, setActiveTab] = useState<DetailTab>("instructions");
   const [confirmArchive, setConfirmArchive] = useState(false);
   const isArchived = !!agent.archived_at;
 
@@ -654,7 +654,7 @@ export function AgentDetail({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon-sm" />
+                <Button variant="ghost" size="icon-sm" aria-label="More actions" />
               }
             >
               <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
@@ -673,55 +673,51 @@ export function AgentDetail({
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b px-6">
-        {detailTabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-xs font-medium transition-colors ${
-              activeTab === tab.id
-                ? "border-primary text-foreground"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <tab.icon className="h-3.5 w-3.5" />
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <Tabs defaultValue="instructions" className="flex-1 min-h-0 flex flex-col">
+        <TabsList variant="line" className="w-full justify-start rounded-none border-b px-6 gap-0">
+          {detailTabs.map((tab) => (
+            <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 px-3 py-2.5 text-xs">
+              <tab.icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        {activeTab === "instructions" && (
+        <TabsContent value="instructions">
           <InstructionsTab
             agent={agent}
             onSave={(instructions) => onUpdate(agent.id, { instructions })}
           />
-        )}
-        {activeTab === "skills" && (
+        </TabsContent>
+        <TabsContent value="skills">
           <SkillsTab agent={agent} />
-        )}
-        {activeTab === "tools" && (
+        </TabsContent>
+        <TabsContent value="tools">
           <ToolsTab
             agent={agent}
             onSave={(tools) => onUpdate(agent.id, { tools })}
           />
-        )}
-        {activeTab === "triggers" && (
+        </TabsContent>
+        <TabsContent value="triggers">
           <TriggersTab
             agent={agent}
             onSave={(triggers) => onUpdate(agent.id, { triggers })}
           />
-        )}
-        {activeTab === "tasks" && <TasksTab agent={agent} />}
-        {activeTab === "settings" && (
+        </TabsContent>
+        <TabsContent value="tasks">
+          <TasksTab agent={agent} />
+        </TabsContent>
+        <TabsContent value="settings">
           <SettingsTab
             agent={agent}
             runtimes={runtimes}
             onSave={(updates) => onUpdate(agent.id, updates)}
           />
-        )}
+        </TabsContent>
       </div>
+      </Tabs>
 
       {/* Archive Confirmation */}
       {confirmArchive && (

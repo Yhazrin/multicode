@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useSearchParams } from "next/navigation";
 import { useDefaultLayout } from "react-resizable-panels";
@@ -36,6 +36,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { api } from "@/shared/api";
+import { timeAgo } from "@/shared/utils";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,17 +58,6 @@ const typeLabels: Record<InboxItemType, string> = {
   agent_completed: "Agent completed",
   reaction_added: "Reacted",
 };
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h`;
-  const days = Math.floor(hours / 24);
-  return `${days}d`;
-}
 
 function shortDate(dateStr: string): string {
   if (!dateStr) return "";
@@ -237,15 +227,21 @@ export default function InboxPage() {
     window.history.replaceState(null, "", url);
   }, []);
 
-  const items = useInboxStore(useShallow((s) => s.dedupedItems()));
+  const items = useInboxStore(useShallow((s) => s.dedupedItems));
   const loading = useInboxStore((s) => s.loading);
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "multica_inbox_layout",
   });
 
-  const selected = items.find((i) => (i.issue_id ?? i.id) === selectedKey) ?? null;
-  const unreadCount = items.filter((i) => !i.read).length;
+  const selected = useMemo(
+    () => items.find((i) => (i.issue_id ?? i.id) === selectedKey) ?? null,
+    [items, selectedKey],
+  );
+  const unreadCount = useMemo(
+    () => items.filter((i) => !i.read).length,
+    [items],
+  );
 
   // Click-to-read: select + auto-mark-read
   const handleSelect = async (item: InboxItem) => {
@@ -262,7 +258,7 @@ export default function InboxPage() {
     }
   };
 
-  const handleArchive = async (id: string) => {
+  const handleArchive = useCallback(async (id: string) => {
     try {
       await api.archiveInbox(id);
       useInboxStore.getState().archive(id);
@@ -271,7 +267,7 @@ export default function InboxPage() {
     } catch {
       toast.error("Failed to archive");
     }
-  };
+  }, [items, selectedKey, setSelectedKey]);
 
   // Batch operations
   const handleMarkAllRead = async () => {

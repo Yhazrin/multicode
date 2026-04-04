@@ -7,6 +7,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { WSClient } from "@/shared/api";
@@ -77,8 +78,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const value = useMemo(
+    () => ({ subscribe, onReconnect: onReconnectCb }),
+    [subscribe, onReconnectCb],
+  );
+
   return (
-    <WSContext.Provider value={{ subscribe, onReconnect: onReconnectCb }}>
+    <WSContext.Provider value={value}>
       {children}
     </WSContext.Provider>
   );

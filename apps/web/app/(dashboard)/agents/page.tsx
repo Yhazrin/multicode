@@ -66,9 +66,14 @@ export default function AgentsPage() {
   }, [filteredAgents, selectedId]);
 
   const handleCreate = async (data: CreateAgentRequest) => {
-    const agent = await api.createAgent(data);
-    await refreshAgents();
-    setSelectedId(agent.id);
+    try {
+      const agent = await api.createAgent(data);
+      await refreshAgents();
+      setSelectedId(agent.id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Failed to create agent");
+      throw e;
+    }
   };
 
   const handleUpdate = async (id: string, data: Record<string, unknown>) => {
