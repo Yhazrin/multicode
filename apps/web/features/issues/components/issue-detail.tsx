@@ -140,17 +140,25 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
     }
   }, [highlightCommentId, timeline.length]);
 
-  // Track scroll position for jump-to-bottom button
+  // Track scroll position for jump-to-bottom button (throttled via rAF)
+  const rafIdRef = useRef<number>(0);
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
     const onScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = container;
-      setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 200);
+      if (rafIdRef.current) return; // already scheduled
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = 0;
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        setShowScrollBottom(scrollHeight - scrollTop - clientHeight > 200);
+      });
     };
     container.addEventListener("scroll", onScroll, { passive: true });
     onScroll();
-    return () => container.removeEventListener("scroll", onScroll);
+    return () => {
+      container.removeEventListener("scroll", onScroll);
+      if (rafIdRef.current) cancelAnimationFrame(rafIdRef.current);
+    };
   }, []);
 
   const scrollToBottom = useCallback(() => {

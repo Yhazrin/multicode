@@ -12,7 +12,7 @@ const logger = createLogger("inbox-store");
  * Deduplicate inbox items by issue_id (one entry per issue, Linear-style),
  * keep latest, sort by time DESC.
  */
-function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
+export function deduplicateInboxItems(items: InboxItem[]): InboxItem[] {
   const active = items.filter((i) => !i.archived);
   const groups = new Map<string, InboxItem[]>();
   active.forEach((item) => {
@@ -124,9 +124,11 @@ export const useInboxStore = create<InboxState>((set, get) => ({
       return { items, dedupedItems: deduped, unreadCount: deduped.filter((i) => !i.read).length };
     }),
   updateIssueStatus: (issueId, status) =>
-    set((s) => ({
-      items: s.items.map((i) =>
+    set((s) => {
+      const items = s.items.map((i) =>
         i.issue_id === issueId ? { ...i, issue_status: status } : i
-      ),
-    })),
+      );
+      const deduped = deduplicateInboxItems(items);
+      return { items, dedupedItems: deduped, unreadCount: deduped.filter((i) => !i.read).length };
+    }),
 }));

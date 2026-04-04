@@ -139,7 +139,7 @@ export class ApiClient {
           // Don't retry client errors (4xx except 408/429)
           if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
             this.logger.error(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
-            throw new Error(message);
+            throw new Error(`API error: ${message}`);
           }
           lastError = new Error(message);
           continue;

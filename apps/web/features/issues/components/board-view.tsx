@@ -80,6 +80,15 @@ export function BoardView({
     useSensor(KeyboardSensor)
   );
 
+  // Build a Map for O(1) issue lookups during drag events
+  const issueMap = useMemo(() => {
+    const map = new Map<string, Issue>();
+    for (const issue of issues) {
+      map.set(issue.id, issue);
+    }
+    return map;
+  }, [issues]);
+
   // Pre-sort issues by position per status for position calculations
   const issuesByStatus = useMemo(() => {
     const map: Record<string, Issue[]> = {};
@@ -93,10 +102,10 @@ export function BoardView({
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
-      const issue = issues.find((i) => i.id === event.active.id);
+      const issue = issueMap.get(event.active.id as string);
       if (issue) setActiveIssue(issue);
     },
-    [issues]
+    [issueMap]
   );
 
   const handleDragEnd = useCallback(
@@ -106,7 +115,7 @@ export function BoardView({
       if (!over || active.id === over.id) return;
 
       const issueId = active.id as string;
-      const currentIssue = issues.find((i) => i.id === issueId);
+      const currentIssue = issueMap.get(issueId);
       if (!currentIssue) return;
 
       // Determine target status
@@ -117,7 +126,7 @@ export function BoardView({
         targetStatus = over.id as IssueStatus;
         overIsColumn = true;
       } else {
-        const targetIssue = issues.find((i) => i.id === over.id);
+        const targetIssue = issueMap.get(over.id as string);
         if (!targetIssue) return;
         targetStatus = targetIssue.status;
       }
@@ -162,7 +171,7 @@ export function BoardView({
 
       onMoveIssue(issueId, targetStatus, newPosition);
     },
-    [issues, issuesByStatus, onMoveIssue, visibleStatuses]
+    [issueMap, issuesByStatus, onMoveIssue, visibleStatuses]
   );
 
   return (

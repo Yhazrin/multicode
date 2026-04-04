@@ -7,6 +7,7 @@ import { useNavigationStore } from "@/features/navigation";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore } from "@/features/workspace";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { AppSidebar } from "./_components/app-sidebar";
 
 export default function DashboardLayout({
@@ -44,13 +45,15 @@ export default function DashboardLayout({
     <SidebarProvider className="h-svh">
       <AppSidebar />
       <SidebarInset className="overflow-hidden">
-        {workspace ? (
-          children
-        ) : (
-          <div className="flex flex-1 items-center justify-center">
-            <MulticaIcon className="size-6 animate-pulse" />
-          </div>
-        )}
+        <ErrorBoundary>
+          {workspace ? (
+            children
+          ) : (
+            <div className="flex flex-1 items-center justify-center">
+              <MulticaIcon className="size-6 animate-pulse" />
+            </div>
+          )}
+        </ErrorBoundary>
       </SidebarInset>
     </SidebarProvider>
   );

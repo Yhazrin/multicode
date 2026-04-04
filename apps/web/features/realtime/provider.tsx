@@ -66,7 +66,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       if (!ws) return () => {};
       return ws.on(event, handler);
     },
-    [],
+    [wsClient],
   );
 
   const onReconnectCb = useCallback(
@@ -75,7 +75,7 @@ export function WSProvider({ children }: { children: ReactNode }) {
       if (!ws) return () => {};
       return ws.onReconnect(callback);
     },
-    [],
+    [wsClient],
   );
 
   const value = useMemo(

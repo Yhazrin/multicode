@@ -188,6 +188,7 @@ type CreateIssueRequest struct {
 
 func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	var req CreateIssueRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20) // 5MB
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return
@@ -333,6 +334,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	workspaceID := uuidToString(prevIssue.WorkspaceID)
 
 	// Read body as raw bytes so we can detect which fields were explicitly sent.
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20) // 5MB
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read request body")
@@ -620,6 +622,7 @@ type BatchUpdateIssuesRequest struct {
 }
 
 func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20) // 5MB
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "failed to read request body")
@@ -794,6 +797,7 @@ type BatchDeleteIssuesRequest struct {
 
 func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	var req BatchDeleteIssuesRequest
+	r.Body = http.MaxBytesReader(w, r.Body, 5<<20) // 5MB
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
 		return

@@ -14,6 +14,8 @@ function useDebouncedCallback(cb: () => void, delay: number) {
   const savedCb = useRef(cb);
   savedCb.current = cb;
 
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
   return useCallback(() => {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(() => savedCb.current(), delay);
