@@ -18,6 +18,13 @@ type claudeBackend struct {
 	cfg Config
 }
 
+// toolCallRecord tracks tool_use blocks so we can pass the correct tool name
+// and input to PostToolUse when we later see the corresponding tool_result.
+type toolCallRecord struct {
+	Name  string
+	Input map[string]any
+}
+
 func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOptions) (*Session, error) {
 	execPath := b.cfg.ExecutablePath
 	if execPath == "" {
@@ -27,11 +34,13 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 		return nil, fmt.Errorf("claude executable not found at %q: %w", execPath, err)
 	}
 
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = 20 * time.Minute
+	var runCtx context.Context
+	var cancel context.CancelFunc
+	if opts.Timeout > 0 {
+		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+	} else {
+		runCtx, cancel = context.WithCancel(ctx)
 	}
-	runCtx, cancel := context.WithTimeout(ctx, timeout)
 
 	args := []string{
 		"--output-format", "stream-json",
@@ -43,6 +52,9 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 	}
 	if opts.MaxTurns > 0 {
 		args = append(args, "--max-turns", fmt.Sprintf("%d", opts.MaxTurns))
+	}
+	if opts.MaxThinkingTokens > 0 {
+		args = append(args, "--max-thinking-tokens", fmt.Sprintf("%d", opts.MaxThinkingTokens))
 	}
 	if opts.SystemPrompt != "" {
 		args = append(args, "--append-system-prompt", opts.SystemPrompt)
@@ -92,6 +104,9 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 		finalStatus := "completed"
 		var finalError string
 
+		// Track tool_use blocks so handleUser can pass the correct tool name to PostToolUse.
+		toolTracker := make(map[string]toolCallRecord)
+
 		scanner := bufio.NewScanner(stdout)
 		scanner.Buffer(make([]byte, 0, 1024*1024), 10*1024*1024)
 
@@ -108,12 +123,16 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 
 			switch msg.Type {
 			case "assistant":
-				b.handleAssistant(msg, msgCh, &output)
+				b.handleAssistant(msg, msgCh, &output, toolTracker)
 			case "user":
-				b.handleUser(runCtx, msg, msgCh, opts)
+				b.handleUser(runCtx, msg, msgCh, opts, toolTracker)
 			case "system":
 				if msg.SessionID != "" {
 					sessionID = msg.SessionID
+				}
+				// Fire SessionStart lifecycle hook on session_start subtype.
+				if msg.Subtype == "session_start" && opts.LifecycleHooks.SessionStart != nil {
+					opts.LifecycleHooks.SessionStart(runCtx, msg.SessionID)
 				}
 				trySend(msgCh, Message{Type: MessageStatus, Status: "running"})
 			case "result":
@@ -145,7 +164,7 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 
 		if runCtx.Err() == context.DeadlineExceeded {
 			finalStatus = "timeout"
-			finalError = fmt.Sprintf("claude timed out after %s", timeout)
+			finalError = fmt.Sprintf("claude timed out after %s", opts.Timeout)
 		} else if runCtx.Err() == context.Canceled {
 			finalStatus = "aborted"
 			finalError = "execution cancelled"
@@ -156,13 +175,20 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 
 		b.cfg.Logger.Info("claude finished", "pid", cmd.Process.Pid, "status", finalStatus, "duration", duration.Round(time.Millisecond).String())
 
-		resCh <- Result{
+		finalResult := Result{
 			Status:     finalStatus,
 			Output:     output.String(),
 			Error:      finalError,
 			DurationMs: duration.Milliseconds(),
 			SessionID:  sessionID,
 		}
+
+		// Fire Stop lifecycle hook before sending result.
+		if opts.LifecycleHooks.Stop != nil {
+			opts.LifecycleHooks.Stop(runCtx, finalResult)
+		}
+
+		resCh <- finalResult
 	}()
 
 	return &Session{Messages: msgCh, Result: resCh}, nil
@@ -300,7 +326,7 @@ func (b *claudeBackend) Fork(ctx context.Context, prompt string, opts ForkOption
 	return &ForkSession{Result: resCh, OutputFile: outputFile}, nil
 }
 
-func (b *claudeBackend) handleAssistant(msg claudeSDKMessage, ch chan<- Message, output *strings.Builder) {
+func (b *claudeBackend) handleAssistant(msg claudeSDKMessage, ch chan<- Message, output *strings.Builder, tracker map[string]toolCallRecord) {
 	var content claudeMessageContent
 	if err := json.Unmarshal(msg.Message, &content); err != nil {
 		return
@@ -322,6 +348,10 @@ func (b *claudeBackend) handleAssistant(msg claudeSDKMessage, ch chan<- Message,
 			if block.Input != nil {
 				_ = json.Unmarshal(block.Input, &input)
 			}
+			// Record the tool call so we can look it up when the tool_result arrives.
+			if block.ID != "" && tracker != nil {
+				tracker[block.ID] = toolCallRecord{Name: block.Name, Input: input}
+			}
 			trySend(ch, Message{
 				Type:   MessageToolUse,
 				Tool:   block.Name,
@@ -332,7 +362,7 @@ func (b *claudeBackend) handleAssistant(msg claudeSDKMessage, ch chan<- Message,
 	}
 }
 
-func (b *claudeBackend) handleUser(ctx context.Context, msg claudeSDKMessage, ch chan<- Message, opts ExecOptions) {
+func (b *claudeBackend) handleUser(ctx context.Context, msg claudeSDKMessage, ch chan<- Message, opts ExecOptions, tracker map[string]toolCallRecord) {
 	var content claudeMessageContent
 	if err := json.Unmarshal(msg.Message, &content); err != nil {
 		return
@@ -350,9 +380,20 @@ func (b *claudeBackend) handleUser(ctx context.Context, msg claudeSDKMessage, ch
 				Output: resultStr,
 			})
 
+			// Look up the original tool name and input from the tracker.
+			var toolName string
+			var toolInput map[string]any
+			if block.ToolUseID != "" && tracker != nil {
+				if rec, ok := tracker[block.ToolUseID]; ok {
+					toolName = rec.Name
+					toolInput = rec.Input
+					delete(tracker, block.ToolUseID)
+				}
+			}
+
 			// PostToolUse hook — observe tool result after execution.
 			if opts.ToolHooks.PostToolUse != nil {
-				opts.ToolHooks.PostToolUse(ctx, "", nil, resultStr)
+				opts.ToolHooks.PostToolUse(ctx, toolName, toolInput, resultStr)
 			}
 		}
 	}

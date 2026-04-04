@@ -83,4 +83,6 @@ const (
 	EventAgentStarted    = "agent:started"
 	EventAgentCompleted  = "agent:completed"
 	EventAgentFailed     = "agent:failed"
+	EventAgentStop       = "agent:stop"
+	EventAgentSessionStart = "agent:session_start"
 )

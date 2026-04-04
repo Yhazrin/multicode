@@ -714,6 +714,12 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	defer tx.Rollback(r.Context())
 	txQueries := h.Queries.WithTx(tx)
 
+	type pendingEvent struct {
+		workspaceID, actorType, actorID string
+		payload                         map[string]any
+	}
+	var events []pendingEvent
+
 	for _, issueID := range req.IssueIDs {
 		prevIssue, ok := prevByID[issueID]
 		if !ok {
@@ -789,11 +795,16 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		statusChanged := req.Updates.Status != nil && prevIssue.Status != issue.Status
 		priorityChanged := req.Updates.Priority != nil && prevIssue.Priority != issue.Priority
 
-		h.publish(protocol.EventIssueUpdated, workspaceID, actorType, actorID, map[string]any{
-			"issue":            resp,
-			"assignee_changed": assigneeChanged,
-			"status_changed":   statusChanged,
-			"priority_changed": priorityChanged,
+		events = append(events, pendingEvent{
+			workspaceID: workspaceID,
+			actorType:   actorType,
+			actorID:     actorID,
+			payload: map[string]any{
+				"issue":            resp,
+				"assignee_changed": assigneeChanged,
+				"status_changed":   statusChanged,
+				"priority_changed": priorityChanged,
+			},
 		})
 
 		if assigneeChanged {
@@ -809,6 +820,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(r.Context()); err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to commit transaction")
 		return
+	}
+
+	for _, e := range events {
+		h.publish(protocol.EventIssueUpdated, e.workspaceID, e.actorType, e.actorID, e.payload)
 	}
 
 	slog.Info("batch update issues", append(logger.RequestAttrs(r), "count", updated)...)

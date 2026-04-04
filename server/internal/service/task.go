@@ -8,6 +8,7 @@ import (
 	"log/slog"
 
 	"strconv"
+	"sync"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -21,9 +22,10 @@ import (
 )
 
 type TaskService struct {
-	Queries *db.Queries
-	Hub     *realtime.Hub
-	Bus     *events.Bus
+	Queries     *db.Queries
+	Hub         *realtime.Hub
+	Bus         *events.Bus
+	prefixCache sync.Map
 }
 
 func NewTaskService(q *db.Queries, hub *realtime.Hub, bus *events.Bus) *TaskService {
@@ -580,7 +582,7 @@ func (s *TaskService) checkAndLogReadyDependents(ctx context.Context, completedT
 }
 
 func (s *TaskService) broadcastIssueUpdated(issue db.Issue) {
-	prefix := s.getIssuePrefix(issue.WorkspaceID)
+	prefix := s.getIssuePrefix(context.Background(), issue.WorkspaceID)
 	s.Bus.Publish(events.Event{
 		Type:        protocol.EventIssueUpdated,
 		WorkspaceID: util.UUIDToString(issue.WorkspaceID),
@@ -590,12 +592,18 @@ func (s *TaskService) broadcastIssueUpdated(issue db.Issue) {
 	})
 }
 
-func (s *TaskService) getIssuePrefix(workspaceID pgtype.UUID) string {
-	ws, err := s.Queries.GetWorkspace(context.Background(), workspaceID)
+func (s *TaskService) getIssuePrefix(ctx context.Context, workspaceID pgtype.UUID) string {
+	key := util.UUIDToString(workspaceID)
+	if v, ok := s.prefixCache.Load(key); ok {
+		return v.(string)
+	}
+	ws, err := s.Queries.GetWorkspace(ctx, workspaceID)
 	if err != nil {
 		return ""
 	}
-	return ws.IssuePrefix
+	prefix := ws.IssuePrefix
+	s.prefixCache.Store(key, prefix)
+	return prefix
 }
 
 func (s *TaskService) createAgentComment(ctx context.Context, issueID, agentID pgtype.UUID, content, commentType string, parentID pgtype.UUID) {
@@ -668,15 +676,21 @@ func issueToMap(issue db.Issue, issuePrefix string) map[string]any {
 func agentToMap(a db.Agent) map[string]any {
 	var rc any
 	if a.RuntimeConfig != nil {
-		json.Unmarshal(a.RuntimeConfig, &rc)
+		if err := json.Unmarshal(a.RuntimeConfig, &rc); err != nil {
+			slog.Warn("failed to unmarshal agent runtime_config", "error", err)
+		}
 	}
 	var tools any
 	if a.Tools != nil {
-		json.Unmarshal(a.Tools, &tools)
+		if err := json.Unmarshal(a.Tools, &tools); err != nil {
+			slog.Warn("failed to unmarshal agent tools", "error", err)
+		}
 	}
 	var triggers any
 	if a.Triggers != nil {
-		json.Unmarshal(a.Triggers, &triggers)
+		if err := json.Unmarshal(a.Triggers, &triggers); err != nil {
+			slog.Warn("failed to unmarshal agent triggers", "error", err)
+		}
 	}
 	return map[string]any{
 		"id":                   util.UUIDToString(a.ID),

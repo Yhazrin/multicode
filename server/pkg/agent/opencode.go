@@ -26,11 +26,13 @@ func (b *opencodeBackend) Execute(ctx context.Context, prompt string, opts ExecO
 		return nil, fmt.Errorf("opencode executable not found at %q: %w", execPath, err)
 	}
 
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = 20 * time.Minute
+	var runCtx context.Context
+	var cancel context.CancelFunc
+	if opts.Timeout > 0 {
+		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+	} else {
+		runCtx, cancel = context.WithCancel(ctx)
 	}
-	runCtx, cancel := context.WithTimeout(ctx, timeout)
 
 	args := []string{"run", "--format", "json"}
 	if opts.Model != "" {
@@ -87,7 +89,7 @@ func (b *opencodeBackend) Execute(ctx context.Context, prompt string, opts ExecO
 
 		if runCtx.Err() == context.DeadlineExceeded {
 			scanResult.status = "timeout"
-			scanResult.errMsg = fmt.Sprintf("opencode timed out after %s", timeout)
+			scanResult.errMsg = fmt.Sprintf("opencode timed out after %s", opts.Timeout)
 		} else if runCtx.Err() == context.Canceled {
 			scanResult.status = "aborted"
 			scanResult.errMsg = "execution cancelled"

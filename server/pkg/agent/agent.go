@@ -28,12 +28,13 @@ type Backend interface {
 
 // ExecOptions configures a single execution.
 type ExecOptions struct {
-	Cwd             string
-	Model           string
-	SystemPrompt    string
-	MaxTurns        int
-	Timeout         time.Duration
-	ResumeSessionID string // if non-empty, resume a previous agent session
+	Cwd              string
+	Model            string
+	SystemPrompt     string
+	MaxTurns         int
+	Timeout          time.Duration
+	ResumeSessionID  string // if non-empty, resume a previous agent session
+	MaxThinkingTokens int  // max tokens for extended thinking (0 = default)
 
 	// ToolPermissions controls which tools the agent may use.
 	// Nil means all tools allowed (default behavior).
@@ -42,6 +43,9 @@ type ExecOptions struct {
 	// ToolHooks, if set, receive pre/post notifications for each tool call.
 	// Pre-hooks can deny or modify a tool call; post-hooks can observe results.
 	ToolHooks ToolHooks
+
+	// LifecycleHooks, if set, receive notifications for agent lifecycle events.
+	LifecycleHooks LifecycleHooks
 }
 
 // ToolPermissions defines role-based tool restrictions for an agent session.
@@ -100,6 +104,16 @@ const (
 	// AgentRoleReviewer is read-only — reviews code without modifications.
 	AgentRoleReviewer AgentRole = "reviewer"
 )
+
+// LifecycleHooks provides callbacks for agent lifecycle events.
+// Inspired by Claude Code's session_start and stop hooks.
+type LifecycleHooks struct {
+	// SessionStart is called when the agent session initializes.
+	SessionStart func(ctx context.Context, sessionID string)
+
+	// Stop is called when the agent session ends, before the Result is sent.
+	Stop func(ctx context.Context, result Result)
+}
 
 // ToolHooks provides pre/post interception for tool calls.
 // Inspired by Claude Code's hook system (pre-tool-use, post-tool-use).

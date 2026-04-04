@@ -26,11 +26,13 @@ func (b *codexBackend) Execute(ctx context.Context, prompt string, opts ExecOpti
 		return nil, fmt.Errorf("codex executable not found at %q: %w", execPath, err)
 	}
 
-	timeout := opts.Timeout
-	if timeout == 0 {
-		timeout = 20 * time.Minute
+	var runCtx context.Context
+	var cancel context.CancelFunc
+	if opts.Timeout > 0 {
+		runCtx, cancel = context.WithTimeout(ctx, opts.Timeout)
+	} else {
+		runCtx, cancel = context.WithCancel(ctx)
 	}
-	runCtx, cancel := context.WithTimeout(ctx, timeout)
 
 	cmd := exec.CommandContext(runCtx, execPath, "app-server", "--listen", "stdio://")
 	if opts.Cwd != "" {
@@ -200,7 +202,7 @@ func (b *codexBackend) Execute(ctx context.Context, prompt string, opts ExecOpti
 		case <-runCtx.Done():
 			if runCtx.Err() == context.DeadlineExceeded {
 				finalStatus = "timeout"
-				finalError = fmt.Sprintf("codex timed out after %s", timeout)
+				finalError = fmt.Sprintf("codex timed out after %s", opts.Timeout)
 			} else {
 				finalStatus = "aborted"
 				finalError = "execution cancelled"
@@ -572,6 +574,10 @@ func (c *codexClient) handleEvent(msg map[string]any) {
 				Tool:   "patch_apply",
 				CallID: callID,
 			})
+		}
+		// PostToolUse hook — observe file change result after execution.
+		if c.toolHooks.PostToolUse != nil {
+			c.toolHooks.PostToolUse(c.ctx, "Write", nil, "")
 		}
 	case "task_complete":
 		if c.onTurnDone != nil {

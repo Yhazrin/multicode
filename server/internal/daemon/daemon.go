@@ -894,12 +894,13 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 	if env == nil {
 		var err error
 		env, err = execenv.Prepare(execenv.PrepareParams{
-			WorkspacesRoot: d.cfg.WorkspacesRoot,
-			WorkspaceID:    task.WorkspaceID,
-			TaskID:         task.ID,
-			AgentName:      agentName,
-			Provider:       provider,
-			Task:           taskCtx,
+			WorkspacesRoot:    d.cfg.WorkspacesRoot,
+			WorkspaceID:       task.WorkspaceID,
+			TaskID:            task.ID,
+			AgentName:         agentName,
+			Provider:          provider,
+			Task:              taskCtx,
+			RepoCLAUDEProvider: d.repoCache,
 		}, d.logger)
 		if err != nil {
 			return TaskResult{}, fmt.Errorf("prepare execution environment: %w", err)
@@ -966,6 +967,16 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 	toolHooks := d.hooks.BuildToolHooks(task.WorkspaceID, task.ID, task.AgentID)
 	d.hooks.PublishAgentStarted(task.WorkspaceID, task.ID, task.AgentID, provider)
 
+	// Build lifecycle hooks for session_start and stop events.
+	lifecycleHooks := agent.LifecycleHooks{
+		SessionStart: func(ctx context.Context, sessionID string) {
+			d.hooks.PublishAgentSessionStart(task.WorkspaceID, task.ID, task.AgentID, sessionID)
+		},
+		Stop: func(ctx context.Context, result agent.Result) {
+			d.hooks.PublishAgentStop(task.WorkspaceID, task.ID, task.AgentID, result)
+		},
+	}
+
 	// Coordinator agents use Fork mode: a lightweight sub-agent that inherits
 	// the parent's codebase context and writes results to an output file.
 	// The "Don't peek" rule applies — we wait for ForkSession.Result before reading.
@@ -1021,6 +1032,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 			ResumeSessionID: task.PriorSessionID,
 			ToolPermissions: toolPerms,
 			ToolHooks:       toolHooks,
+			LifecycleHooks:  lifecycleHooks,
 		})
 		if execErr != nil {
 			return TaskResult{}, execErr
