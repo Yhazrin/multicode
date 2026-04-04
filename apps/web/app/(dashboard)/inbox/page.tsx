@@ -27,6 +27,7 @@ import {
   ResizableHandle,
 } from "@/components/ui/resizable";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -181,7 +182,7 @@ function InboxListItem({
           <div className="flex shrink-0 items-center gap-1">
             <span
               role="button"
-              tabIndex={-1}
+              tabIndex={0}
               title="Archive"
               onClick={(e) => {
                 e.stopPropagation();
@@ -398,10 +399,14 @@ export default function InboxPage() {
 
         <div className="flex-1 min-h-0 overflow-y-auto">
         {items.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <Inbox className="mb-3 h-8 w-8 text-muted-foreground/50" />
-            <p className="text-sm">No notifications</p>
-          </div>
+          <Empty className="border-0 py-16">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Inbox />
+              </EmptyMedia>
+              <EmptyTitle>No notifications</EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         ) : (
           <div>
             {items.map((item) => (
@@ -456,14 +461,18 @@ export default function InboxPage() {
             </div>
           </div>
         ) : (
-          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-            <Inbox className="mb-3 h-10 w-10 text-muted-foreground/30" />
-            <p className="text-sm">
-              {items.length === 0
-                ? "Your inbox is empty"
-                : "Select a notification to view details"}
-            </p>
-          </div>
+          <Empty className="border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Inbox />
+              </EmptyMedia>
+              <EmptyTitle>
+                {items.length === 0
+                  ? "Your inbox is empty"
+                  : "Select a notification to view details"}
+              </EmptyTitle>
+            </EmptyHeader>
+          </Empty>
         )}
       </div>
       </ResizablePanel>

@@ -208,6 +208,14 @@ function HiddenColumnsPanel({
   issues: Issue[];
 }) {
   const viewStoreApi = useViewStoreApi();
+  const countsByStatus = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const status of hiddenStatuses) {
+      counts.set(status, issues.filter((i) => i.status === status).length);
+    }
+    return counts;
+  }, [hiddenStatuses, issues]);
+
   return (
     <div className="flex w-[240px] shrink-0 flex-col">
       <div className="mb-2 flex items-center gap-2 px-1">
@@ -218,7 +226,7 @@ function HiddenColumnsPanel({
       <div className="flex-1 space-y-0.5">
         {hiddenStatuses.map((status) => {
           const cfg = STATUS_CONFIG[status];
-          const count = issues.filter((i) => i.status === status).length;
+          const count = countsByStatus.get(status) ?? 0;
           return (
             <div
               key={status}

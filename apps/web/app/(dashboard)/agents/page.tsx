@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore } from "@/features/workspace";
@@ -176,22 +177,25 @@ export default function AgentsPage() {
             </div>
           </div>
           {filteredAgents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center px-4 py-12">
-              <Bot className="h-8 w-8 text-muted-foreground/40" />
-              <p className="mt-3 text-sm text-muted-foreground">
-                {showArchived ? "No archived agents" : archivedCount > 0 ? "No active agents" : "No agents yet"}
-              </p>
+            <Empty className="border-0 px-4 py-12">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Bot />
+                </EmptyMedia>
+                <EmptyTitle>
+                  {showArchived ? "No archived agents" : archivedCount > 0 ? "No active agents" : "No agents yet"}
+                </EmptyTitle>
+              </EmptyHeader>
               {!showArchived && (
                 <Button
                   onClick={() => setShowCreate(true)}
                   size="xs"
-                  className="mt-3"
                 >
                   <Plus className="h-3 w-3" />
                   Create Agent
                 </Button>
               )}
-            </div>
+            </Empty>
           ) : (
             <div className="divide-y">
               {filteredAgents.map((agent) => (
@@ -221,18 +225,21 @@ export default function AgentsPage() {
             onRestore={handleRestore}
           />
         ) : (
-          <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
-            <Bot className="h-10 w-10 text-muted-foreground/30" />
-            <p className="mt-3 text-sm">Select an agent to view details</p>
+          <Empty className="border-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Bot />
+              </EmptyMedia>
+              <EmptyTitle>Select an agent to view details</EmptyTitle>
+            </EmptyHeader>
             <Button
               onClick={() => setShowCreate(true)}
               size="xs"
-              className="mt-3"
             >
               <Plus className="h-3 w-3" />
               Create Agent
             </Button>
-          </div>
+          </Empty>
         )}
       </ResizablePanel>
 

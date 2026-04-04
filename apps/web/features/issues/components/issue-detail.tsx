@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef, memo } from "react";
+import { useState, useEffect, useCallback, useRef, memo, useMemo } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useDefaultLayout, usePanelRef } from "react-resizable-panels";
 import Link from "next/link";
@@ -74,15 +74,7 @@ import { useIssueReactions } from "@/features/issues/hooks/use-issue-reactions";
 import { useIssueSubscribers } from "@/features/issues/hooks/use-issue-subscribers";
 import { ReactionBar } from "@/components/common/reaction-bar";
 import { useFileUpload } from "@/shared/hooks/use-file-upload";
-import { timeAgo } from "@/shared/utils";
-
-function shortDate(date: string | null): string {
-  if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
+import { timeAgo, shortDate } from "@/shared/utils";
 
 function statusLabel(status: string): string {
   return STATUS_CONFIG[status as IssueStatus]?.label ?? status;
@@ -620,7 +612,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                   <AlertDialogAction
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="bg-destructive text-white hover:bg-destructive/90"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
                     {deleting ? "Deleting..." : "Delete"}
                   </AlertDialogAction>
@@ -804,51 +796,54 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                   ))}
                 </div>
               ) : (() => {
-                const topLevel = timeline.filter((e) => e.type === "activity" || !e.parent_id);
-                const repliesByParent = new Map<string, TimelineEntry[]>();
-                for (const e of timeline) {
-                  if (e.type === "comment" && e.parent_id) {
-                    const list = repliesByParent.get(e.parent_id) ?? [];
-                    list.push(e);
-                    repliesByParent.set(e.parent_id, list);
-                  }
-                }
-
-                // Coalesce: same actor + same action within 2 min → keep last only
-                const COALESCE_MS = 2 * 60 * 1000;
-                const coalesced: TimelineEntry[] = [];
-                for (const entry of topLevel) {
-                  if (entry.type === "activity") {
-                    const prev = coalesced[coalesced.length - 1];
-                    if (
-                      prev?.type === "activity" &&
-                      prev.action === entry.action &&
-                      prev.actor_type === entry.actor_type &&
-                      prev.actor_id === entry.actor_id &&
-                      Math.abs(new Date(entry.created_at).getTime() - new Date(prev.created_at).getTime()) <= COALESCE_MS
-                    ) {
-                      // Replace previous with this one (keep the later result)
-                      coalesced[coalesced.length - 1] = entry;
-                      continue;
+                const { repliesByParent, groups } = useMemo(() => {
+                  const topLevel = timeline.filter((e) => e.type === "activity" || !e.parent_id);
+                  const repliesMap = new Map<string, TimelineEntry[]>();
+                  for (const e of timeline) {
+                    if (e.type === "comment" && e.parent_id) {
+                      const list = repliesMap.get(e.parent_id) ?? [];
+                      list.push(e);
+                      repliesMap.set(e.parent_id, list);
                     }
                   }
-                  coalesced.push(entry);
-                }
 
-                // Group consecutive activities together so the connector line works
-                const groups: { type: "activities" | "comment"; entries: TimelineEntry[] }[] = [];
-                for (const entry of coalesced) {
-                  if (entry.type === "activity") {
-                    const last = groups[groups.length - 1];
-                    if (last?.type === "activities") {
-                      last.entries.push(entry);
+                  // Coalesce: same actor + same action within 2 min → keep last only
+                  const COALESCE_MS = 2 * 60 * 1000;
+                  const coalesced: TimelineEntry[] = [];
+                  for (const entry of topLevel) {
+                    if (entry.type === "activity") {
+                      const prev = coalesced[coalesced.length - 1];
+                      if (
+                        prev?.type === "activity" &&
+                        prev.action === entry.action &&
+                        prev.actor_type === entry.actor_type &&
+                        prev.actor_id === entry.actor_id &&
+                        Math.abs(new Date(entry.created_at).getTime() - new Date(prev.created_at).getTime()) <= COALESCE_MS
+                      ) {
+                        coalesced[coalesced.length - 1] = entry;
+                        continue;
+                      }
+                    }
+                    coalesced.push(entry);
+                  }
+
+                  // Group consecutive activities together so the connector line works
+                  const grouped: { type: "activities" | "comment"; entries: TimelineEntry[] }[] = [];
+                  for (const entry of coalesced) {
+                    if (entry.type === "activity") {
+                      const last = grouped[grouped.length - 1];
+                      if (last?.type === "activities") {
+                        last.entries.push(entry);
+                      } else {
+                        grouped.push({ type: "activities", entries: [entry] });
+                      }
                     } else {
-                      groups.push({ type: "activities", entries: [entry] });
+                      grouped.push({ type: "comment", entries: [entry] });
                     }
-                  } else {
-                    groups.push({ type: "comment", entries: [entry] });
                   }
-                }
+
+                  return { repliesByParent: repliesMap, groups: grouped };
+                }, [timeline]);
 
                 return groups.map((group) => {
                   if (group.type === "comment") {

@@ -5,14 +5,8 @@ import Link from "next/link";
 import type { Issue } from "@/shared/types";
 import { ActorAvatar } from "@/components/common/actor-avatar";
 import { useIssueSelectionStore } from "@/features/issues/stores/selection-store";
+import { shortDate } from "@/shared/utils";
 import { PriorityIcon } from "./priority-icon";
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 export const ListRow = memo(function ListRow({ issue }: { issue: Issue }) {
   const selected = useIssueSelectionStore((s) => s.selectedIds.has(issue.id));
@@ -48,7 +42,7 @@ export const ListRow = memo(function ListRow({ issue }: { issue: Issue }) {
         <span className="min-w-0 flex-1 truncate">{issue.title}</span>
         {issue.due_date && (
           <span className="shrink-0 text-xs text-muted-foreground">
-            {formatDate(issue.due_date)}
+            {shortDate(issue.due_date)}
           </span>
         )}
         {issue.assignee_type && issue.assignee_id && (

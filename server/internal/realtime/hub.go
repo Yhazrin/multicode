@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
@@ -17,11 +18,22 @@ type MembershipChecker interface {
 	IsMember(ctx context.Context, userID, workspaceID string) bool
 }
 
-var upgrader = websocket.Upgrader{
-	CheckOrigin: func(r *http.Request) bool {
-		// TODO: Restrict origins in production
-		return true
-	},
+// checkOrigin validates the WebSocket origin against a set of allowed origins.
+// If no allowed origins are configured, all origins are rejected.
+// Use "*" to allow all origins (not recommended for production).
+func checkOrigin(allowedOrigins []string) func(r *http.Request) bool {
+	return func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true // Same-origin or non-browser client
+		}
+		for _, allowed := range allowedOrigins {
+			if allowed == "*" || strings.EqualFold(origin, allowed) {
+				return true
+			}
+		}
+		return false
+	}
 }
 
 // Client represents a single WebSocket connection with identity.
@@ -31,24 +43,27 @@ type Client struct {
 	send        chan []byte
 	userID      string
 	workspaceID string
+	pongWait    chan struct{} // closed when a pong is received or connection dies
 }
 
 // Hub manages WebSocket connections organized by workspace rooms.
 type Hub struct {
-	rooms      map[string]map[*Client]bool // workspaceID -> clients
-	broadcast  chan []byte                  // global broadcast (daemon events)
-	register   chan *Client
-	unregister chan *Client
-	mu         sync.RWMutex
+	rooms          map[string]map[*Client]bool // workspaceID -> clients
+	broadcast      chan []byte                  // global broadcast (daemon events)
+	register       chan *Client
+	unregister     chan *Client
+	mu             sync.RWMutex
+	allowedOrigins []string
 }
 
 // NewHub creates a new Hub instance.
-func NewHub() *Hub {
+func NewHub(allowedOrigins []string) *Hub {
 	return &Hub{
-		rooms:      make(map[string]map[*Client]bool),
-		broadcast:  make(chan []byte),
-		register:   make(chan *Client),
-		unregister: make(chan *Client),
+		rooms:          make(map[string]map[*Client]bool),
+		broadcast:      make(chan []byte),
+		register:       make(chan *Client),
+		unregister:     make(chan *Client),
+		allowedOrigins: allowedOrigins,
 	}
 }
 
@@ -254,6 +269,10 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, w http.ResponseWriter, r *h
 		return
 	}
 
+	upgrader := websocket.Upgrader{
+		CheckOrigin: checkOrigin(hub.allowedOrigins),
+	}
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		slog.Error("websocket upgrade failed", "error", err)
@@ -266,6 +285,7 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, w http.ResponseWriter, r *h
 		send:        make(chan []byte, 256),
 		userID:      userID,
 		workspaceID: workspaceID,
+		pongWait:    make(chan struct{}),
 	}
 	hub.register <- client
 
@@ -273,11 +293,33 @@ func HandleWebSocket(hub *Hub, mc MembershipChecker, w http.ResponseWriter, r *h
 	go client.readPump()
 }
 
+const (
+	// Time allowed to write a message to the peer.
+	writeWait = 10 * time.Second
+
+	// Send pings to peer with this period. Must be less than pongWait.
+	pingPeriod = 30 * time.Second
+
+	// Time allowed to read the next pong message from the peer.
+	pongWait = 60 * time.Second
+)
+
 func (c *Client) readPump() {
 	defer func() {
 		c.hub.unregister <- c
 		c.conn.Close()
 	}()
+
+	c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetPongHandler(func(string) error {
+		c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		// Signal that a pong was received
+		select {
+		case c.pongWait <- struct{}{}:
+		default:
+		}
+		return nil
+	})
 
 	for {
 		_, _, err := c.conn.ReadMessage()
@@ -293,12 +335,30 @@ func (c *Client) readPump() {
 }
 
 func (c *Client) writePump() {
-	defer c.conn.Close()
+	ticker := time.NewTicker(pingPeriod)
+	defer func() {
+		ticker.Stop()
+		c.conn.Close()
+	}()
 
-	for message := range c.send {
-		if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-			slog.Warn("websocket write error", "error", err)
-			return
+	for {
+		select {
+		case message, ok := <-c.send:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if !ok {
+				// The hub closed the channel.
+				c.conn.WriteMessage(websocket.CloseMessage, []byte{})
+				return
+			}
+			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+				slog.Warn("websocket write error", "error", err)
+				return
+			}
+		case <-ticker.C:
+			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				return
+			}
 		}
 	}
 }

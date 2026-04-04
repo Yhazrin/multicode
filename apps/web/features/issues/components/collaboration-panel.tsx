@@ -43,6 +43,7 @@ import type {
   TaskCheckpointPayload,
 } from "@/shared/types";
 import { toast } from "sonner";
+import { timeAgo } from "@/shared/utils";
 
 interface CollaborationPanelProps {
   issueId: string;
@@ -85,15 +86,7 @@ function CollapsibleSection({ title, icon, count, defaultOpen = false, children 
 }
 
 function formatTime(ts: string): string {
-  const d = new Date(ts);
-  const now = new Date();
-  const diffMs = now.getTime() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  return d.toLocaleDateString();
+  return timeAgo(ts);
 }
 
 function useAgentName(agentId: string): string {

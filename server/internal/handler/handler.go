@@ -389,3 +389,60 @@ func (h *Handler) loadInboxItemForUser(w http.ResponseWriter, r *http.Request, i
 	}
 	return item, true
 }
+
+// batchGetIssuesByIDs fetches multiple issues in a single query, returning only
+// those that belong to the given workspace. This avoids N+1 queries in batch operations.
+func (h *Handler) batchGetIssuesByIDs(ctx context.Context, issueIDs []string, workspaceID string) ([]db.Issue, error) {
+	if h.DB == nil || len(issueIDs) == 0 {
+		return nil, nil
+	}
+	// Convert string IDs to UUIDs for the query
+	uuids := make([]pgtype.UUID, len(issueIDs))
+	for i, id := range issueIDs {
+		uuids[i] = parseUUID(id)
+	}
+	rows, err := h.DB.Query(ctx,
+		`SELECT id, workspace_id, title, description, status, priority,
+		        assignee_type, assignee_id, creator_type, creator_id,
+		        parent_issue_id, acceptance_criteria, context_refs,
+		        position, due_date, created_at, updated_at, number
+		 FROM issue WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
+		uuids, parseUUID(workspaceID),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var issues []db.Issue
+	for rows.Next() {
+		var i db.Issue
+		err := rows.Scan(
+			&i.ID, &i.WorkspaceID, &i.Title, &i.Description, &i.Status, &i.Priority,
+			&i.AssigneeType, &i.AssigneeID, &i.CreatorType, &i.CreatorID,
+			&i.ParentIssueID, &i.AcceptanceCriteria, &i.ContextRefs,
+			&i.Position, &i.DueDate, &i.CreatedAt, &i.UpdatedAt, &i.Number,
+		)
+		if err != nil {
+			return nil, err
+		}
+		issues = append(issues, i)
+	}
+	return issues, rows.Err()
+}
+
+// batchDeleteIssues deletes multiple issues in a single SQL statement.
+func (h *Handler) batchDeleteIssues(ctx context.Context, issueIDs []string, workspaceID string) error {
+	if h.DB == nil || len(issueIDs) == 0 {
+		return nil
+	}
+	uuids := make([]pgtype.UUID, len(issueIDs))
+	for i, id := range issueIDs {
+		uuids[i] = parseUUID(id)
+	}
+	_, err := h.DB.Exec(ctx,
+		`DELETE FROM issue WHERE id = ANY($1::uuid[]) AND workspace_id = $2`,
+		uuids, parseUUID(workspaceID),
+	)
+	return err
+}

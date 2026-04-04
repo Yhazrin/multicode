@@ -46,7 +46,7 @@ func main() {
 	slog.Info("connected to database")
 
 	bus := events.New()
-	hub := realtime.NewHub()
+	hub := realtime.NewHub(allowedOrigins())
 	go hub.Run()
 	registerListeners(bus, hub)
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef, useState, memo, useMemo } from "react";
 import { ChevronRight, Copy, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Card } from "@/components/ui/card";
@@ -266,7 +266,7 @@ function CommentRow({
 // CommentCard — One Card per thread (parent + all replies flat inside)
 // ---------------------------------------------------------------------------
 
-function CommentCard({
+const CommentCard = memo(function CommentCard({
   issueId,
   entry,
   allReplies,
@@ -317,15 +317,18 @@ function CommentCard({
   };
 
   // Collect all nested replies recursively into a flat list
-  const allNestedReplies: TimelineEntry[] = [];
-  const collectReplies = (parentId: string) => {
-    const children = allReplies.get(parentId) ?? [];
-    for (const child of children) {
-      allNestedReplies.push(child);
-      collectReplies(child.id);
-    }
-  };
-  collectReplies(entry.id);
+  const allNestedReplies = useMemo(() => {
+    const result: TimelineEntry[] = [];
+    const collect = (parentId: string) => {
+      const children = allReplies.get(parentId) ?? [];
+      for (const child of children) {
+        result.push(child);
+        collect(child.id);
+      }
+    };
+    collect(entry.id);
+    return result;
+  }, [allReplies, entry.id]);
 
   const replyCount = allNestedReplies.length;
   const contentPreview = (entry.content ?? "").replace(/\n/g, " ").slice(0, 80);
@@ -494,6 +497,6 @@ function CommentCard({
       </Collapsible>
     </Card>
   );
-}
+});
 
 export { CommentCard, type CommentCardProps };

@@ -634,13 +634,24 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workspaceID := resolveWorkspaceID(r)
+
+	// Batch fetch all issues in a single query instead of N+1.
+	prevIssues, err := h.batchGetIssuesByIDs(r.Context(), req.IssueIDs, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch issues")
+		return
+	}
+
+	// Index by ID for quick lookup.
+	prevByID := make(map[string]db.Issue, len(prevIssues))
+	for _, issue := range prevIssues {
+		prevByID[uuidToString(issue.ID)] = issue
+	}
+
 	updated := 0
 	for _, issueID := range req.IssueIDs {
-		prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-			ID:          parseUUID(issueID),
-			WorkspaceID: parseUUID(workspaceID),
-		})
-		if err != nil {
+		prevIssue, ok := prevByID[issueID]
+		if !ok {
 			continue
 		}
 
@@ -757,28 +768,39 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workspaceID := resolveWorkspaceID(r)
-	deleted := 0
-	for _, issueID := range req.IssueIDs {
-		issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-			ID:          parseUUID(issueID),
-			WorkspaceID: parseUUID(workspaceID),
-		})
-		if err != nil {
-			continue
-		}
 
-		h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
-
-		if err := h.Queries.DeleteIssue(r.Context(), parseUUID(issueID)); err != nil {
-			slog.Warn("batch delete issue failed", "issue_id", issueID, "error", err)
-			continue
-		}
-
-		actorType, actorID := h.resolveActor(r, userID, workspaceID)
-		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": issueID})
-		deleted++
+	// Batch fetch all issues in a single query instead of N+1.
+	issues, err := h.batchGetIssuesByIDs(r.Context(), req.IssueIDs, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch issues")
+		return
 	}
 
+	// Cancel tasks for all fetched issues.
+	for _, issue := range issues {
+		h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
+	}
+
+	// Collect attachment URLs before delete.
+	for _, issue := range issues {
+		attachmentURLs, _ := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+		h.deleteS3Objects(r.Context(), attachmentURLs)
+	}
+
+	// Batch delete all issues in a single query.
+	if err := h.batchDeleteIssues(r.Context(), req.IssueIDs, workspaceID); err != nil {
+		slog.Warn("batch delete issues failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to delete issues")
+		return
+	}
+
+	// Publish delete events for each issue.
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	for _, issue := range issues {
+		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": uuidToString(issue.ID)})
+	}
+
+	deleted := len(issues)
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
 }
