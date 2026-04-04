@@ -44,6 +44,8 @@ import type {
   AgentMemory,
   StoreMemoryRequest,
   RecallMemoryRequest,
+  ChainTaskRequest,
+  SubmitReviewRequest,
 } from "@/shared/types";
 import { type Logger, noopLogger } from "@/shared/logger";
 
@@ -137,7 +139,7 @@ export class ApiClient {
           // Don't retry client errors (4xx except 408/429)
           if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
             this.logger.error(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
-            throw new Error(message);
+            throw new Error(`API error: ${message}`);
           }
           lastError = new Error(message);
           continue;
@@ -651,6 +653,10 @@ export class ApiClient {
     return this.fetch(`/api/tasks/${taskId}/dependencies`);
   }
 
+  async getTask(taskId: string): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}`);
+  }
+
   async getReadyTasks(): Promise<AgentTask[]> {
     return this.fetch("/api/tasks/ready");
   }
@@ -696,6 +702,22 @@ export class ApiClient {
 
   async recallWorkspaceMemory(data: RecallMemoryRequest): Promise<AgentMemory[]> {
     return this.fetch("/api/workspace/memory/recall", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Task Chaining
+  async chainTask(taskId: string, data: ChainTaskRequest): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}/chain`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Task Review
+  async submitReview(taskId: string, data: SubmitReviewRequest): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}/review`, {
       method: "POST",
       body: JSON.stringify(data),
     });

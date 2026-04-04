@@ -261,6 +261,13 @@ export interface MemoryRecalledPayload {
   count: number;
 }
 
+export interface TaskProgressPayload {
+  task_id: string;
+  summary: string;
+  step: number;
+  total: number;
+}
+
 export interface TaskChainedPayload {
   task_id: string;
   source_task_id: string;
