@@ -21,6 +21,12 @@ import type {
 
 const logger = createLogger("realtime-sync");
 
+/** Safely cast WS payload to typed shape, returning null if invalid. */
+function asPayload<T>(payload: unknown): T | null {
+  if (payload && typeof payload === "object") return payload as T;
+  return null;
+}
+
 /**
  * Centralized WS → store sync. Called once from WSProvider.
  *
@@ -90,7 +96,8 @@ export function useRealtimeSync(ws: WSClient | null) {
     // --- Specific event handlers (granular updates, no full refetch) ---
 
     const unsubIssueUpdated = ws.on("issue:updated", (p) => {
-      const { issue } = p as IssueUpdatedPayload;
+      const payload = asPayload<IssueUpdatedPayload>(p);
+      const issue = payload?.issue;
       if (!issue?.id) return;
       useIssueStore.getState().updateIssue(issue.id, issue);
       if (issue.status) {
@@ -99,26 +106,27 @@ export function useRealtimeSync(ws: WSClient | null) {
     });
 
     const unsubIssueCreated = ws.on("issue:created", (p) => {
-      const { issue } = p as IssueCreatedPayload;
-      if (issue) useIssueStore.getState().addIssue(issue);
+      const payload = asPayload<IssueCreatedPayload>(p);
+      if (payload?.issue) useIssueStore.getState().addIssue(payload.issue);
     });
 
     const unsubIssueDeleted = ws.on("issue:deleted", (p) => {
-      const { issue_id } = p as IssueDeletedPayload;
-      if (issue_id) useIssueStore.getState().removeIssue(issue_id);
+      const payload = asPayload<IssueDeletedPayload>(p);
+      if (payload?.issue_id) useIssueStore.getState().removeIssue(payload.issue_id);
     });
 
     const unsubInboxNew = ws.on("inbox:new", (p) => {
-      const { item } = p as InboxNewPayload;
-      if (item) useInboxStore.getState().addItem(item);
+      const payload = asPayload<InboxNewPayload>(p);
+      if (payload?.item) useInboxStore.getState().addItem(payload.item);
     });
 
     // --- Side-effect handlers (toast, navigation) ---
 
     const unsubWsDeleted = ws.on("workspace:deleted", (p) => {
-      const { workspace_id } = p as WorkspaceDeletedPayload;
+      const payload = asPayload<WorkspaceDeletedPayload>(p);
+      const workspace_id = payload?.workspace_id;
       const currentWs = useWorkspaceStore.getState().workspace;
-      if (currentWs?.id === workspace_id) {
+      if (workspace_id && currentWs?.id === workspace_id) {
         logger.warn("current workspace deleted, switching");
         toast.info("This workspace was deleted");
         useWorkspaceStore.getState().refreshWorkspaces();
@@ -126,9 +134,10 @@ export function useRealtimeSync(ws: WSClient | null) {
     });
 
     const unsubMemberRemoved = ws.on("member:removed", (p) => {
-      const { user_id } = p as MemberRemovedPayload;
+      const payload = asPayload<MemberRemovedPayload>(p);
+      const user_id = payload?.user_id;
       const myUserId = useAuthStore.getState().user?.id;
-      if (user_id === myUserId) {
+      if (user_id && user_id === myUserId) {
         logger.warn("removed from workspace, switching");
         toast.info("You were removed from this workspace");
         useWorkspaceStore.getState().refreshWorkspaces();
@@ -136,12 +145,12 @@ export function useRealtimeSync(ws: WSClient | null) {
     });
 
     const unsubMemberAdded = ws.on("member:added", (p) => {
-      const { member, workspace_name } = p as MemberAddedPayload;
+      const payload = asPayload<MemberAddedPayload>(p);
       const myUserId = useAuthStore.getState().user?.id;
-      if (member.user_id === myUserId) {
+      if (payload?.member.user_id === myUserId) {
         useWorkspaceStore.getState().refreshWorkspaces();
         toast.info(
-          `You were invited to ${workspace_name ?? "a workspace"}`,
+          `You were invited to ${payload?.workspace_name ?? "a workspace"}`,
         );
       }
     });

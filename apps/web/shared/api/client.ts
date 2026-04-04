@@ -35,6 +35,15 @@ import type {
   TimelineEntry,
   TaskMessagePayload,
   Attachment,
+  AgentMessage,
+  SendMessageRequest,
+  TaskDependency,
+  AddDependencyRequest,
+  TaskCheckpoint,
+  SaveCheckpointRequest,
+  AgentMemory,
+  StoreMemoryRequest,
+  RecallMemoryRequest,
 } from "@/shared/types";
 import { type Logger, noopLogger } from "@/shared/logger";
 
@@ -95,6 +104,8 @@ export class ApiClient {
     const rid = crypto.randomUUID().slice(0, 8);
     const start = Date.now();
     const method = init?.method ?? "GET";
+    const isGet = method === "GET";
+    const maxRetries = isGet ? 3 : 0;
 
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
@@ -105,27 +116,49 @@ export class ApiClient {
 
     this.logger.info(`→ ${method} ${path}`, { rid });
 
-    const res = await fetch(`${this.baseUrl}${path}`, {
-      ...init,
-      headers,
-      credentials: "include",
-    });
+    let lastError: Error | null = null;
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
+        await new Promise((r) => setTimeout(r, delay));
+        this.logger.info(`↻ retry ${attempt}/${maxRetries} ${method} ${path}`, { rid });
+      }
 
-    if (!res.ok) {
-      if (res.status === 401) this.handleUnauthorized();
-      const message = await this.parseErrorMessage(res, `API error: ${res.status} ${res.statusText}`);
-      this.logger.error(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
-      throw new Error(message);
+      try {
+        const res = await fetch(`${this.baseUrl}${path}`, {
+          ...init,
+          headers,
+          credentials: "include",
+        });
+
+        if (!res.ok) {
+          if (res.status === 401) this.handleUnauthorized();
+          const message = await this.parseErrorMessage(res, `API error: ${res.status} ${res.statusText}`);
+          // Don't retry client errors (4xx except 408/429)
+          if (res.status >= 400 && res.status < 500 && res.status !== 408 && res.status !== 429) {
+            this.logger.error(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms`, error: message });
+            throw new Error(message);
+          }
+          lastError = new Error(message);
+          continue;
+        }
+
+        this.logger.info(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms` });
+
+        // Handle 204 No Content
+        if (res.status === 204) {
+          return undefined as T;
+        }
+
+        return res.json() as Promise<T>;
+      } catch (err) {
+        if (err instanceof Error && err.message.startsWith("API error:")) throw err;
+        lastError = err instanceof Error ? err : new Error("Network error");
+      }
     }
 
-    this.logger.info(`← ${res.status} ${path}`, { rid, duration: `${Date.now() - start}ms` });
-
-    // Handle 204 No Content
-    if (res.status === 204) {
-      return undefined as T;
-    }
-
-    return res.json() as Promise<T>;
+    this.logger.error(`✗ ${method} ${path} failed after ${maxRetries + 1} attempts`, { rid, duration: `${Date.now() - start}ms` });
+    throw lastError ?? new Error("Request failed");
   }
 
   // Auth
@@ -578,5 +611,93 @@ export class ApiClient {
 
   async deleteAttachment(id: string): Promise<void> {
     await this.fetch(`/api/attachments/${id}`, { method: "DELETE" });
+  }
+
+  // Agent Messaging
+  async sendAgentMessage(agentId: string, data: SendMessageRequest): Promise<AgentMessage> {
+    return this.fetch(`/api/agents/${agentId}/messages`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listAgentMessages(agentId: string, params?: { unread?: boolean; task_id?: string }): Promise<AgentMessage[]> {
+    const search = new URLSearchParams();
+    if (params?.unread) search.set("unread", "true");
+    if (params?.task_id) search.set("task_id", params.task_id);
+    return this.fetch(`/api/agents/${agentId}/messages?${search}`);
+  }
+
+  async markAgentMessagesRead(agentId: string): Promise<{ status: string }> {
+    return this.fetch(`/api/agents/${agentId}/messages/read`, { method: "POST" });
+  }
+
+  // Task Dependencies
+  async addTaskDependency(taskId: string, data: AddDependencyRequest): Promise<TaskDependency> {
+    return this.fetch(`/api/tasks/${taskId}/dependencies`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async removeTaskDependency(taskId: string, data: AddDependencyRequest): Promise<{ status: string }> {
+    return this.fetch(`/api/tasks/${taskId}/dependencies`, {
+      method: "DELETE",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listTaskDependencies(taskId: string): Promise<TaskDependency[]> {
+    return this.fetch(`/api/tasks/${taskId}/dependencies`);
+  }
+
+  async getReadyTasks(): Promise<AgentTask[]> {
+    return this.fetch("/api/tasks/ready");
+  }
+
+  // Task Checkpoints
+  async saveTaskCheckpoint(taskId: string, data: SaveCheckpointRequest): Promise<TaskCheckpoint> {
+    return this.fetch(`/api/tasks/${taskId}/checkpoints`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listTaskCheckpoints(taskId: string): Promise<TaskCheckpoint[]> {
+    return this.fetch(`/api/tasks/${taskId}/checkpoints`);
+  }
+
+  async getLatestCheckpoint(taskId: string): Promise<TaskCheckpoint> {
+    return this.fetch(`/api/tasks/${taskId}/checkpoints/latest`);
+  }
+
+  // Agent Memory
+  async storeAgentMemory(agentId: string, data: StoreMemoryRequest): Promise<AgentMemory> {
+    return this.fetch(`/api/agents/${agentId}/memory`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async recallAgentMemory(agentId: string, data: RecallMemoryRequest): Promise<AgentMemory[]> {
+    return this.fetch(`/api/agents/${agentId}/memory/recall`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async listAgentMemory(agentId: string): Promise<AgentMemory[]> {
+    return this.fetch(`/api/agents/${agentId}/memory`);
+  }
+
+  async deleteAgentMemory(agentId: string, memoryId: string): Promise<{ status: string }> {
+    return this.fetch(`/api/agents/${agentId}/memory/${memoryId}`, { method: "DELETE" });
+  }
+
+  async recallWorkspaceMemory(data: RecallMemoryRequest): Promise<AgentMemory[]> {
+    return this.fetch("/api/workspace/memory/recall", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
   }
 }

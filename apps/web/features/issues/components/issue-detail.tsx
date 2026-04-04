@@ -63,6 +63,7 @@ import { StatusIcon, PriorityIcon, DueDatePicker, AssigneePicker, canAssignAgent
 import { CommentCard } from "./comment-card";
 import { CommentInput } from "./comment-input";
 import { AgentLiveCard, TaskRunHistory } from "./agent-live-card";
+import { CollaborationPanel } from "./collaboration-panel";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore, useActorName } from "@/features/workspace";
@@ -780,6 +781,11 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
             {/* Agent execution history */}
             <div className="mt-3">
               <TaskRunHistory issueId={id} />
+            </div>
+
+            {/* Collaboration panel (messages, dependencies, checkpoints) */}
+            <div className="mt-3">
+              <CollaborationPanel issueId={id} />
             </div>
 
             {/* Timeline entries */}

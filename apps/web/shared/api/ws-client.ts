@@ -14,6 +14,8 @@ export class WSClient {
   private onReconnectCallbacks = new Set<() => void>();
   private anyHandlers = new Set<(msg: WSMessage) => void>();
   private logger: Logger;
+  private reconnectAttempt = 0;
+  private readonly maxReconnectDelay = 30000;
 
   constructor(url: string, options?: { logger?: Logger }) {
     this.baseUrl = url;
@@ -35,6 +37,7 @@ export class WSClient {
 
     this.ws.onopen = () => {
       this.logger.info("connected");
+      this.reconnectAttempt = 0;
       if (this.hasConnectedBefore) {
         for (const cb of this.onReconnectCallbacks) {
           try {
@@ -62,8 +65,10 @@ export class WSClient {
     };
 
     this.ws.onclose = () => {
-      this.logger.warn("disconnected, reconnecting in 3s");
-      this.reconnectTimer = setTimeout(() => this.connect(), 3000);
+      const delay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
+      this.reconnectAttempt++;
+      this.logger.warn(`disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
+      this.reconnectTimer = setTimeout(() => this.connect(), delay);
     };
 
     this.ws.onerror = () => {
@@ -85,6 +90,7 @@ export class WSClient {
       this.ws = null;
     }
     this.hasConnectedBefore = false;
+    this.reconnectAttempt = 0;
     this.handlers.clear();
     this.anyHandlers.clear();
     this.onReconnectCallbacks.clear();
