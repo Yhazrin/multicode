@@ -64,9 +64,9 @@ function CommentInput({ issueId, onSubmit }: CommentInputProps) {
           aria-label="Submit comment"
         >
           {submitting ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           ) : (
-            <ArrowUp className="h-3.5 w-3.5" />
+            <ArrowUp className="h-3.5 w-3.5" aria-hidden="true" />
           )}
         </Button>
       </div>
