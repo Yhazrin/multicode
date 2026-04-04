@@ -320,7 +320,7 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Warn("create agent failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to create agent: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to create agent")
 		return
 	}
 	slog.Info("agent created", append(logger.RequestAttrs(r), "agent_id", uuidToString(agent.ID), "name", agent.Name, "workspace_id", workspaceID)...)
@@ -438,7 +438,7 @@ func (h *Handler) UpdateAgent(w http.ResponseWriter, r *http.Request) {
 	agent, err := h.Queries.UpdateAgent(r.Context(), params)
 	if err != nil {
 		slog.Warn("update agent failed", append(logger.RequestAttrs(r), "error", err, "agent_id", id)...)
-		writeError(w, http.StatusInternalServerError, "failed to update agent: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to update agent")
 		return
 	}
 

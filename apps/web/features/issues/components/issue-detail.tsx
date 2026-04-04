@@ -178,11 +178,16 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
   );
 
   const handleDelete = useCallback(async () => {
-    await api.deleteIssue(issue!.id);
-    useIssueStore.getState().removeIssue(issue!.id);
-    toast.success("Issue deleted");
-    if (onDelete) onDelete();
-    else router.push("/issues");
+    if (!issue) return;
+    try {
+      await api.deleteIssue(issue.id);
+      useIssueStore.getState().removeIssue(issue.id);
+      toast.success("Issue deleted");
+      if (onDelete) onDelete();
+      else router.push("/issues");
+    } catch {
+      toast.error("Failed to delete issue");
+    }
   }, [issue, onDelete, router]);
 
   if (loading) {

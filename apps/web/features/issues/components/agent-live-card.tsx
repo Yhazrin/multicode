@@ -25,22 +25,21 @@ interface TimelineItem {
   output?: string;
 }
 
-function formatElapsed(startedAt: string): string {
-  const elapsed = Date.now() - new Date(startedAt).getTime();
-  const seconds = Math.floor(elapsed / 1000);
+function formatSeconds(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${minutes}m ${secs}s`;
 }
 
+function formatElapsed(startedAt: string): string {
+  const elapsed = Date.now() - new Date(startedAt).getTime();
+  return formatSeconds(Math.floor(elapsed / 1000));
+}
+
 function formatDuration(start: string, end: string): string {
   const ms = new Date(end).getTime() - new Date(start).getTime();
-  const seconds = Math.floor(ms / 1000);
-  if (seconds < 60) return `${seconds}s`;
-  const minutes = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${minutes}m ${secs}s`;
+  return formatSeconds(Math.floor(ms / 1000));
 }
 
 function shortenPath(p: string): string {

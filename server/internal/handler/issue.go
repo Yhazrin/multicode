@@ -288,7 +288,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to create issue: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to create issue")
 		return
 	}
 
@@ -347,7 +347,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 
 	// Track which fields were explicitly present in JSON (even if null)
 	var rawFields map[string]json.RawMessage
-	json.Unmarshal(bodyBytes, &rawFields)
+	if err := json.Unmarshal(bodyBytes, &rawFields); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
 
 	// Pre-fill nullable fields (bare sqlc.narg) with current values
 	params := db.UpdateIssueParams{
@@ -412,7 +415,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	issue, err := h.Queries.UpdateIssue(r.Context(), params)
 	if err != nil {
 		slog.Warn("update issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to update issue: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to update issue")
 		return
 	}
 
@@ -587,9 +590,13 @@ func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
 
 	// Collect all attachment URLs (issue-level + comment-level) before CASCADE delete.
-	attachmentURLs, _ := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+	attachmentURLs, err := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+	if err != nil {
+		slog.Warn("failed to list attachment URLs for issue cleanup", "issue_id", uuidToString(issue.ID), "error", err)
+		attachmentURLs = nil
+	}
 
-	err := h.Queries.DeleteIssue(r.Context(), parseUUID(id))
+	err = h.Queries.DeleteIssue(r.Context(), parseUUID(id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete issue")
 		return
@@ -641,10 +648,16 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 
 	// Detect which fields in "updates" were explicitly set (including null).
 	var rawTop map[string]json.RawMessage
-	json.Unmarshal(bodyBytes, &rawTop)
+	if err := json.Unmarshal(bodyBytes, &rawTop); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
 	var rawUpdates map[string]json.RawMessage
 	if raw, exists := rawTop["updates"]; exists {
-		json.Unmarshal(raw, &rawUpdates)
+		if err := json.Unmarshal(raw, &rawUpdates); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
 	}
 
 	workspaceID := resolveWorkspaceID(r)
@@ -801,7 +814,11 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 
 	// Collect attachment URLs before delete.
 	for _, issue := range issues {
-		attachmentURLs, _ := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+		attachmentURLs, err := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+		if err != nil {
+			slog.Warn("failed to list attachment URLs for batch issue cleanup", "issue_id", uuidToString(issue.ID), "error", err)
+			continue
+		}
 		h.deleteS3Objects(r.Context(), attachmentURLs)
 	}
 

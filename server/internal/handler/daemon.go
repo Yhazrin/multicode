@@ -113,7 +113,8 @@ func (h *Handler) DaemonRegister(w http.ResponseWriter, r *http.Request) {
 			Metadata:    metadata,
 		})
 		if err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to register runtime: "+err.Error())
+			slog.Warn("register runtime failed", "error", err)
+				writeError(w, http.StatusInternalServerError, "failed to register runtime")
 			return
 		}
 		resp = append(resp, runtimeToResponse(registered))
@@ -231,7 +232,8 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 
 	task, err := h.TaskService.ClaimTaskForRuntime(r.Context(), parseUUID(runtimeID))
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to claim task: "+err.Error())
+		slog.Warn("claim task failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to claim task")
 		return
 	}
 

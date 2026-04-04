@@ -146,9 +146,17 @@ function InboxListItem({
   onArchive: () => void;
 }) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
-      className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
       }`}
     >
@@ -170,24 +178,17 @@ function InboxListItem({
             </span>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            <span
-              role="button"
-              tabIndex={0}
+            <button
+              type="button"
               title="Archive"
               onClick={(e) => {
                 e.stopPropagation();
                 onArchive();
               }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.stopPropagation();
-                  onArchive();
-                }
-              }}
               className="hidden rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground group-hover:inline-flex"
             >
               <Archive className="h-3.5 w-3.5" />
-            </span>
+            </button>
             {item.issue_status && (
               <StatusIcon status={item.issue_status} className="h-3.5 w-3.5 shrink-0" />
             )}
@@ -202,7 +203,7 @@ function InboxListItem({
           </span>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

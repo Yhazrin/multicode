@@ -88,8 +88,8 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         return [] as Agent[];
       }),
       api.listSkills().catch(() => [] as Skill[]),
-      useIssueStore.getState().fetch().catch(() => {}),
-      useInboxStore.getState().fetch().catch(() => {}),
+      useIssueStore.getState().fetch().catch((e) => console.error("Failed to fetch issues:", e)),
+      useInboxStore.getState().fetch().catch((e) => console.error("Failed to fetch inbox:", e)),
     ]);
     logger.info("hydrate complete", "members:", nextMembers.length, "agents:", nextAgents.length);
     set({ members: nextMembers, agents: nextAgents, skills: nextSkills });
