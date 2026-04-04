@@ -67,8 +67,16 @@ export const BoardCardContent = memo(function BoardCardContent({
 
   return (
     <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
-      {/* Row 1: Identifier */}
-      <p className="text-xs text-muted-foreground">{issue.identifier}</p>
+      {/* Row 1: Identifier + agent activity indicator */}
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground">{issue.identifier}</p>
+        {issue.assignee_type === "agent" && issue.status === "in_progress" && (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-info opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-info" />
+          </span>
+        )}
+      </div>
 
       {/* Row 2: Title */}
       <p className="mt-1 text-sm font-medium leading-snug line-clamp-2">

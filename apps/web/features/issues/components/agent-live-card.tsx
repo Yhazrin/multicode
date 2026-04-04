@@ -116,6 +116,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
   const scrollRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const seenSeqs = useRef(new Set<string>());
+  const MAX_SEEN_SEQS = 500;
 
   // Check for active task on mount
   useEffect(() => {
@@ -147,6 +148,15 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
       const key = `${msg.task_id}:${msg.seq}`;
       if (seenSeqs.current.has(key)) return;
       seenSeqs.current.add(key);
+      // Sliding window cap: evict oldest entries when exceeding limit
+      if (seenSeqs.current.size > MAX_SEEN_SEQS) {
+        const iter = seenSeqs.current.values();
+        while (seenSeqs.current.size > MAX_SEEN_SEQS) {
+          const next = iter.next();
+          if (next.done) break;
+          seenSeqs.current.delete(next.value);
+        }
+      }
 
       setItems((prev) => {
         const item: TimelineItem = {

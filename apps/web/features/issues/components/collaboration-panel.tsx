@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef, memo } from "react";
 import {
   MessageSquare,
   GitBranch,
@@ -36,6 +36,7 @@ import {
 import { ActorAvatar } from "@/components/common/actor-avatar";
 import { api } from "@/shared/api";
 import { useWorkspaceStore } from "@/features/workspace";
+import { useIssueStore } from "@/features/issues/store";
 import { useWSEvent } from "@/features/realtime";
 import type {
   AgentMessage,
@@ -54,6 +55,17 @@ import type {
 import { toast } from "sonner";
 import { timeAgo } from "@/shared/utils";
 
+function useDebouncedCallback(cb: () => void, delay: number) {
+  const timer = useRef<ReturnType<typeof setTimeout>>(null);
+  const savedCb = useRef(cb);
+  savedCb.current = cb;
+
+  return useCallback(() => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => savedCb.current(), delay);
+  }, [delay]);
+}
+
 interface CollaborationPanelProps {
   issueId: string;
 }
@@ -63,17 +75,25 @@ interface SectionProps {
   icon: React.ReactNode;
   count?: number;
   defaultOpen?: boolean;
+  onOpen?: () => void;
   children: React.ReactNode;
 }
 
-const CollapsibleSection = memo(function CollapsibleSection({ title, icon, count, defaultOpen = false, children }: SectionProps) {
+const CollapsibleSection = memo(function CollapsibleSection({ title, icon, count, defaultOpen = false, onOpen, children }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+
+  const handleToggle = useCallback(() => {
+    setOpen((prev) => {
+      if (!prev && onOpen) onOpen();
+      return !prev;
+    });
+  }, [onOpen]);
 
   return (
     <div className="rounded-lg border bg-card">
       <button
         className="flex w-full items-center gap-2 px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
-        onClick={() => setOpen(!open)}
+        onClick={handleToggle}
         aria-expanded={open}
       >
         {open ? (
@@ -132,6 +152,17 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
   const [showChain, setShowChain] = useState(false);
   const [memorySearch, setMemorySearch] = useState("");
   const [depStatuses, setDepStatuses] = useState<Record<string, string>>({});
+
+  // Resolve dependency task IDs to issue identifiers
+  const depIdentifierMap = useMemo(() => {
+    const issues = useIssueStore.getState().issues;
+    const map: Record<string, string> = {};
+    for (const issue of issues) {
+      // issue.id is the task/issue UUID, issue.identifier is e.g. "MULT-12"
+      map[issue.id] = issue.identifier;
+    }
+    return map;
+  }, [dependencies]);
 
   const agents = useWorkspaceStore((s) => s.agents);
 
@@ -202,47 +233,49 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
     }
   }, [agentId]);
 
+  // Lazy-load: only load messages and dependencies on mount; others on section open
+  const [checkpointsLoaded, setCheckpointsLoaded] = useState(false);
+  const [memoriesLoaded, setMemoriesLoaded] = useState(false);
+
   useEffect(() => {
     loadMessages();
     loadDependencies();
-    loadCheckpoints();
-    loadMemories();
-  }, [loadMessages, loadDependencies, loadCheckpoints, loadMemories]);
+  }, [loadMessages, loadDependencies]);
 
-  // Fetch statuses for dependency targets
+  // Fetch statuses for dependency targets — batch with Promise.allSettled
   useEffect(() => {
     if (dependencies.length === 0) return;
     const missing = dependencies.filter((d) => !(d.depends_on_id in depStatuses));
     if (missing.length === 0) return;
-    for (const dep of missing) {
-      api.getTask(dep.depends_on_id).then((task) => {
-        setDepStatuses((prev) => ({ ...prev, [dep.depends_on_id]: task.status }));
-      }).catch(() => {
-        setDepStatuses((prev) => ({ ...prev, [dep.depends_on_id]: "unknown" }));
-      });
-    }
+    Promise.allSettled(
+      missing.map(async (dep) => {
+        const task = await api.getTask(dep.depends_on_id);
+        return { id: dep.depends_on_id, status: task.status };
+      }),
+    ).then((results) => {
+      const updates: Record<string, string> = {};
+      for (const r of results) {
+        if (r.status === "fulfilled") {
+          updates[r.value.id] = r.value.status;
+        }
+      }
+      if (Object.keys(updates).length > 0) {
+        setDepStatuses((prev) => ({ ...prev, ...updates }));
+      }
+    });
   }, [dependencies]);
 
-  // --- Real-time updates ---
-  useWSEvent("agent:message", () => {
-    loadMessages();
-  });
+  // Debounced WS handlers — 200ms delay to avoid firehose reload
+  const debouncedMessages = useDebouncedCallback(loadMessages, 200);
+  const debouncedDeps = useDebouncedCallback(loadDependencies, 200);
+  const debouncedCheckpoints = useDebouncedCallback(loadCheckpoints, 200);
+  const debouncedMemories = useDebouncedCallback(loadMemories, 200);
 
-  useWSEvent("task_dep:created", () => {
-    loadDependencies();
-  });
-
-  useWSEvent("task_dep:deleted", () => {
-    loadDependencies();
-  });
-
-  useWSEvent("task:checkpoint", () => {
-    loadCheckpoints();
-  });
-
-  useWSEvent("memory:stored", () => {
-    loadMemories();
-  });
+  useWSEvent("agent:message", debouncedMessages);
+  useWSEvent("task_dep:created", debouncedDeps);
+  useWSEvent("task_dep:deleted", debouncedDeps);
+  useWSEvent("task:checkpoint", debouncedCheckpoints);
+  useWSEvent("memory:stored", debouncedMemories);
 
   // --- Actions ---
 
@@ -446,7 +479,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
                 <div key={`${dep.task_id}-${dep.depends_on_id}`} className="flex items-center gap-2 text-xs group">
                   <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" />
                   <span className="font-mono truncate">
-                    {dep.depends_on_id.slice(0, 8)}
+                    {depIdentifierMap[dep.depends_on_id] ?? dep.depends_on_id.slice(0, 8)}
                   </span>
                   {depStatuses[dep.depends_on_id] && (
                     <Badge
@@ -534,6 +567,12 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           title="Checkpoints"
           icon={<CheckCircle2 className="h-3.5 w-3.5 text-muted-foreground" />}
           count={checkpoints.length}
+          onOpen={() => {
+            if (!checkpointsLoaded) {
+              setCheckpointsLoaded(true);
+              loadCheckpoints();
+            }
+          }}
         >
           {cpsLoading ? (
             <div className="space-y-2">
@@ -687,6 +726,12 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           title="Memory"
           icon={<Brain className="h-3.5 w-3.5 text-muted-foreground" />}
           count={memories.length}
+          onOpen={() => {
+            if (!memoriesLoaded) {
+              setMemoriesLoaded(true);
+              loadMemories();
+            }
+          }}
         >
           {memLoading ? (
             <div className="space-y-2">
