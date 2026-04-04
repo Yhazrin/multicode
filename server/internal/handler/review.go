@@ -17,7 +17,7 @@ func (h *Handler) SubmitReview(w http.ResponseWriter, r *http.Request) {
 	taskIDStr := chi.URLParam(r, "taskId")
 	taskID := parseUUID(taskIDStr)
 
-	var req submitReviewRequest
+	var req SubmitReviewRequest
 	r.Body = http.MaxBytesReader(w, r.Body, 5<<20) // 5MB
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid request body")
