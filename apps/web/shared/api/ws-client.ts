@@ -65,7 +65,9 @@ export class WSClient {
     };
 
     this.ws.onclose = () => {
-      const delay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
+      const baseDelay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
+      const jitter = baseDelay * (0.7 + Math.random() * 0.6); // 70%-130% of base
+      const delay = Math.round(jitter);
       this.reconnectAttempt++;
       this.logger.warn(`disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
       this.reconnectTimer = setTimeout(() => this.connect(), delay);

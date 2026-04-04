@@ -15,12 +15,10 @@ import (
 // claudeBackend implements Backend by spawning the Claude Code CLI
 // with --output-format stream-json.
 type claudeBackend struct {
-	cfg  Config
-	opts ExecOptions // populated per-Execute call
+	cfg Config
 }
 
 func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOptions) (*Session, error) {
-	b.opts = opts // store for handleControlRequest
 	execPath := b.cfg.ExecutablePath
 	if execPath == "" {
 		execPath = "claude"
@@ -112,7 +110,7 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 			case "assistant":
 				b.handleAssistant(msg, msgCh, &output)
 			case "user":
-				b.handleUser(msg, msgCh)
+				b.handleUser(runCtx, msg, msgCh, opts)
 			case "system":
 				if msg.SessionID != "" {
 					sessionID = msg.SessionID
@@ -137,7 +135,7 @@ func (b *claudeBackend) Execute(ctx context.Context, prompt string, opts ExecOpt
 					})
 				}
 			case "control_request":
-				b.handleControlRequest(msg, stdin)
+				b.handleControlRequest(runCtx, msg, stdin, opts)
 			}
 		}
 
@@ -209,6 +207,12 @@ func (b *claudeBackend) Fork(ctx context.Context, prompt string, opts ForkOption
 	cmd.Env = buildEnv(b.cfg.Env)
 	cmd.Stderr = newLogWriter(b.cfg.Logger, "[claude:fork:stderr] ")
 
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		cancel()
+		return nil, fmt.Errorf("fork stdout pipe: %w", err)
+	}
+
 	if err := cmd.Start(); err != nil {
 		cancel()
 		return nil, fmt.Errorf("start claude fork: %w", err)
@@ -226,12 +230,6 @@ func (b *claudeBackend) Fork(ctx context.Context, prompt string, opts ForkOption
 		var output strings.Builder
 		finalStatus := "completed"
 		var finalError string
-
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			resCh <- ForkResult{Status: "failed", Error: fmt.Sprintf("fork stdout pipe: %v", err)}
-			return
-		}
 
 		scanner := bufio.NewScanner(stdout)
 		scanner.Buffer(make([]byte, 0, 1024*1024), 10*1024*1024)
@@ -334,7 +332,7 @@ func (b *claudeBackend) handleAssistant(msg claudeSDKMessage, ch chan<- Message,
 	}
 }
 
-func (b *claudeBackend) handleUser(msg claudeSDKMessage, ch chan<- Message) {
+func (b *claudeBackend) handleUser(ctx context.Context, msg claudeSDKMessage, ch chan<- Message, opts ExecOptions) {
 	var content claudeMessageContent
 	if err := json.Unmarshal(msg.Message, &content); err != nil {
 		return
@@ -351,11 +349,16 @@ func (b *claudeBackend) handleUser(msg claudeSDKMessage, ch chan<- Message) {
 				CallID: block.ToolUseID,
 				Output: resultStr,
 			})
+
+			// PostToolUse hook — observe tool result after execution.
+			if opts.ToolHooks.PostToolUse != nil {
+				opts.ToolHooks.PostToolUse(ctx, "", nil, resultStr)
+			}
 		}
 	}
 }
 
-func (b *claudeBackend) handleControlRequest(msg claudeSDKMessage, stdin interface{ Write([]byte) (int, error) }) {
+func (b *claudeBackend) handleControlRequest(ctx context.Context, msg claudeSDKMessage, stdin interface{ Write([]byte) (int, error) }, opts ExecOptions) {
 	var req claudeControlRequestPayload
 	if err := json.Unmarshal(msg.Request, &req); err != nil {
 		return
@@ -370,7 +373,7 @@ func (b *claudeBackend) handleControlRequest(msg claudeSDKMessage, stdin interfa
 	}
 
 	// Step 1: Check ToolPermissions — deny if tool is not allowed.
-	if b.opts.ToolPermissions != nil && !b.opts.ToolPermissions.IsToolAllowed(req.ToolName) {
+	if opts.ToolPermissions != nil && !opts.ToolPermissions.IsToolAllowed(req.ToolName) {
 		b.cfg.Logger.Info("claude: tool denied by permissions", "tool", req.ToolName)
 		denyResp := map[string]any{
 			"type": "control_response",
@@ -391,8 +394,8 @@ func (b *claudeBackend) handleControlRequest(msg claudeSDKMessage, stdin interfa
 
 	// Step 2: Run PreToolUse hook if configured.
 	updatedInput := inputMap
-	if b.opts.ToolHooks.PreToolUse != nil {
-		result := b.opts.ToolHooks.PreToolUse(context.Background(), req.ToolName, inputMap)
+	if opts.ToolHooks.PreToolUse != nil {
+		result := opts.ToolHooks.PreToolUse(ctx, req.ToolName, inputMap)
 		if result.Deny {
 			b.cfg.Logger.Info("claude: tool denied by hook", "tool", req.ToolName, "reason", result.DenyReason)
 			denyResp := map[string]any{
@@ -494,8 +497,7 @@ func trySend(ch chan<- Message, msg Message) {
 	select {
 	case ch <- msg:
 	default:
-		// Channel full — drop message. Final output is accumulated separately
-		// in Result.Output, so only streaming consumers are affected.
+		slog.Warn("agent message channel full, dropping message", "type", msg.Type, "tool", msg.Tool)
 	}
 }
 

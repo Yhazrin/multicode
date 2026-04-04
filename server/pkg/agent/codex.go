@@ -14,12 +14,10 @@ import (
 // codexBackend implements Backend by spawning `codex app-server --listen stdio://`
 // and communicating via JSON-RPC 2.0 over stdin/stdout.
 type codexBackend struct {
-	cfg  Config
-	opts ExecOptions // populated per-Execute call
+	cfg Config
 }
 
 func (b *codexBackend) Execute(ctx context.Context, prompt string, opts ExecOptions) (*Session, error) {
-	b.opts = opts // store for handleServerRequest
 	execPath := b.cfg.ExecutablePath
 	if execPath == "" {
 		execPath = "codex"
@@ -72,6 +70,7 @@ func (b *codexBackend) Execute(ctx context.Context, prompt string, opts ExecOpti
 	c := &codexClient{
 		cfg:                  b.cfg,
 		stdin:                stdin,
+		ctx:                  runCtx,
 		pending:              make(map[int]*pendingRPC),
 		notificationProtocol: "unknown",
 		toolPerms:            opts.ToolPermissions,
@@ -245,6 +244,7 @@ func (b *codexBackend) Fork(ctx context.Context, prompt string, opts ForkOptions
 		Timeout:         opts.Timeout,
 		ResumeSessionID: opts.ParentSessionID,
 		ToolPermissions: opts.ToolPermissions,
+		ToolHooks:       opts.ToolHooks,
 	}
 
 	session, err := b.Execute(ctx, prompt, execOpts)
@@ -271,6 +271,7 @@ func (b *codexBackend) Fork(ctx context.Context, prompt string, opts ForkOptions
 type codexClient struct {
 	cfg       Config
 	stdin     interface{ Write([]byte) (int, error) }
+	ctx       context.Context
 	mu        sync.Mutex
 	nextID    int
 	pending   map[int]*pendingRPC
@@ -464,7 +465,7 @@ func (c *codexClient) handleServerRequest(raw map[string]json.RawMessage) {
 
 	// Step 2: Run PreToolUse hook if configured.
 	if c.toolHooks.PreToolUse != nil {
-		result := c.toolHooks.PreToolUse(context.Background(), toolName, input)
+		result := c.toolHooks.PreToolUse(c.ctx, toolName, input)
 		if result.Deny {
 			c.cfg.Logger.Info("codex: tool denied by hook", "tool", toolName, "reason", result.DenyReason)
 			c.respond(id, map[string]any{"decision": "deny", "message": result.DenyReason})
@@ -549,6 +550,10 @@ func (c *codexClient) handleEvent(msg map[string]any) {
 				CallID: callID,
 				Output: output,
 			})
+		}
+		// PostToolUse hook — observe tool result after execution.
+		if c.toolHooks.PostToolUse != nil {
+			c.toolHooks.PostToolUse(c.ctx, "exec_command", nil, output)
 		}
 	case "patch_apply_begin":
 		callID, _ := msg["call_id"].(string)
@@ -655,6 +660,10 @@ func (c *codexClient) handleItemNotification(method string, params map[string]an
 				CallID: itemID,
 				Output: output,
 			})
+		}
+		// PostToolUse hook — observe tool result after execution.
+		if c.toolHooks.PostToolUse != nil {
+			c.toolHooks.PostToolUse(c.ctx, "exec_command", nil, output)
 		}
 
 	case method == "item/started" && itemType == "fileChange":

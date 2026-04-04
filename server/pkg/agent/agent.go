@@ -175,6 +175,7 @@ type ForkOptions struct {
 	MaxTurns        int              // turn budget for the fork
 	Timeout         time.Duration    // max execution time
 	ToolPermissions *ToolPermissions // inherited from parent if nil
+	ToolHooks       ToolHooks        // pre/post tool hooks for observability
 	ParentSessionID string           // parent's session ID for context sharing
 
 	// OutputFile is the path where the fork writes its final result.

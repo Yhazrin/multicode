@@ -15,6 +15,7 @@ import (
 	"github.com/multica-ai/multica/server/internal/daemon/execenv"
 	"github.com/multica-ai/multica/server/internal/daemon/repocache"
 	"github.com/multica-ai/multica/server/internal/daemon/usage"
+	"github.com/multica-ai/multica/server/internal/events"
 	"github.com/multica-ai/multica/server/pkg/agent"
 )
 
@@ -30,6 +31,8 @@ type Daemon struct {
 	client    *Client
 	repoCache *repocache.Cache
 	logger    *slog.Logger
+	bus       *events.Bus
+	hooks     *HookService
 
 	mu           sync.Mutex
 	workspaces   map[string]*workspaceState
@@ -44,11 +47,14 @@ type Daemon struct {
 // New creates a new Daemon instance.
 func New(cfg Config, logger *slog.Logger) *Daemon {
 	cacheRoot := filepath.Join(cfg.WorkspacesRoot, ".repos")
+	bus := events.New()
 	return &Daemon{
 		cfg:          cfg,
 		client:       NewClient(cfg.ServerBaseURL),
 		repoCache:    repocache.New(cacheRoot, logger),
 		logger:       logger,
+		bus:          bus,
+		hooks:        NewHookService(bus, logger),
 		workspaces:   make(map[string]*workspaceState),
 		runtimeIndex: make(map[string]Runtime),
 	}
@@ -956,6 +962,10 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 
 	taskStart := time.Now()
 
+	// Build tool hooks for lifecycle observability (pre/post tool use events on bus).
+	toolHooks := d.hooks.BuildToolHooks(task.WorkspaceID, task.ID, task.AgentID)
+	d.hooks.PublishAgentStarted(task.WorkspaceID, task.ID, task.AgentID, provider)
+
 	// Coordinator agents use Fork mode: a lightweight sub-agent that inherits
 	// the parent's codebase context and writes results to an output file.
 	// The "Don't peek" rule applies — we wait for ForkSession.Result before reading.
@@ -971,6 +981,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 			Model:           entry.Model,
 			Timeout:         d.cfg.AgentTimeout,
 			ToolPermissions: toolPerms,
+			ToolHooks:       toolHooks,
 			ParentSessionID: task.PriorSessionID,
 			OutputFile:      forkOutput,
 		})
@@ -1009,6 +1020,7 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 			Timeout:         d.cfg.AgentTimeout,
 			ResumeSessionID: task.PriorSessionID,
 			ToolPermissions: toolPerms,
+			ToolHooks:       toolHooks,
 		})
 		if execErr != nil {
 			return TaskResult{}, execErr
@@ -1177,6 +1189,17 @@ func (d *Daemon) runTask(ctx context.Context, task Task, provider string, taskLo
 		"duration", elapsed.String(),
 		"tools", toolCount.Load(),
 	)
+
+	// Publish lifecycle completion event.
+	if result.Status == "completed" {
+		d.hooks.PublishAgentCompleted(task.WorkspaceID, task.ID, task.AgentID, result.DurationMs)
+	} else {
+		errMsg := result.Error
+		if errMsg == "" {
+			errMsg = fmt.Sprintf("%s %s", provider, result.Status)
+		}
+		d.hooks.PublishAgentFailed(task.WorkspaceID, task.ID, task.AgentID, errMsg)
+	}
 
 	switch result.Status {
 	case "completed":

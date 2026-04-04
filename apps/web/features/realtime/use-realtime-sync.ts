@@ -19,8 +19,6 @@ import type {
   InboxNewPayload,
   InboxReadPayload,
   InboxArchivedPayload,
-  SubscriberAddedPayload,
-  SubscriberRemovedPayload,
 } from "@/shared/types";
 
 const logger = createLogger("realtime-sync");
@@ -51,7 +49,6 @@ export function useRealtimeSync(ws: WSClient | null) {
     const specificEvents = new Set([
       "issue:updated", "issue:created", "issue:deleted",
       "inbox:new", "inbox:read", "inbox:archived", "inbox:batch-read", "inbox:batch-archived",
-      "subscriber:added", "subscriber:removed",
       "issue_reaction:added", "issue_reaction:removed",
     ]);
 
@@ -146,27 +143,6 @@ export function useRealtimeSync(ws: WSClient | null) {
       useInboxStore.getState().archiveAll();
     });
 
-    // --- Subscriber event handlers ---
-
-    const unsubSubscriberAdded = ws.on("subscriber:added", (p) => {
-      const payload = asPayload<SubscriberAddedPayload>(p);
-      if (payload?.issue_id) {
-        // Refetch subscribers for the affected issue via the API
-        api.listIssueSubscribers(payload.issue_id).catch((err) => {
-          logger.error("subscriber refetch failed", err);
-        });
-      }
-    });
-
-    const unsubSubscriberRemoved = ws.on("subscriber:removed", (p) => {
-      const payload = asPayload<SubscriberRemovedPayload>(p);
-      if (payload?.issue_id) {
-        api.listIssueSubscribers(payload.issue_id).catch((err) => {
-          logger.error("subscriber refetch failed", err);
-        });
-      }
-    });
-
     // --- Reaction event handlers ---
     // issue_reaction:* are for issue-level reactions (not comment reactions).
     // Comment reactions are already handled by useIssueTimeline's reaction:added/removed.
@@ -226,8 +202,6 @@ export function useRealtimeSync(ws: WSClient | null) {
       unsubInboxArchived();
       unsubInboxBatchRead();
       unsubInboxBatchArchived();
-      unsubSubscriberAdded();
-      unsubSubscriberRemoved();
       unsubIssueReactionAdded();
       unsubIssueReactionRemoved();
       unsubWsDeleted();

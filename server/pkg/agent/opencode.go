@@ -14,12 +14,10 @@ import (
 // opencodeBackend implements Backend by spawning `opencode run --format json`
 // and reading streaming JSON events from stdout — the same pattern as Claude.
 type opencodeBackend struct {
-	cfg  Config
-	opts ExecOptions // populated per-Execute call
+	cfg Config
 }
 
 func (b *opencodeBackend) Execute(ctx context.Context, prompt string, opts ExecOptions) (*Session, error) {
-	b.opts = opts // store for permission building
 	execPath := b.cfg.ExecutablePath
 	if execPath == "" {
 		execPath = "opencode"
@@ -122,6 +120,7 @@ func (b *opencodeBackend) Fork(ctx context.Context, prompt string, opts ForkOpti
 		Timeout:         opts.Timeout,
 		ResumeSessionID: opts.ParentSessionID,
 		ToolPermissions: opts.ToolPermissions,
+		ToolHooks:       opts.ToolHooks,
 	}
 
 	session, err := b.Execute(ctx, prompt, execOpts)
