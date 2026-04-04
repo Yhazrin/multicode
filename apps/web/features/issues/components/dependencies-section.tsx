@@ -85,7 +85,7 @@ export function DependenciesSection({
         <div className="space-y-1.5">
           {dependencies.map((dep) => (
             <div key={`${dep.task_id}-${dep.depends_on_id}`} className="flex items-center gap-2 text-xs group">
-              <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" />
+              <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" aria-hidden="true" />
               <span className="font-mono truncate">
                 {depIdentifierMap[dep.depends_on_id] ?? dep.depends_on_id.slice(0, 8)}
               </span>
@@ -111,8 +111,9 @@ export function DependenciesSection({
                 size="icon-sm"
                 className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                 onClick={() => handleRemoveDependency(dep.depends_on_id)}
+                aria-label="Remove dependency"
               >
-                <X className="h-3 w-3" />
+                <X className="h-3 w-3" aria-hidden="true" />
               </Button>
             </div>
           ))}
@@ -144,7 +145,7 @@ export function DependenciesSection({
             onClick={handleAddDependency}
             disabled={!addDepTaskId.trim()}
           >
-            <Link2 className="h-3.5 w-3.5" />
+            <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
           <Button
             size="sm"
@@ -155,7 +156,7 @@ export function DependenciesSection({
               setAddDepTaskId("");
             }}
           >
-            <X className="h-3.5 w-3.5" />
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </div>
       ) : (
@@ -165,7 +166,7 @@ export function DependenciesSection({
           className="mt-1.5 h-6 text-xs text-muted-foreground w-full"
           onClick={() => setShowAddDep(true)}
         >
-          <Plus className="h-3 w-3 mr-1" />
+          <Plus className="h-3 w-3 mr-1" aria-hidden="true" />
           Add dependency
         </Button>
       )}

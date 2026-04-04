@@ -107,7 +107,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
               "flex items-center justify-center h-5 w-5 rounded-full shrink-0",
               isStuck ? "bg-brand/15 text-brand" : "bg-info/10 text-info",
             )}>
-              <Bot className="h-3 w-3" />
+              <Bot className="h-3 w-3" aria-hidden="true" />
             </div>
           )}
           <div className="flex items-center gap-1.5 text-xs font-medium min-w-0">
@@ -123,24 +123,24 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
           {isStuck ? (
             <button
               onClick={scrollToCard}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Scroll to live card"
               title="Scroll to live card"
             >
-              <ChevronUp className="h-3.5 w-3.5" />
+              <ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
           ) : (
             <button
               onClick={handleCancel}
               disabled={cancelling}
-              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 shrink-0"
+              className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50 shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Stop agent"
               title="Stop agent"
             >
               {cancelling ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
               ) : (
-                <Square className="h-3 w-3" />
+                <Square className="h-3 w-3" aria-hidden="true" />
               )}
               <span>Stop</span>
             </button>
@@ -191,9 +191,10 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
                       setAutoScroll(true);
                     }
                   }}
-                  className="sticky bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground shadow-sm"
+                  aria-label="Scroll to latest"
+                  className="sticky bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-background border px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
-                  <ArrowDown className="h-3 w-3" />
+                  <ArrowDown className="h-3 w-3" aria-hidden="true" />
                   Latest
                 </button>
               )}

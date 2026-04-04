@@ -68,7 +68,7 @@ export function MemorySection({
   return (
     <CollapsibleSection
       title="Memory"
-      icon={<Brain className="h-3.5 w-3.5 text-muted-foreground" />}
+      icon={<Brain className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
       count={memories.length}
       onOpen={() => {
         if (!memoriesLoaded) {
@@ -88,7 +88,7 @@ export function MemorySection({
         <>
           {memories.length > 3 && (
             <div className="relative mb-1.5">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" aria-hidden="true" />
               <Input
                 value={memorySearch}
                 onChange={(e) => setMemorySearch(e.target.value)}
@@ -110,8 +110,9 @@ export function MemorySection({
                       size="icon-sm"
                       className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                       onClick={() => handleDeleteMemory(mem.id)}
+                      aria-label="Delete memory"
                     >
-                      <Trash2 className="h-3 w-3 text-destructive" />
+                      <Trash2 className="h-3 w-3 text-destructive" aria-hidden="true" />
                     </Button>
                   </div>
                   <div className="mt-1 flex items-center gap-2">
@@ -149,8 +150,9 @@ export function MemorySection({
           className="h-8 w-8 p-0 shrink-0"
           onClick={handleStoreMemory}
           disabled={!memoryContent.trim()}
+          aria-label="Store memory"
         >
-          <Plus className="h-3.5 w-3.5" />
+          <Plus className="h-3.5 w-3.5" aria-hidden="true" />
         </Button>
       </div>
     </CollapsibleSection>

@@ -70,7 +70,7 @@ export function TasksTab({ agent }: { agent: Agent }) {
 
       {tasks.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-          <ListTodo className="h-8 w-8 text-muted-foreground/40" />
+          <ListTodo className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
           <p className="mt-3 text-sm text-muted-foreground">No tasks in queue</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Assign an issue to this agent to get started.

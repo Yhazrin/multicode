@@ -44,7 +44,7 @@ export function ChainTaskSection({ taskId }: ChainTaskSectionProps) {
   return (
     <CollapsibleSection
       title="Chain Task"
-      icon={<GitMerge className="h-3.5 w-3.5 text-muted-foreground" />}
+      icon={<GitMerge className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
       defaultOpen={false}
     >
       {showChain ? (
@@ -80,7 +80,7 @@ export function ChainTaskSection({ taskId }: ChainTaskSectionProps) {
           />
           <div className="flex gap-1.5">
             <Button size="sm" className="h-7 text-xs flex-1" onClick={handleChainTask} disabled={!chainAgentId}>
-              <GitMerge className="h-3 w-3 mr-1" /> Chain task
+              <GitMerge className="h-3 w-3 mr-1" aria-hidden="true" /> Chain task
             </Button>
             <Button
               size="sm"
@@ -103,7 +103,7 @@ export function ChainTaskSection({ taskId }: ChainTaskSectionProps) {
           className="h-6 text-xs text-muted-foreground w-full"
           onClick={() => setShowChain(true)}
         >
-          <GitMerge className="h-3 w-3 mr-1" />
+          <GitMerge className="h-3 w-3 mr-1" aria-hidden="true" />
           Chain to another agent
         </Button>
       )}
