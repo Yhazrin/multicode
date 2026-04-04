@@ -155,6 +155,20 @@ type ListAgentMemoryParams struct {
 	Limit   int32       `json:"limit"`
 }
 
+const listRecentWorkspaceMemory = `-- name: ListRecentWorkspaceMemory :many
+SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, 0.0 AS similarity
+FROM agent_memory
+WHERE workspace_id = $1
+  AND (expires_at IS NULL OR expires_at > now())
+ORDER BY created_at DESC
+LIMIT $2
+`
+
+type ListRecentWorkspaceMemoryParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Limit       int32       `json:"limit"`
+}
+
 func (q *Queries) ListAgentMemory(ctx context.Context, arg ListAgentMemoryParams) ([]AgentMemory, error) {
 	rows, err := q.db.Query(ctx, listAgentMemory, arg.AgentID, arg.Limit)
 	if err != nil {
@@ -188,6 +202,36 @@ const deleteAgentMemory = `-- name: DeleteAgentMemory :exec
 DELETE FROM agent_memory
 WHERE id = $1
 `
+
+func (q *Queries) ListRecentWorkspaceMemory(ctx context.Context, arg ListRecentWorkspaceMemoryParams) ([]AgentMemory, error) {
+	rows, err := q.db.Query(ctx, listRecentWorkspaceMemory, arg.WorkspaceID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []AgentMemory{}
+	for rows.Next() {
+		var i AgentMemory
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.Content,
+			&i.Embedding,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.Similarity,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
 
 func (q *Queries) DeleteAgentMemory(ctx context.Context, id pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, deleteAgentMemory, id)

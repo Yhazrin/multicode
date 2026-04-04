@@ -270,10 +270,19 @@ func (s *CollaborationService) RecallMemory(ctx context.Context, agentID pgtype.
 	})
 }
 
-// RecallWorkspaceMemory searches across all agents in a workspace.
+// RecallWorkspaceMemory searches across all agents in a workspace by embedding similarity.
 func (s *CollaborationService) RecallWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, embedding []byte, limit int32) ([]db.AgentMemory, error) {
 	return s.Queries.SearchWorkspaceMemory(ctx, db.SearchWorkspaceMemoryParams{
 		Embedding:   embedding,
+		WorkspaceID: workspaceID,
+		Limit:       limit,
+	})
+}
+
+// RecentWorkspaceMemory returns the most recent memories across all agents in a workspace.
+// Used as a fallback when no embedding is available (e.g. at task claim time).
+func (s *CollaborationService) RecentWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, limit int32) ([]db.AgentMemory, error) {
+	return s.Queries.ListRecentWorkspaceMemory(ctx, db.ListRecentWorkspaceMemoryParams{
 		WorkspaceID: workspaceID,
 		Limit:       limit,
 	})
@@ -405,22 +414,26 @@ func (s *CollaborationService) BuildSharedContext(ctx context.Context, workspace
 		}
 	}
 
-	// 5. Recall workspace memories (if embedding provided).
+	// 5. Recall workspace memories.
+	var memories []db.AgentMemory
 	if len(embedding) > 0 {
-		memories, err := s.RecallWorkspaceMemory(ctx, workspaceID, embedding, 5)
-		if err == nil {
-			for _, m := range memories {
-				agentName := ""
-				if a, err := s.Queries.GetAgent(ctx, m.AgentID); err == nil {
-					agentName = a.Name
-				}
-				sc.WorkspaceMemory = append(sc.WorkspaceMemory, protocol.MemoryRecall{
-					ID:         util.UUIDToString(m.ID),
-					Content:    m.Content,
-					Similarity: m.Similarity,
-					AgentName:  agentName,
-				})
+		memories, err = s.RecallWorkspaceMemory(ctx, workspaceID, embedding, 5)
+	} else {
+		// Fallback: load recent memories when no embedding is available (e.g. at claim time).
+		memories, err = s.RecentWorkspaceMemory(ctx, workspaceID, 5)
+	}
+	if err == nil {
+		for _, m := range memories {
+			agentName := ""
+			if a, err := s.Queries.GetAgent(ctx, m.AgentID); err == nil {
+				agentName = a.Name
 			}
+			sc.WorkspaceMemory = append(sc.WorkspaceMemory, protocol.MemoryRecall{
+				ID:         util.UUIDToString(m.ID),
+				Content:    m.Content,
+				Similarity: m.Similarity,
+				AgentName:  agentName,
+			})
 		}
 	}
 

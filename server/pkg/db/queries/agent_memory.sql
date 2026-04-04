@@ -32,6 +32,14 @@ WHERE agent_id = $1
 ORDER BY created_at DESC
 LIMIT $2;
 
+-- name: ListRecentWorkspaceMemory :many
+-- Recent memories across all agents in a workspace (no embedding required).
+SELECT *, 0.0 AS similarity FROM agent_memory
+WHERE workspace_id = $1
+  AND (expires_at IS NULL OR expires_at > now())
+ORDER BY created_at DESC
+LIMIT $2;
+
 -- name: DeleteAgentMemory :exec
 DELETE FROM agent_memory
 WHERE id = $1;
