@@ -24,6 +24,7 @@ import { ActorAvatar } from "@/components/common/actor-avatar";
 import type { UpdateIssueRequest } from "@/shared/types";
 import { AgentLiveCard, TaskRunHistory } from "./agent-live-card";
 import { CollaborationPanel } from "./collaboration-panel";
+import { RunTimeline } from "./run-timeline";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore, useActorName } from "@/features/workspace";
@@ -255,7 +256,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
         <p>This issue does not exist or has been deleted in this workspace.</p>
         {!onDelete && (
           <Button variant="outline" size="sm" onClick={() => router.push("/issues")}>
-            <ChevronLeft className="mr-1 h-3.5 w-3.5" />
+            <ChevronLeft className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
             Back to Issues
           </Button>
         )}
@@ -349,12 +350,12 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                 ) : (<>
                 <button
                   onClick={handleToggleSubscribe}
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {isSubscribed ? "Unsubscribe" : "Subscribe"}
                 </button>
                 <Popover>
-                  <PopoverTrigger className="cursor-pointer hover:opacity-80 transition-opacity">
+                  <PopoverTrigger className="cursor-pointer hover:opacity-80 transition-opacity" aria-label="Manage subscribers">
                     {subscribers.length > 0 ? (
                       <AvatarGroup>
                         {subscribers.slice(0, 4).map((sub) => (
@@ -371,7 +372,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                       </AvatarGroup>
                     ) : (
                       <span className="flex items-center justify-center h-6 w-6 rounded-full border border-dashed border-muted-foreground/30 text-muted-foreground">
-                        <Users className="h-3 w-3" />
+                        <Users className="h-3 w-3" aria-hidden="true" />
                       </span>
                     )}
                   </PopoverTrigger>
@@ -438,6 +439,11 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
               <TaskRunHistory issueId={id} />
             </div>
 
+            {/* Agent run timeline */}
+            <div className="mt-3">
+              <RunTimeline issueId={id} />
+            </div>
+
             {/* Collaboration panel (messages, dependencies, checkpoints) */}
             <div className="mt-3">
               <CollaborationPanel issueId={id} />
@@ -465,10 +471,10 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
             <Button
               variant="secondary"
               size="sm"
-              className="pointer-events-auto shadow-md"
+              className="pointer-events-auto shadow-md dark:shadow-none"
               onClick={scrollToBottom}
             >
-              <ChevronDown className="mr-1 h-3.5 w-3.5" />
+              <ChevronDown className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
               Jump to bottom
             </Button>
           </div>

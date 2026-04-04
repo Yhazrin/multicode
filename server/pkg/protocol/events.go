@@ -19,6 +19,7 @@ const (
 	// Agent events
 	EventAgentStatus   = "agent:status"
 	EventAgentCreated  = "agent:created"
+	EventAgentUpdated  = "agent:updated"
 	EventAgentArchived = "agent:archived"
 	EventAgentRestored = "agent:restored"
 
@@ -85,4 +86,16 @@ const (
 	EventAgentFailed     = "agent:failed"
 	EventAgentStop       = "agent:stop"
 	EventAgentSessionStart = "agent:session_start"
+
+	// Run events (RunOrchestrator lifecycle)
+	EventRunCreated       = "run:created"
+	EventRunStarted       = "run:started"
+	EventRunPhaseChanged  = "run:phase_changed"
+	EventRunCompleted     = "run:completed"
+	EventRunFailed        = "run:failed"
+	EventRunCancelled     = "run:cancelled"
+	EventRunStepStarted   = "run:step_started"
+	EventRunStepCompleted = "run:step_completed"
+	EventRunTodoCreated   = "run:todo_created"
+	EventRunTodoUpdated   = "run:todo_updated"
 )

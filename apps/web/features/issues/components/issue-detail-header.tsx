@@ -104,13 +104,13 @@ function IssueDetailHeaderImpl({
             >
               {workspaceName}
             </Link>
-            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+            <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" aria-hidden="true" />
           </>
         )}
         <span className="truncate text-muted-foreground">
           {issue.identifier}
         </span>
-        <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
+        <ChevronRight className="h-3 w-3 text-muted-foreground/50 shrink-0" aria-hidden="true" />
         <span className="truncate">{issue.title}</span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
@@ -128,7 +128,7 @@ function IssueDetailHeaderImpl({
                     onClick={() => prevIssueId && router.push(`/issues/${prevIssueId}`)}
                     aria-label="Previous issue"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 }
               />
@@ -148,7 +148,7 @@ function IssueDetailHeaderImpl({
                     onClick={() => nextIssueId && router.push(`/issues/${nextIssueId}`)}
                     aria-label="Next issue"
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    <ChevronRight className="h-4 w-4" aria-hidden="true" />
                   </Button>
                 }
               />
@@ -160,7 +160,7 @@ function IssueDetailHeaderImpl({
           <DropdownMenuTrigger
             render={
               <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="Issue actions">
-                <MoreHorizontal className="h-4 w-4" />
+                <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
               </Button>
             }
           />
@@ -168,7 +168,7 @@ function IssueDetailHeaderImpl({
             {/* Status */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <StatusIcon status={issue.status} className="h-3.5 w-3.5" />
+                <StatusIcon status={issue.status} className="h-3.5 w-3.5" aria-hidden="true" />
                 Status
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -177,9 +177,9 @@ function IssueDetailHeaderImpl({
                     key={s}
                     onClick={() => onUpdateField({ status: s })}
                   >
-                    <StatusIcon status={s} className="h-3.5 w-3.5" />
+                    <StatusIcon status={s} className="h-3.5 w-3.5" aria-hidden="true" />
                     {STATUS_CONFIG[s].label}
-                    {issue.status === s && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                    {issue.status === s && <span className="ml-auto text-xs text-muted-foreground" aria-hidden="true">✓</span>}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
@@ -188,7 +188,7 @@ function IssueDetailHeaderImpl({
             {/* Priority */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <PriorityIcon priority={issue.priority} />
+                <PriorityIcon priority={issue.priority} aria-hidden="true" />
                 Priority
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -198,10 +198,10 @@ function IssueDetailHeaderImpl({
                     onClick={() => onUpdateField({ priority: p })}
                   >
                     <span className={`inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium ${PRIORITY_CONFIG[p].badgeBg} ${PRIORITY_CONFIG[p].badgeText}`}>
-                      <PriorityIcon priority={p} className="h-3 w-3" inheritColor />
+                      <PriorityIcon priority={p} className="h-3 w-3" inheritColor aria-hidden="true" />
                       {PRIORITY_CONFIG[p].label}
                     </span>
-                    {issue.priority === p && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                    {issue.priority === p && <span className="ml-auto text-xs text-muted-foreground" aria-hidden="true">✓</span>}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
@@ -210,16 +210,16 @@ function IssueDetailHeaderImpl({
             {/* Assignee */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <UserMinus className="h-3.5 w-3.5" />
+                <UserMinus className="h-3.5 w-3.5" aria-hidden="true" />
                 Assignee
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
                 <DropdownMenuItem
                   onClick={() => onUpdateField({ assignee_type: null, assignee_id: null })}
                 >
-                  <UserMinus className="h-3.5 w-3.5 text-muted-foreground" />
+                  <UserMinus className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                   Unassigned
-                  {!issue.assignee_type && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                  {!issue.assignee_type && <span className="ml-auto text-xs text-muted-foreground" aria-hidden="true">✓</span>}
                 </DropdownMenuItem>
                 {members.map((m) => (
                   <DropdownMenuItem
@@ -228,7 +228,7 @@ function IssueDetailHeaderImpl({
                   >
                     <ActorAvatar actorType="member" actorId={m.user_id} size={16} />
                     {m.name}
-                    {issue.assignee_type === "member" && issue.assignee_id === m.user_id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                    {issue.assignee_type === "member" && issue.assignee_id === m.user_id && <span className="ml-auto text-xs text-muted-foreground" aria-hidden="true">✓</span>}
                   </DropdownMenuItem>
                 ))}
                 {agents.filter((a) => !a.archived_at && canAssignAgent(a, userId, currentMemberRole)).map((a) => (
@@ -238,7 +238,7 @@ function IssueDetailHeaderImpl({
                   >
                     <ActorAvatar actorType="agent" actorId={a.id} size={16} />
                     {a.name}
-                    {issue.assignee_type === "agent" && issue.assignee_id === a.id && <span className="ml-auto text-xs text-muted-foreground">✓</span>}
+                    {issue.assignee_type === "agent" && issue.assignee_id === a.id && <span className="ml-auto text-xs text-muted-foreground" aria-hidden="true">✓</span>}
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuSubContent>
@@ -247,7 +247,7 @@ function IssueDetailHeaderImpl({
             {/* Due date */}
             <DropdownMenuSub>
               <DropdownMenuSubTrigger>
-                <Calendar className="h-3.5 w-3.5" />
+                <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                 Due date
               </DropdownMenuSubTrigger>
               <DropdownMenuSubContent>
@@ -284,7 +284,7 @@ function IssueDetailHeaderImpl({
               navigator.clipboard.writeText(window.location.href);
               toast.success("Link copied");
             }}>
-              <Link2 className="h-3.5 w-3.5" />
+              <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
               Copy link
             </DropdownMenuItem>
 
@@ -295,7 +295,7 @@ function IssueDetailHeaderImpl({
               variant="destructive"
               onClick={() => setDeleteDialogOpen(true)}
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
               Delete issue
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -315,7 +315,7 @@ function IssueDetailHeaderImpl({
                   else panel.collapse();
                 }}
               >
-                <PanelRight className="h-4 w-4" />
+                <PanelRight className="h-4 w-4" aria-hidden="true" />
               </Button>
             }
           />

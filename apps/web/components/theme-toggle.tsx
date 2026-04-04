@@ -18,21 +18,21 @@ export function ThemeToggle() {
       <DropdownMenuTrigger
         render={
           <SidebarMenuButton>
-            <Sun className="dark:hidden" />
-            <Moon className="hidden dark:block" />
+            <Sun className="dark:hidden" aria-hidden="true" />
+            <Moon className="hidden dark:block" aria-hidden="true" />
             <span>Theme</span>
           </SidebarMenuButton>
         }
       />
       <DropdownMenuContent side="top" align="start">
         <DropdownMenuItem onClick={() => setTheme("light")}>
-          <Sun /> Light
+          <Sun aria-hidden="true" /> Light
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("dark")}>
-          <Moon /> Dark
+          <Moon aria-hidden="true" /> Dark
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => setTheme("system")}>
-          <Monitor /> System
+          <Monitor aria-hidden="true" /> System
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

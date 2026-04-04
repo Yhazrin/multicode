@@ -31,8 +31,6 @@ function authHeaders(): Record<string, string> {
 
 function handleUnauthorized() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("multicode_token");
-    localStorage.removeItem("multicode_workspace_id");
     _token = null;
     _workspaceId = null;
     if (window.location.pathname !== "/") {
@@ -110,5 +108,20 @@ export const skillsApi = {
       method: "POST",
       body: JSON.stringify(data),
     });
+  },
+
+  async listFiles(id: string): Promise<{ id: string; path: string; content: string }[]> {
+    return apiFetch(`/api/skills/${id}/files`);
+  },
+
+  async upsertFile(id: string, data: { path: string; content: string }): Promise<{ id: string; path: string }> {
+    return apiFetch(`/api/skills/${id}/files`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  async deleteFile(id: string, fileId: string): Promise<void> {
+    await apiFetch(`/api/skills/${id}/files/${fileId}`, { method: "DELETE" });
   },
 };

@@ -11,7 +11,7 @@ import { api } from "@/shared/api";
 import type { RuntimeUpdateStatus } from "@/shared/types";
 
 const GITHUB_RELEASES_URL =
-  "https://api.github.com/repos/multica-ai/multica/releases/latest";
+  "https://api.github.com/repos/multica-ai/multicode/releases/latest";
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 let cachedLatestVersion: string | null = null;
@@ -167,7 +167,7 @@ export function UpdateSection({
 
         {!hasUpdate && currentVersion && latestVersion && !status && (
           <span className="inline-flex items-center gap-1 text-xs text-success">
-            <Check className="h-3 w-3" />
+            <Check className="h-3 w-3" aria-hidden="true" />
             Latest
           </span>
         )}
@@ -189,7 +189,7 @@ export function UpdateSection({
             onClick={handleUpdate}
             disabled={updating}
           >
-            <ArrowUpCircle className="h-3 w-3" />
+            <ArrowUpCircle className="h-3 w-3" aria-hidden="true" />
             Update
           </Button>
         )}
@@ -198,7 +198,7 @@ export function UpdateSection({
           <span
             className={`inline-flex items-center gap-1 text-xs ${config.color}`}
           >
-            <Icon className={`h-3 w-3 ${isActive ? "animate-spin" : ""}`} />
+            <Icon className={`h-3 w-3 ${isActive ? "animate-spin" : ""}`} aria-hidden="true" />
             {config.label}
           </span>
         )}

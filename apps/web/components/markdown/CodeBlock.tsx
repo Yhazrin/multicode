@@ -191,9 +191,9 @@ export function CodeBlock({
                 aria-label="Copy code"
               >
                 {copied ? (
-                  <Check className="size-3.5 text-success" />
+                  <Check className="size-3.5 text-success" aria-hidden="true" />
                 ) : (
-                  <Copy className="size-3.5" />
+                  <Copy className="size-3.5" aria-hidden="true" />
                 )}
               </Button>
             }

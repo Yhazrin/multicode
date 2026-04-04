@@ -41,11 +41,10 @@ export function WSProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user || !workspace) return;
 
-    const token = localStorage.getItem("multicode_token");
-    if (!token) return;
-
     const ws = new WSClient(WS_URL, { logger: createLogger("ws") });
-    ws.setAuth(token, workspace.id);
+    // Cookie-only auth: WS ticket endpoint uses credentials:"include"
+    // so the HttpOnly cookie is sent automatically.
+    ws.setAuth(undefined, workspace.id);
     wsRef.current = ws;
     setWsClient(ws);
     ws.connect();

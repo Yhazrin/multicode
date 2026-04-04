@@ -35,9 +35,9 @@ function WindowMockup({
         className="flex items-center gap-[3px] px-2 py-1.5"
         style={{ backgroundColor: colors.titleBar }}
       >
-        <span className="size-[6px] rounded-full bg-[#ff5f57]" />
-        <span className="size-[6px] rounded-full bg-[#febc2e]" />
-        <span className="size-[6px] rounded-full bg-[#28c840]" />
+        <span className="size-[6px] rounded-full bg-[#ff5f57]" aria-hidden="true" />
+        <span className="size-[6px] rounded-full bg-[#febc2e]" aria-hidden="true" />
+        <span className="size-[6px] rounded-full bg-[#28c840]" aria-hidden="true" />
       </div>
       {/* Content area */}
       <div
@@ -101,7 +101,7 @@ export function AppearanceTab() {
                 aria-checked={active}
                 aria-label={`Select ${opt.label} theme`}
                 onClick={() => setTheme(opt.value)}
-                className="group flex flex-col items-center gap-2"
+                className="group flex flex-col items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-lg"
               >
                 <div
                   className={cn(

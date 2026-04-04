@@ -206,6 +206,55 @@ func (q *Queries) CompleteAgentTask(ctx context.Context, arg CompleteAgentTaskPa
 	return i, err
 }
 
+const completeTaskReview = `-- name: CompleteTaskReview :one
+UPDATE agent_task_queue
+SET status = 'completed', review_status = 'passed', completed_at = now(),
+    result = $2, session_id = $3, work_dir = $4
+WHERE id = $1 AND status = 'in_review'
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
+`
+
+type CompleteTaskReviewParams struct {
+	ID        pgtype.UUID `json:"id"`
+	Result    []byte      `json:"result"`
+	SessionID pgtype.Text `json:"session_id"`
+	WorkDir   pgtype.Text `json:"work_dir"`
+}
+
+func (q *Queries) CompleteTaskReview(ctx context.Context, arg CompleteTaskReviewParams) (AgentTaskQueue, error) {
+	row := q.db.QueryRow(ctx, completeTaskReview,
+		arg.ID,
+		arg.Result,
+		arg.SessionID,
+		arg.WorkDir,
+	)
+	var i AgentTaskQueue
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Status,
+		&i.Priority,
+		&i.DispatchedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.Result,
+		&i.Error,
+		&i.CreatedAt,
+		&i.Context,
+		&i.RuntimeID,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.TriggerCommentID,
+		&i.ReviewStatus,
+		&i.ReviewCount,
+		&i.MaxReviews,
+		&i.ChainSourceTaskID,
+		&i.ChainReason,
+	)
+	return i, err
+}
+
 const countRunningTasks = `-- name: CountRunningTasks :one
 SELECT count(*) FROM agent_task_queue
 WHERE agent_id = $1 AND status IN ('dispatched', 'running')
@@ -291,13 +340,13 @@ RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, c
 `
 
 type CreateAgentTaskParams struct {
-	AgentID            pgtype.UUID `json:"agent_id"`
-	RuntimeID          pgtype.UUID `json:"runtime_id"`
-	IssueID            pgtype.UUID `json:"issue_id"`
-	Priority           int32       `json:"priority"`
-	TriggerCommentID   pgtype.UUID `json:"trigger_comment_id"`
-	ChainSourceTaskID  pgtype.UUID `json:"chain_source_task_id"`
-	ChainReason        pgtype.Text `json:"chain_reason"`
+	AgentID           pgtype.UUID `json:"agent_id"`
+	RuntimeID         pgtype.UUID `json:"runtime_id"`
+	IssueID           pgtype.UUID `json:"issue_id"`
+	Priority          int32       `json:"priority"`
+	TriggerCommentID  pgtype.UUID `json:"trigger_comment_id"`
+	ChainSourceTaskID pgtype.UUID `json:"chain_source_task_id"`
+	ChainReason       pgtype.Text `json:"chain_reason"`
 }
 
 func (q *Queries) CreateAgentTask(ctx context.Context, arg CreateAgentTaskParams) (AgentTaskQueue, error) {
@@ -333,6 +382,44 @@ func (q *Queries) CreateAgentTask(ctx context.Context, arg CreateAgentTaskParams
 		&i.MaxReviews,
 		&i.ChainSourceTaskID,
 		&i.ChainReason,
+	)
+	return i, err
+}
+
+const createTaskReview = `-- name: CreateTaskReview :one
+INSERT INTO task_review (task_id, reviewer_type, reviewer_id, verdict, score, feedback)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, task_id, reviewer_type, reviewer_id, verdict, score, feedback, created_at
+`
+
+type CreateTaskReviewParams struct {
+	TaskID       pgtype.UUID `json:"task_id"`
+	ReviewerType string      `json:"reviewer_type"`
+	ReviewerID   pgtype.UUID `json:"reviewer_id"`
+	Verdict      string      `json:"verdict"`
+	Score        pgtype.Int4 `json:"score"`
+	Feedback     string      `json:"feedback"`
+}
+
+func (q *Queries) CreateTaskReview(ctx context.Context, arg CreateTaskReviewParams) (TaskReview, error) {
+	row := q.db.QueryRow(ctx, createTaskReview,
+		arg.TaskID,
+		arg.ReviewerType,
+		arg.ReviewerID,
+		arg.Verdict,
+		arg.Score,
+		arg.Feedback,
+	)
+	var i TaskReview
+	err := row.Scan(
+		&i.ID,
+		&i.TaskID,
+		&i.ReviewerType,
+		&i.ReviewerID,
+		&i.Verdict,
+		&i.Score,
+		&i.Feedback,
+		&i.CreatedAt,
 	)
 	return i, err
 }
@@ -418,6 +505,48 @@ func (q *Queries) FailStaleTasks(ctx context.Context, arg FailStaleTasksParams) 
 		return nil, err
 	}
 	return items, nil
+}
+
+const failTaskReview = `-- name: FailTaskReview :one
+UPDATE agent_task_queue
+SET status = 'failed', review_status = 'failed', completed_at = now(),
+    error = 'review failed: ' || $2
+WHERE id = $1 AND status = 'in_review'
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
+`
+
+type FailTaskReviewParams struct {
+	ID      pgtype.UUID `json:"id"`
+	Column2 pgtype.Text `json:"column_2"`
+}
+
+func (q *Queries) FailTaskReview(ctx context.Context, arg FailTaskReviewParams) (AgentTaskQueue, error) {
+	row := q.db.QueryRow(ctx, failTaskReview, arg.ID, arg.Column2)
+	var i AgentTaskQueue
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Status,
+		&i.Priority,
+		&i.DispatchedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.Result,
+		&i.Error,
+		&i.CreatedAt,
+		&i.Context,
+		&i.RuntimeID,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.TriggerCommentID,
+		&i.ReviewStatus,
+		&i.ReviewCount,
+		&i.MaxReviews,
+		&i.ChainSourceTaskID,
+		&i.ChainReason,
+	)
+	return i, err
 }
 
 const getAgent = `-- name: GetAgent :one
@@ -632,8 +761,8 @@ func (q *Queries) ListActiveTasksByIssue(ctx context.Context, issueID pgtype.UUI
 			&i.ReviewStatus,
 			&i.ReviewCount,
 			&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
+			&i.ChainSourceTaskID,
+			&i.ChainReason,
 		); err != nil {
 			return nil, err
 		}
@@ -680,8 +809,8 @@ func (q *Queries) ListAgentTasks(ctx context.Context, agentID pgtype.UUID) ([]Ag
 			&i.ReviewStatus,
 			&i.ReviewCount,
 			&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
+			&i.ChainSourceTaskID,
+			&i.ChainReason,
 		); err != nil {
 			return nil, err
 		}
@@ -820,8 +949,43 @@ func (q *Queries) ListPendingTasksByRuntime(ctx context.Context, runtimeID pgtyp
 			&i.ReviewStatus,
 			&i.ReviewCount,
 			&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
+			&i.ChainSourceTaskID,
+			&i.ChainReason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listTaskReviews = `-- name: ListTaskReviews :many
+SELECT id, task_id, reviewer_type, reviewer_id, verdict, score, feedback, created_at FROM task_review
+WHERE task_id = $1
+ORDER BY created_at ASC
+`
+
+func (q *Queries) ListTaskReviews(ctx context.Context, taskID pgtype.UUID) ([]TaskReview, error) {
+	rows, err := q.db.Query(ctx, listTaskReviews, taskID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TaskReview{}
+	for rows.Next() {
+		var i TaskReview
+		if err := rows.Scan(
+			&i.ID,
+			&i.TaskID,
+			&i.ReviewerType,
+			&i.ReviewerID,
+			&i.Verdict,
+			&i.Score,
+			&i.Feedback,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -868,8 +1032,8 @@ func (q *Queries) ListTasksByIssue(ctx context.Context, issueID pgtype.UUID) ([]
 			&i.ReviewStatus,
 			&i.ReviewCount,
 			&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
+			&i.ChainSourceTaskID,
+			&i.ChainReason,
 		); err != nil {
 			return nil, err
 		}
@@ -910,6 +1074,80 @@ func (q *Queries) RestoreAgent(ctx context.Context, id pgtype.UUID) (Agent, erro
 		&i.Instructions,
 		&i.ArchivedAt,
 		&i.ArchivedBy,
+	)
+	return i, err
+}
+
+const retryTaskReview = `-- name: RetryTaskReview :one
+UPDATE agent_task_queue
+SET status = 'queued', review_status = 'none',
+    review_count = review_count + 1,
+    dispatched_at = NULL, started_at = NULL
+WHERE id = $1 AND status = 'in_review' AND review_count < max_reviews
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
+`
+
+func (q *Queries) RetryTaskReview(ctx context.Context, id pgtype.UUID) (AgentTaskQueue, error) {
+	row := q.db.QueryRow(ctx, retryTaskReview, id)
+	var i AgentTaskQueue
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Status,
+		&i.Priority,
+		&i.DispatchedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.Result,
+		&i.Error,
+		&i.CreatedAt,
+		&i.Context,
+		&i.RuntimeID,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.TriggerCommentID,
+		&i.ReviewStatus,
+		&i.ReviewCount,
+		&i.MaxReviews,
+		&i.ChainSourceTaskID,
+		&i.ChainReason,
+	)
+	return i, err
+}
+
+const setTaskInReview = `-- name: SetTaskInReview :one
+UPDATE agent_task_queue
+SET status = 'in_review', review_status = 'pending'
+WHERE id = $1 AND status = 'running'
+RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
+`
+
+func (q *Queries) SetTaskInReview(ctx context.Context, id pgtype.UUID) (AgentTaskQueue, error) {
+	row := q.db.QueryRow(ctx, setTaskInReview, id)
+	var i AgentTaskQueue
+	err := row.Scan(
+		&i.ID,
+		&i.AgentID,
+		&i.IssueID,
+		&i.Status,
+		&i.Priority,
+		&i.DispatchedAt,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.Result,
+		&i.Error,
+		&i.CreatedAt,
+		&i.Context,
+		&i.RuntimeID,
+		&i.SessionID,
+		&i.WorkDir,
+		&i.TriggerCommentID,
+		&i.ReviewStatus,
+		&i.ReviewCount,
+		&i.MaxReviews,
+		&i.ChainSourceTaskID,
+		&i.ChainReason,
 	)
 	return i, err
 }
@@ -1062,242 +1300,4 @@ func (q *Queries) UpdateAgentStatus(ctx context.Context, arg UpdateAgentStatusPa
 		&i.ArchivedBy,
 	)
 	return i, err
-}
-
-const setTaskInReview = `-- name: SetTaskInReview :one
-UPDATE agent_task_queue
-SET status = 'in_review', review_status = 'pending'
-WHERE id = $1 AND status = 'running'
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
-`
-
-func (q *Queries) SetTaskInReview(ctx context.Context, id pgtype.UUID) (AgentTaskQueue, error) {
-	row := q.db.QueryRow(ctx, setTaskInReview, id)
-	var i AgentTaskQueue
-	err := row.Scan(
-		&i.ID,
-		&i.AgentID,
-		&i.IssueID,
-		&i.Status,
-		&i.Priority,
-		&i.DispatchedAt,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.Result,
-		&i.Error,
-		&i.CreatedAt,
-		&i.Context,
-		&i.RuntimeID,
-		&i.SessionID,
-		&i.WorkDir,
-		&i.TriggerCommentID,
-		&i.ReviewStatus,
-		&i.ReviewCount,
-		&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
-	)
-	return i, err
-}
-
-const completeTaskReview = `-- name: CompleteTaskReview :one
-UPDATE agent_task_queue
-SET status = 'completed', review_status = 'passed', completed_at = now(),
-    result = $2, session_id = $3, work_dir = $4
-WHERE id = $1 AND status = 'in_review'
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
-`
-
-type CompleteTaskReviewParams struct {
-	ID        pgtype.UUID `json:"id"`
-	Result    []byte      `json:"result"`
-	SessionID pgtype.Text `json:"session_id"`
-	WorkDir   pgtype.Text `json:"work_dir"`
-}
-
-func (q *Queries) CompleteTaskReview(ctx context.Context, arg CompleteTaskReviewParams) (AgentTaskQueue, error) {
-	row := q.db.QueryRow(ctx, completeTaskReview,
-		arg.ID,
-		arg.Result,
-		arg.SessionID,
-		arg.WorkDir,
-	)
-	var i AgentTaskQueue
-	err := row.Scan(
-		&i.ID,
-		&i.AgentID,
-		&i.IssueID,
-		&i.Status,
-		&i.Priority,
-		&i.DispatchedAt,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.Result,
-		&i.Error,
-		&i.CreatedAt,
-		&i.Context,
-		&i.RuntimeID,
-		&i.SessionID,
-		&i.WorkDir,
-		&i.TriggerCommentID,
-		&i.ReviewStatus,
-		&i.ReviewCount,
-		&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
-	)
-	return i, err
-}
-
-const retryTaskReview = `-- name: RetryTaskReview :one
-UPDATE agent_task_queue
-SET status = 'queued', review_status = 'none',
-    review_count = review_count + 1,
-    dispatched_at = NULL, started_at = NULL
-WHERE id = $1 AND status = 'in_review' AND review_count < max_reviews
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
-`
-
-func (q *Queries) RetryTaskReview(ctx context.Context, id pgtype.UUID) (AgentTaskQueue, error) {
-	row := q.db.QueryRow(ctx, retryTaskReview, id)
-	var i AgentTaskQueue
-	err := row.Scan(
-		&i.ID,
-		&i.AgentID,
-		&i.IssueID,
-		&i.Status,
-		&i.Priority,
-		&i.DispatchedAt,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.Result,
-		&i.Error,
-		&i.CreatedAt,
-		&i.Context,
-		&i.RuntimeID,
-		&i.SessionID,
-		&i.WorkDir,
-		&i.TriggerCommentID,
-		&i.ReviewStatus,
-		&i.ReviewCount,
-		&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
-	)
-	return i, err
-}
-
-const failTaskReview = `-- name: FailTaskReview :one
-UPDATE agent_task_queue
-SET status = 'failed', review_status = 'failed', completed_at = now(),
-    error = 'review failed: ' || $2
-WHERE id = $1 AND status = 'in_review'
-RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
-`
-
-type FailTaskReviewParams struct {
-	ID    pgtype.UUID `json:"id"`
-	Error string      `json:"error"`
-}
-
-func (q *Queries) FailTaskReview(ctx context.Context, arg FailTaskReviewParams) (AgentTaskQueue, error) {
-	row := q.db.QueryRow(ctx, failTaskReview, arg.ID, arg.Error)
-	var i AgentTaskQueue
-	err := row.Scan(
-		&i.ID,
-		&i.AgentID,
-		&i.IssueID,
-		&i.Status,
-		&i.Priority,
-		&i.DispatchedAt,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.Result,
-		&i.Error,
-		&i.CreatedAt,
-		&i.Context,
-		&i.RuntimeID,
-		&i.SessionID,
-		&i.WorkDir,
-		&i.TriggerCommentID,
-		&i.ReviewStatus,
-		&i.ReviewCount,
-		&i.MaxReviews,
-		&i.ChainSourceTaskID,
-		&i.ChainReason,
-	)
-	return i, err
-}
-
-const createTaskReview = `-- name: CreateTaskReview :one
-INSERT INTO task_review (task_id, reviewer_type, reviewer_id, verdict, score, feedback)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, task_id, reviewer_type, reviewer_id, verdict, score, feedback, created_at
-`
-
-type CreateTaskReviewParams struct {
-	TaskID       pgtype.UUID `json:"task_id"`
-	ReviewerType string      `json:"reviewer_type"`
-	ReviewerID   pgtype.UUID `json:"reviewer_id"`
-	Verdict      string      `json:"verdict"`
-	Score        int32       `json:"score"`
-	Feedback     string      `json:"feedback"`
-}
-
-func (q *Queries) CreateTaskReview(ctx context.Context, arg CreateTaskReviewParams) (TaskReview, error) {
-	row := q.db.QueryRow(ctx, createTaskReview,
-		arg.TaskID,
-		arg.ReviewerType,
-		arg.ReviewerID,
-		arg.Verdict,
-		arg.Score,
-		arg.Feedback,
-	)
-	var i TaskReview
-	err := row.Scan(
-		&i.ID,
-		&i.TaskID,
-		&i.ReviewerType,
-		&i.ReviewerID,
-		&i.Verdict,
-		&i.Score,
-		&i.Feedback,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const listTaskReviews = `-- name: ListTaskReviews :many
-SELECT id, task_id, reviewer_type, reviewer_id, verdict, score, feedback, created_at FROM task_review
-WHERE task_id = $1
-ORDER BY created_at ASC
-`
-
-func (q *Queries) ListTaskReviews(ctx context.Context, taskID pgtype.UUID) ([]TaskReview, error) {
-	rows, err := q.db.Query(ctx, listTaskReviews, taskID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TaskReview
-	for rows.Next() {
-		var i TaskReview
-		if err := rows.Scan(
-			&i.ID,
-			&i.TaskID,
-			&i.ReviewerType,
-			&i.ReviewerID,
-			&i.Verdict,
-			&i.Score,
-			&i.Feedback,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
 }

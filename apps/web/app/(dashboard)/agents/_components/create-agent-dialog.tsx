@@ -89,8 +89,9 @@ export function CreateAgentDialog({
 
         <div className="space-y-4">
           <div>
-            <Label className="text-xs text-muted-foreground">Name</Label>
+            <Label htmlFor="agent-name" className="text-xs text-muted-foreground">Name</Label>
             <Input
+              id="agent-name"
               autoFocus
               type="text"
               value={name}
@@ -102,8 +103,9 @@ export function CreateAgentDialog({
           </div>
 
           <div>
-            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Label htmlFor="agent-description" className="text-xs text-muted-foreground">Description</Label>
             <Input
+              id="agent-description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -118,13 +120,14 @@ export function CreateAgentDialog({
               <button
                 type="button"
                 onClick={() => setVisibility("workspace")}
-                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                aria-pressed={visibility === "workspace"}
+                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   visibility === "workspace"
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-muted"
                 }`}
               >
-                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="text-left">
                   <div className="font-medium">Workspace</div>
                   <div className="text-xs text-muted-foreground">All members can assign</div>
@@ -133,13 +136,14 @@ export function CreateAgentDialog({
               <button
                 type="button"
                 onClick={() => setVisibility("private")}
-                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                aria-pressed={visibility === "private"}
+                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                   visibility === "private"
                     ? "border-primary bg-primary/5"
                     : "border-border hover:bg-muted"
                 }`}
               >
-                <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 <div className="text-left">
                   <div className="font-medium">Private</div>
                   <div className="text-xs text-muted-foreground">Only you can assign</div>
@@ -153,12 +157,12 @@ export function CreateAgentDialog({
             <Popover open={runtimeOpen} onOpenChange={setRuntimeOpen}>
               <PopoverTrigger
                 disabled={runtimes.length === 0}
-                className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-sm transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
               >
                 {selectedRuntime?.runtime_mode === "cloud" ? (
-                  <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 ) : (
-                  <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                 )}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -175,7 +179,7 @@ export function CreateAgentDialog({
                     {selectedRuntime?.device_info ?? "Register a runtime before creating an agent"}
                   </div>
                 </div>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} aria-hidden="true" />
               </PopoverTrigger>
               <PopoverContent align="start" className="w-[var(--anchor-width)] p-1 max-h-60 overflow-y-auto">
                 {runtimes.map((device) => (
@@ -185,14 +189,14 @@ export function CreateAgentDialog({
                       setSelectedRuntimeId(device.id);
                       setRuntimeOpen(false);
                     }}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
+                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                       device.id === selectedRuntimeId ? "bg-accent" : "hover:bg-accent/50"
                     }`}
                   >
                     {device.runtime_mode === "cloud" ? (
-                      <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     ) : (
-                      <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

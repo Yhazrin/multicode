@@ -39,8 +39,6 @@ function authHeaders(): Record<string, string> {
 
 function handleUnauthorized() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("multicode_token");
-    localStorage.removeItem("multicode_workspace_id");
     _token = null;
     _workspaceId = null;
     if (window.location.pathname !== "/") {
@@ -140,14 +138,14 @@ export const issuesApi = {
   async resolveIssue(id: string): Promise<Issue> {
     return apiFetch(`/api/issues/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status: "resolved" }),
+      body: JSON.stringify({ status: "done" }),
     });
   },
 
   async reopenIssue(id: string): Promise<Issue> {
     return apiFetch(`/api/issues/${id}`, {
       method: "PUT",
-      body: JSON.stringify({ status: "open" }),
+      body: JSON.stringify({ status: "todo" }),
     });
   },
 

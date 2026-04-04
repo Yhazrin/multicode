@@ -70,7 +70,7 @@ export function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
           className="absolute top-6 left-6 text-muted-foreground"
           onClick={onClose}
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" />
           Back
         </Button>
 
@@ -88,8 +88,9 @@ export function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
           <Card className="w-full">
             <CardContent className="space-y-4 pt-6">
               <div className="space-y-1.5">
-                <Label>Workspace Name</Label>
+                <Label htmlFor="workspace-name">Workspace Name</Label>
                 <Input
+                  id="workspace-name"
                   autoFocus
                   type="text"
                   value={name}
@@ -98,12 +99,13 @@ export function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
                 />
               </div>
               <div className="space-y-1.5">
-                <Label>Workspace URL</Label>
+                <Label htmlFor="workspace-slug">Workspace URL</Label>
                 <div className="flex items-center gap-0 rounded-md border bg-background focus-within:ring-2 focus-within:ring-ring">
                   <span className="pl-3 text-sm text-muted-foreground select-none">
                     multicode.app/
                   </span>
                   <Input
+                    id="workspace-slug"
                     type="text"
                     value={slug}
                     onChange={(e) => setSlug(e.target.value)}

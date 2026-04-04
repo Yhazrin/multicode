@@ -64,10 +64,11 @@ export function IssuePropertiesSidebar({
         {/* Properties section */}
         <div>
           <button
-            className={`flex w-full items-center gap-1 text-xs font-medium transition-colors mb-2 ${propertiesOpen ? "" : "text-muted-foreground hover:text-foreground"}`}
+            aria-expanded={propertiesOpen}
+            className={`flex w-full items-center gap-1 text-xs font-medium transition-colors mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${propertiesOpen ? "" : "text-muted-foreground hover:text-foreground"}`}
             onClick={() => setPropertiesOpen(!propertiesOpen)}
           >
-            <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${propertiesOpen ? "rotate-90" : ""}`} />
+            <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${propertiesOpen ? "rotate-90" : ""}`} aria-hidden="true" />
             Properties
           </button>
 
@@ -75,16 +76,16 @@ export function IssuePropertiesSidebar({
             {/* Status */}
             <PropRow label="Status">
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors overflow-hidden">
+                <DropdownMenuTrigger className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <StatusIcon status={issue.status} className="h-3.5 w-3.5 shrink-0" />
                   <span className="truncate">{STATUS_CONFIG[issue.status].label}</span>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-44">
                   {ALL_STATUSES.map((s) => (
                     <DropdownMenuItem key={s} onClick={() => onUpdateField({ status: s })}>
-                      <StatusIcon status={s} className="h-3.5 w-3.5" />
+                      <StatusIcon status={s} className="h-3.5 w-3.5" aria-hidden="true" />
                       {STATUS_CONFIG[s].label}
-                      {s === issue.status && <Check className="ml-auto h-3.5 w-3.5" />}
+                      {s === issue.status && <Check className="ml-auto h-3.5 w-3.5" aria-hidden="true" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -94,7 +95,7 @@ export function IssuePropertiesSidebar({
             {/* Priority */}
             <PropRow label="Priority">
               <DropdownMenu>
-                <DropdownMenuTrigger className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors overflow-hidden">
+                <DropdownMenuTrigger className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
                   <PriorityIcon priority={issue.priority} className="shrink-0" />
                   <span className="truncate">{PRIORITY_CONFIG[issue.priority].label}</span>
                 </DropdownMenuTrigger>
@@ -105,7 +106,7 @@ export function IssuePropertiesSidebar({
                         <PriorityIcon priority={p} className="h-3 w-3" inheritColor />
                         {PRIORITY_CONFIG[p].label}
                       </span>
-                      {p === issue.priority && <Check className="ml-auto h-3.5 w-3.5" />}
+                      {p === issue.priority && <Check className="ml-auto h-3.5 w-3.5" aria-hidden="true" />}
                     </DropdownMenuItem>
                   ))}
                 </DropdownMenuContent>
@@ -135,10 +136,11 @@ export function IssuePropertiesSidebar({
         {/* Details section */}
         <div>
           <button
-            className={`flex w-full items-center gap-1 text-xs font-medium transition-colors mb-2 ${detailsOpen ? "" : "text-muted-foreground hover:text-foreground"}`}
+            aria-expanded={detailsOpen}
+            className={`flex w-full items-center gap-1 text-xs font-medium transition-colors mb-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${detailsOpen ? "" : "text-muted-foreground hover:text-foreground"}`}
             onClick={() => setDetailsOpen(!detailsOpen)}
           >
-            <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${detailsOpen ? "rotate-90" : ""}`} />
+            <ChevronRight className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${detailsOpen ? "rotate-90" : ""}`} aria-hidden="true" />
             Details
           </button>
 

@@ -50,6 +50,7 @@ export class WSClient {
   private readonly _unauthorizedHandlers = new Set<() => void>();
 
   private _visibilityHidden = false;
+  private _intentionalClose = false;
 
   constructor(url: string, options?: { logger?: Logger }) {
     this.baseUrl = url;
@@ -92,21 +93,24 @@ export class WSClient {
     return () => this._unauthorizedHandlers.delete(handler);
   }
 
-  setAuth(token: string, workspaceId: string) {
-    this.token = token;
+  setAuth(token: string | undefined, workspaceId: string) {
+    this.token = token ?? null;
     this.workspaceId = workspaceId;
   }
 
   private async _fetchTicket(): Promise<{ ticket: string } | null> {
-    if (!this.token || !this.workspaceId) return null;
+    if (!this.workspaceId) return null;
     try {
       const baseUrl = this.baseUrl.replace(/^ws/, "http").replace(/\/ws$/, "");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      // Include Bearer token if available (CLI/PAT flows), otherwise
+      // the HttpOnly cookie is sent via credentials: "include".
+      if (this.token) headers["Authorization"] = `Bearer ${this.token}`;
       const res = await fetch(`${baseUrl}/auth/ws-ticket`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.token}`,
-        },
+        headers,
         body: JSON.stringify({ workspace_id: this.workspaceId }),
         credentials: "include",
       });
@@ -128,25 +132,20 @@ export class WSClient {
     this._setState(ConnectionState.Connecting);
 
     const url = new URL(this.baseUrl);
-    let usedTicket = false;
 
-    // Try ticket-based auth first (new flow)
-    if (this.token && this.workspaceId) {
+    // Fetch a short-lived ticket for WS auth.
+    // Uses HttpOnly cookie (credentials: "include") or Bearer token if set.
+    if (this.workspaceId) {
       const ticketResult = await this._fetchTicket();
       if (ticketResult) {
         url.searchParams.set("ticket", ticketResult.ticket);
         url.searchParams.set("workspace_id", this.workspaceId);
-        usedTicket = true;
       }
     }
 
-    // Fall back to token-based auth (legacy)
-    if (!usedTicket) {
-      if (this.token) url.searchParams.set("token", this.token);
-      if (this.workspaceId) url.searchParams.set("workspace_id", this.workspaceId);
-    }
-
     this.ws = new WebSocket(url.toString());
+
+    this._intentionalClose = false;
 
     this.ws.onopen = () => {
       this.logger.info("connected");
@@ -173,6 +172,16 @@ export class WSClient {
         return;
       }
       this.logger.debug("received", msg.type);
+      if (isAuthExpired(msg)) {
+        this.logger.error("auth expired, stopping reconnect");
+        this._setState(ConnectionState.Unauthorized);
+        for (const cb of this._unauthorizedHandlers) {
+          try { cb(); } catch { /* ignore */ }
+        }
+        this._intentionalClose = true;
+        this.ws?.close();
+        return;
+      }
       const eventHandlers = this.handlers.get(msg.type);
       if (eventHandlers) {
         for (const handler of eventHandlers) {
@@ -185,12 +194,8 @@ export class WSClient {
     };
 
     this.ws.onclose = () => {
-      const baseDelay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
-      const jitter = baseDelay * (0.7 + Math.random() * 0.6); // 70%-130% of base
-      const delay = Math.round(jitter);
-      this.reconnectAttempt++;
-      this.logger.warn(`disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
-      this.reconnectTimer = setTimeout(() => this.connect(), delay);
+      if (this._intentionalClose) return;
+      this._scheduleReconnect();
     };
 
     this.ws.onerror = () => {
@@ -214,6 +219,8 @@ export class WSClient {
       return;
     }
 
+    this._setState(ConnectionState.Reconnecting);
+
     const backoffMs = this.baseReconnectDelay * 2 ** this.reconnectAttempt;
     const cappedMs = Math.min(backoffMs, this.maxReconnectDelay);
     const jitter = 0.2;
@@ -229,6 +236,7 @@ export class WSClient {
 
   disconnect() {
     this._stopReconnect();
+    this._intentionalClose = true;
     if (this.ws) {
       this.ws.onclose = null;
       this.ws.onerror = null;

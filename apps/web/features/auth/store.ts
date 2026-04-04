@@ -2,8 +2,7 @@
 
 import { create } from "zustand";
 import type { User } from "@/shared/types";
-import { api, authApi } from "@/shared/api";
-import { setLoggedInCookie, clearLoggedInCookie } from "./auth-cookie";
+import { authApi } from "@/shared/api";
 
 interface AuthState {
   user: User | null;
@@ -12,7 +11,7 @@ interface AuthState {
   initialize: () => Promise<void>;
   sendCode: (email: string) => Promise<void>;
   verifyCode: (email: string, code: string) => Promise<User>;
-  logout: () => void;
+  logout: () => Promise<void>;
   setUser: (user: User) => void;
 }
 
@@ -20,23 +19,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: true,
 
+  // Cookie-driven initialization: just call getMe().
+  // The browser sends the HttpOnly "token" cookie automatically.
   initialize: async () => {
-    const token = localStorage.getItem("multicode_token");
-    if (!token) {
-      set({ isLoading: false });
-      return;
-    }
-
-    api.setToken(token);
-
     try {
       const user = await authApi.getMe();
       set({ user, isLoading: false });
     } catch {
-      api.setToken(null);
-      api.setWorkspaceId(null);
-      localStorage.removeItem("multicode_token");
-      localStorage.removeItem("multicode_workspace_id");
       set({ user: null, isLoading: false });
     }
   },
@@ -46,20 +35,19 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   verifyCode: async (email: string, code: string) => {
-    const { token, user } = await authApi.verifyCode(email, code);
-    localStorage.setItem("multicode_token", token);
-    api.setToken(token);
-    setLoggedInCookie();
+    const { user } = await authApi.verifyCode(email, code);
+    // The server sets the HttpOnly "token" cookie in the response.
+    // No localStorage needed.
     set({ user });
     return user;
   },
 
-  logout: () => {
-    localStorage.removeItem("multicode_token");
-    localStorage.removeItem("multicode_workspace_id");
-    api.setToken(null);
-    api.setWorkspaceId(null);
-    clearLoggedInCookie();
+  logout: async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Best-effort; clear local state regardless.
+    }
     set({ user: null });
   },
 

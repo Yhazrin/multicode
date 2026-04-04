@@ -15,22 +15,31 @@ import (
 
 func uuidToString(u pgtype.UUID) string { return util.UUIDToString(u) }
 
-// Auth middleware validates JWT tokens or Personal Access Tokens from the Authorization header.
-// Sets X-User-ID and X-User-Email headers on the request for downstream handlers.
+// resolveToken extracts the JWT/PAT string from the request.
+// Priority: Authorization header Bearer token > HttpOnly "token" cookie.
+func resolveToken(r *http.Request) string {
+	if header := r.Header.Get("Authorization"); header != "" {
+		if tok := strings.TrimPrefix(header, "Bearer "); tok != header {
+			return tok
+		}
+	}
+	if c, err := r.Cookie("token"); err == nil && c.Value != "" {
+		return c.Value
+	}
+	return ""
+}
+
+// Auth middleware validates JWT tokens or Personal Access Tokens.
+// Reads from Authorization header (Bearer) first, then falls back to the
+// HttpOnly "token" cookie. Sets X-User-ID and X-User-Email headers on the
+// request for downstream handlers.
 func Auth(queries *db.Queries) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			authHeader := r.Header.Get("Authorization")
-			if authHeader == "" {
-				slog.Debug("auth: missing authorization header", "path", r.URL.Path)
-				http.Error(w, `{"error":"missing authorization header"}`, http.StatusUnauthorized)
-				return
-			}
-
-			tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-			if tokenString == authHeader {
-				slog.Debug("auth: invalid format", "path", r.URL.Path)
-				http.Error(w, `{"error":"invalid authorization format"}`, http.StatusUnauthorized)
+			tokenString := resolveToken(r)
+			if tokenString == "" {
+				slog.Debug("auth: no token found", "path", r.URL.Path)
+				http.Error(w, `{"error":"missing authorization"}`, http.StatusUnauthorized)
 				return
 			}
 

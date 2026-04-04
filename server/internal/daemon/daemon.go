@@ -805,7 +805,7 @@ func (d *Daemon) handleTask(ctx context.Context, task Task) {
 			case <-runCtx.Done():
 				return
 			case <-ticker.C:
-				if status, err := d.client.GetTaskStatus(ctx, task.ID); err == nil && status == "cancelled" {
+				if status, err := d.client.GetTaskStatus(runCtx, task.ID); err == nil && status == "cancelled" {
 					taskLog.Info("task cancelled by server, interrupting agent")
 					runCancel()
 					close(cancelledByPoll)
@@ -833,12 +833,12 @@ func (d *Daemon) handleTask(ctx context.Context, task Task) {
 		return
 	}
 
-	_ = d.client.ReportProgress(ctx, task.ID, "Finishing task", 2, 2)
+	_ = d.client.ReportProgress(runCtx, task.ID, "Finishing task", 2, 2)
 
 	// Check if the task was cancelled while it was running (e.g. issue
 	// was reassigned). If so, skip reporting results — the server already
 	// moved the task to 'cancelled' so complete/fail would fail anyway.
-	if status, err := d.client.GetTaskStatus(ctx, task.ID); err == nil && status == "cancelled" {
+	if status, err := d.client.GetTaskStatus(runCtx, task.ID); err == nil && status == "cancelled" {
 		taskLog.Info("task cancelled during execution, discarding result")
 		return
 	}

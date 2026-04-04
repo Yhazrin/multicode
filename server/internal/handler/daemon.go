@@ -10,6 +10,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	pgvector_go "github.com/pgvector/pgvector-go"
+
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
 	"github.com/multica-ai/multicode/server/pkg/protocol"
 	"github.com/multica-ai/multicode/server/pkg/redact"
@@ -346,7 +348,7 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 			parseUUID(resp.WorkspaceID),
 			task.AgentID,
 			task.ID,
-			nil,       // no embedding available at claim time
+			pgvector_go.Vector{}, // no embedding available at claim time
 			queryText, // issue title+description for BM25 hybrid search
 		)
 		if err == nil && sc != nil {
@@ -637,6 +639,28 @@ func (h *Handler) GetActiveTaskForIssue(w http.ResponseWriter, r *http.Request) 
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{"task": taskToResponse(tasks[0])})
+}
+
+// GetTask returns a full task by ID (user-facing, requires workspace membership).
+func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskId")
+	task, err := h.Queries.GetAgentTask(r.Context(), parseUUID(taskID))
+	if err != nil {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+
+	// Verify workspace membership via the issue's workspace.
+	issue, err := h.Queries.GetIssue(r.Context(), task.IssueID)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "task not found")
+		return
+	}
+	if _, ok := h.workspaceMember(w, r, uuidToString(issue.WorkspaceID)); !ok {
+		return
+	}
+
+	writeJSON(w, http.StatusOK, taskToResponse(task))
 }
 
 // CancelTask cancels a running or queued task by ID.

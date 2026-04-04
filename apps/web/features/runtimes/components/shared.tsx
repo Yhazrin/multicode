@@ -3,9 +3,9 @@ import { Badge } from "@/components/ui/badge";
 
 export function RuntimeModeIcon({ mode }: { mode: string }) {
   return mode === "cloud" ? (
-    <Cloud className="h-3.5 w-3.5" />
+    <Cloud className="h-3.5 w-3.5" aria-hidden="true" />
   ) : (
-    <Monitor className="h-3.5 w-3.5" />
+    <Monitor className="h-3.5 w-3.5" aria-hidden="true" />
   );
 }
 
@@ -17,9 +17,9 @@ export function StatusBadge({ status }: { status: string }) {
       className={isOnline ? "bg-success/10 text-success" : ""}
     >
       {isOnline ? (
-        <Wifi className="h-3 w-3" />
+        <Wifi className="h-3 w-3" aria-hidden="true" />
       ) : (
-        <WifiOff className="h-3 w-3" />
+        <WifiOff className="h-3 w-3" aria-hidden="true" />
       )}
       {isOnline ? "Online" : "Offline"}
     </Badge>

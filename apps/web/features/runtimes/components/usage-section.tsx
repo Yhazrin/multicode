@@ -61,7 +61,7 @@ export function UsageSection({ runtimeId }: { runtimeId: string }) {
   if (usage.length === 0) {
     return (
       <div className="flex flex-col items-center rounded-lg border border-dashed py-6">
-        <BarChart3 className="h-5 w-5 text-muted-foreground/40" />
+        <BarChart3 className="h-5 w-5 text-muted-foreground/40" aria-hidden="true" />
         <p className="mt-2 text-xs text-muted-foreground">No usage data yet</p>
       </div>
     );
@@ -103,6 +103,7 @@ export function UsageSection({ runtimeId }: { runtimeId: string }) {
           <button
             key={range.days}
             onClick={() => setDays(range.days)}
+            aria-pressed={days === range.days}
             className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
               days === range.days
                 ? "bg-primary text-primary-foreground"

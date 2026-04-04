@@ -12,8 +12,13 @@ sql:
         emit_empty_slices: true
         overrides:
           - db_type: "vector"
-            go_type: "github.com/pgvector/pgvector-go.Vector"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"
             nullable: false
           - db_type: "vector"
-            go_type: "github.com/pgvector/pgvector-go.Vector"
+            go_type:
+              import: "github.com/pgvector/pgvector-go"
+              type: "Vector"
+              pointer: true
             nullable: true

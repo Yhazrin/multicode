@@ -17,7 +17,7 @@ export default function RootError({
 
   return (
     <div className="flex h-screen flex-col items-center justify-center gap-4">
-      <AlertTriangle className="h-10 w-10 text-destructive" />
+      <AlertTriangle className="h-10 w-10 text-destructive" aria-hidden="true" />
       <div className="text-center">
         <h2 className="text-lg font-semibold">Something went wrong</h2>
         <p className="text-sm text-muted-foreground mt-1">

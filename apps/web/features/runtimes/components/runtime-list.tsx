@@ -14,7 +14,7 @@ function RuntimeListItem({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
       }`}
     >
@@ -60,7 +60,7 @@ export function RuntimeList({
       </div>
       {runtimes.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-4 py-12">
-          <Server className="h-8 w-8 text-muted-foreground/40" />
+          <Server className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
           <p className="mt-3 text-sm text-muted-foreground">
             No runtimes registered
           </p>

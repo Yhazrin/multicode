@@ -51,7 +51,7 @@ function PillButton({
       type="button"
       className={cn(
         "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs",
-        "hover:bg-accent/60 transition-colors cursor-pointer",
+        "hover:bg-accent/60 transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         className,
       )}
       {...props}
@@ -143,7 +143,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
       toast.custom((t) => (
         <div className="bg-popover text-popover-foreground border rounded-lg shadow-lg p-4 w-[360px]">
           <div className="flex items-center gap-2 mb-2">
-            <div className="flex items-center justify-center size-5 rounded-full bg-emerald-500/15 text-emerald-500">
+            <div className="flex items-center justify-center size-5 rounded-full bg-success/15 text-success">
               <Check className="size-3" />
             </div>
             <span className="text-sm font-medium">Issue created</span>
@@ -190,7 +190,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
         <div className="flex items-center justify-between px-5 pt-3 pb-2 shrink-0">
           <div className="flex items-center gap-1.5 text-xs">
             <span className="text-muted-foreground">{workspaceName}</span>
-            <ChevronRight className="size-3 text-muted-foreground/50" />
+            <ChevronRight className="size-3 text-muted-foreground/50" aria-hidden="true" />
             <span className="font-medium">New issue</span>
           </div>
           <div className="flex items-center gap-1">
@@ -198,6 +198,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
               <TooltipTrigger
                 render={
                   <button
+                    aria-label={isExpanded ? "Collapse" : "Expand"}
                     onClick={() => setIsExpanded(!isExpanded)}
                     className="rounded-sm p-1.5 opacity-70 hover:opacity-100 hover:bg-accent/60 transition-all cursor-pointer"
                   >
@@ -211,6 +212,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
               <TooltipTrigger
                 render={
                   <button
+                    aria-label="Close"
                     onClick={onClose}
                     className="rounded-sm p-1.5 opacity-70 hover:opacity-100 hover:bg-accent/60 transition-all cursor-pointer"
                   >
@@ -316,6 +318,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
               <div className="px-2 py-1.5 border-b">
                 <input
                   type="text"
+                  aria-label="Filter assignees"
                   value={assigneeFilter}
                   onChange={(e) => setAssigneeFilter(e.target.value)}
                   placeholder="Assign to..."
@@ -332,7 +335,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
                   }}
                   className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent transition-colors"
                 >
-                  <UserMinus className="h-3.5 w-3.5 text-muted-foreground" />
+                  <UserMinus className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
                   <span className="text-muted-foreground">Unassigned</span>
                 </button>
 
@@ -390,7 +393,7 @@ export function CreateIssueModal({ onClose, data }: { onClose: () => void; data?
             <PopoverTrigger
               render={
                 <PillButton>
-                  <CalendarDays className="size-3.5 text-muted-foreground" />
+                  <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden="true" />
                   {dueDateObj ? (
                     <span>{dueDateObj.toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                   ) : (

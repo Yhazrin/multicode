@@ -15,7 +15,8 @@ import (
 // are automatically tracked as issue subscribers.
 func registerSubscriberListeners(bus *events.Bus, queries *db.Queries) {
 	// issue:created — subscribe creator + assignee (if different)
-	bus.Subscribe(protocol.EventIssueCreated, func(e events.Event) {
+	// PrioritySubscribers ensures this runs before notification listeners.
+	bus.SubscribeWithPriority(protocol.EventIssueCreated, events.PrioritySubscribers, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -43,7 +44,7 @@ func registerSubscriberListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// issue:updated — subscribe new assignee or @mentioned users
-	bus.Subscribe(protocol.EventIssueUpdated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventIssueUpdated, events.PrioritySubscribers, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return
@@ -80,7 +81,7 @@ func registerSubscriberListeners(bus *events.Bus, queries *db.Queries) {
 	})
 
 	// comment:created — subscribe the commenter
-	bus.Subscribe(protocol.EventCommentCreated, func(e events.Event) {
+	bus.SubscribeWithPriority(protocol.EventCommentCreated, events.PrioritySubscribers, func(e events.Event) {
 		payload, ok := e.Payload.(map[string]any)
 		if !ok {
 			return

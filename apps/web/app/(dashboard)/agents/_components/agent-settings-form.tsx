@@ -80,20 +80,21 @@ export function SettingsTab({
   return (
     <div className="max-w-lg space-y-6">
       <div>
-        <Label className="text-xs text-muted-foreground">Avatar</Label>
+        <span className="text-xs text-muted-foreground">Avatar</span>
         <div className="mt-1.5 flex items-center gap-4">
           <button
             type="button"
+            aria-label="Upload agent avatar"
             className="group relative h-16 w-16 shrink-0 rounded-full bg-muted overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
           >
             <ActorAvatar actorType="agent" actorId={agent.id} size={64} className="rounded-none" />
-            <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-0 flex items-center justify-center bg-background/60 opacity-0 transition-opacity group-hover:opacity-100 backdrop-blur-sm">
               {uploading ? (
-                <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" />
+                <Loader2 className="h-5 w-5 animate-spin text-primary-foreground" aria-hidden="true" />
               ) : (
-                <Camera className="h-5 w-5 text-primary-foreground" />
+                <Camera className="h-5 w-5 text-primary-foreground" aria-hidden="true" />
               )}
             </div>
           </button>
@@ -111,8 +112,9 @@ export function SettingsTab({
       </div>
 
       <div>
-        <Label className="text-xs text-muted-foreground">Name</Label>
+        <Label htmlFor="agent-name" className="text-xs text-muted-foreground">Name</Label>
         <Input
+          id="agent-name"
           value={name}
           onChange={(e) => setName(e.target.value)}
           className="mt-1"
@@ -120,8 +122,9 @@ export function SettingsTab({
       </div>
 
       <div>
-        <Label className="text-xs text-muted-foreground">Description</Label>
+        <Label htmlFor="agent-description" className="text-xs text-muted-foreground">Description</Label>
         <Input
+          id="agent-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="What does this agent do?"
@@ -130,18 +133,19 @@ export function SettingsTab({
       </div>
 
       <div>
-        <Label className="text-xs text-muted-foreground">Visibility</Label>
+        <span className="text-xs text-muted-foreground">Visibility</span>
         <div className="mt-1.5 flex gap-2">
           <button
             type="button"
+            aria-pressed={visibility === "workspace"}
             onClick={() => setVisibility("workspace")}
-            className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+            className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               visibility === "workspace"
                 ? "border-primary bg-primary/5"
                 : "border-border hover:bg-muted"
             }`}
           >
-            <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Globe className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="text-left">
               <div className="font-medium">Workspace</div>
               <div className="text-xs text-muted-foreground">All members can assign</div>
@@ -149,14 +153,15 @@ export function SettingsTab({
           </button>
           <button
             type="button"
+            aria-pressed={visibility === "private"}
             onClick={() => setVisibility("private")}
-            className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+            className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
               visibility === "private"
                 ? "border-primary bg-primary/5"
                 : "border-border hover:bg-muted"
             }`}
           >
-            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <div className="text-left">
               <div className="font-medium">Private</div>
               <div className="text-xs text-muted-foreground">Only you can assign</div>
@@ -166,8 +171,9 @@ export function SettingsTab({
       </div>
 
       <div>
-        <Label className="text-xs text-muted-foreground">Max Concurrent Tasks</Label>
+        <Label htmlFor="agent-max-tasks" className="text-xs text-muted-foreground">Max Concurrent Tasks</Label>
         <Input
+          id="agent-max-tasks"
           type="number"
           min={1}
           max={50}
@@ -178,19 +184,19 @@ export function SettingsTab({
       </div>
 
       <div>
-        <Label className="text-xs text-muted-foreground">Runtime</Label>
+        <span className="text-xs text-muted-foreground">Runtime</span>
         <div className="mt-1 flex items-center gap-2 rounded-lg border px-3 py-2.5 text-sm text-muted-foreground">
           {agent.runtime_mode === "cloud" ? (
-            <Cloud className="h-4 w-4" />
+            <Cloud className="h-4 w-4" aria-hidden="true" />
           ) : (
-            <Monitor className="h-4 w-4" />
+            <Monitor className="h-4 w-4" aria-hidden="true" />
           )}
           {runtimeDevice?.name ?? (agent.runtime_mode === "cloud" ? "Cloud" : "Local")}
         </div>
       </div>
 
       <Button onClick={handleSave} disabled={!dirty || saving} size="sm">
-        {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+        {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />}
         Save Changes
       </Button>
     </div>

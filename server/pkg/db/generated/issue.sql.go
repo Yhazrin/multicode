@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const batchDeleteIssues = `-- name: BatchDeleteIssues :exec
+DELETE FROM issue WHERE id = ANY($1::uuid[]) AND workspace_id = $2
+`
+
+type BatchDeleteIssuesParams struct {
+	Column1     []pgtype.UUID `json:"column_1"`
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+}
+
+func (q *Queries) BatchDeleteIssues(ctx context.Context, arg BatchDeleteIssuesParams) error {
+	_, err := q.db.Exec(ctx, batchDeleteIssues, arg.Column1, arg.WorkspaceID)
+	return err
+}
+
 const createIssue = `-- name: CreateIssue :one
 INSERT INTO issue (
     workspace_id, title, description, status, priority,
@@ -217,6 +231,55 @@ func (q *Queries) ListIssues(ctx context.Context, arg ListIssuesParams) ([]Issue
 		arg.Priority,
 		arg.AssigneeID,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Issue{}
+	for rows.Next() {
+		var i Issue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.AcceptanceCriteria,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIssuesByIDs = `-- name: ListIssuesByIDs :many
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number FROM issue
+WHERE id = ANY($1::uuid[]) AND workspace_id = $2
+`
+
+type ListIssuesByIDsParams struct {
+	Column1     []pgtype.UUID `json:"column_1"`
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+}
+
+func (q *Queries) ListIssuesByIDs(ctx context.Context, arg ListIssuesByIDsParams) ([]Issue, error) {
+	rows, err := q.db.Query(ctx, listIssuesByIDs, arg.Column1, arg.WorkspaceID)
 	if err != nil {
 		return nil, err
 	}

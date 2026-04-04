@@ -14,6 +14,7 @@ import (
 	"github.com/multica-ai/multicode/server/internal/util"
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
 	"github.com/multica-ai/multicode/server/pkg/protocol"
+	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
 // CollaborationService orchestrates multi-agent collaboration patterns:
@@ -164,8 +165,8 @@ func (s *CollaborationService) RemoveDependency(ctx context.Context, workspaceID
 }
 
 // GetReadyTasks returns queued tasks whose dependencies are all satisfied.
-func (s *CollaborationService) GetReadyTasks(ctx context.Context) ([]db.AgentTaskQueue, error) {
-	return s.Queries.ListReadyTasks(ctx)
+func (s *CollaborationService) GetReadyTasks(ctx context.Context, agentID pgtype.UUID) ([]db.AgentTaskQueue, error) {
+	return s.Queries.ListReadyTasks(ctx, agentID)
 }
 
 // GetDependencyInfo returns dependency details for prompt injection.
@@ -223,7 +224,7 @@ func (s *CollaborationService) wouldCreateCycle(ctx context.Context, taskID, dep
 // --- Long-Term Memory ---
 
 // StoreMemory persists an observation/pattern for an agent with an embedding.
-func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, agentID pgtype.UUID, content string, embedding []byte, metadata map[string]any, expiresAt pgtype.Timestamptz) (db.AgentMemory, error) {
+func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, agentID pgtype.UUID, content string, embedding pgvector_go.Vector, metadata map[string]any, expiresAt pgtype.Timestamptz) (db.AgentMemory, error) {
 	metaBytes, _ := json.Marshal(metadata)
 	if metaBytes == nil {
 		metaBytes = []byte("{}")
@@ -263,30 +264,42 @@ func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, age
 }
 
 // RecallMemory searches an agent's memories by embedding similarity.
-func (s *CollaborationService) RecallMemory(ctx context.Context, agentID pgtype.UUID, embedding []byte, limit int32) ([]db.AgentMemory, error) {
-	return s.Queries.SearchAgentMemory(ctx, db.SearchAgentMemoryParams{
+func (s *CollaborationService) RecallMemory(ctx context.Context, agentID pgtype.UUID, embedding pgvector_go.Vector, limit int32) ([]memory.SearchResult, error) {
+	rows, err := s.Queries.SearchAgentMemory(ctx, db.SearchAgentMemoryParams{
 		Embedding: embedding,
 		AgentID:   agentID,
 		Limit:     limit,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return agentMemoryRowsToSearchResults(rows), nil
 }
 
 // RecallWorkspaceMemory searches across all agents in a workspace by embedding similarity.
-func (s *CollaborationService) RecallWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, embedding []byte, limit int32) ([]db.AgentMemory, error) {
-	return s.Queries.SearchWorkspaceMemory(ctx, db.SearchWorkspaceMemoryParams{
+func (s *CollaborationService) RecallWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, embedding pgvector_go.Vector, limit int32) ([]memory.SearchResult, error) {
+	rows, err := s.Queries.SearchWorkspaceMemory(ctx, db.SearchWorkspaceMemoryParams{
 		Embedding:   embedding,
 		WorkspaceID: workspaceID,
 		Limit:       limit,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return workspaceMemoryRowsToSearchResults(rows), nil
 }
 
 // RecentWorkspaceMemory returns the most recent memories across all agents in a workspace.
 // Used as a fallback when no embedding is available (e.g. at task claim time).
-func (s *CollaborationService) RecentWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, limit int32) ([]db.AgentMemory, error) {
-	return s.Queries.ListRecentWorkspaceMemory(ctx, db.ListRecentWorkspaceMemoryParams{
+func (s *CollaborationService) RecentWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, limit int32) ([]memory.SearchResult, error) {
+	rows, err := s.Queries.ListRecentWorkspaceMemory(ctx, db.ListRecentWorkspaceMemoryParams{
 		WorkspaceID: workspaceID,
 		Limit:       limit,
 	})
+	if err != nil {
+		return nil, err
+	}
+	return recentMemoryRowsToSearchResults(rows), nil
 }
 
 // CleanupExpiredMemory removes expired memory entries.
@@ -298,7 +311,7 @@ func (s *CollaborationService) CleanupExpiredMemory(ctx context.Context) error {
 // semantic search using Reciprocal Rank Fusion. queryText provides the BM25
 // input (e.g. issue title + description), embedding provides the vector input.
 // Falls back to vector-only, BM25-only, or recent-only if a channel is unavailable.
-func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, queryText string, embedding []byte, limit int32) ([]protocol.MemoryRecall, error) {
+func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, workspaceID pgtype.UUID, queryText string, embedding pgvector_go.Vector, limit int32) ([]protocol.MemoryRecall, error) {
 	candidateLimit := limit * 3 // fetch more candidates for fusion
 
 	// BM25 channel.
@@ -306,12 +319,16 @@ func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, 
 	if queryText != "" {
 		expanded := memory.ExpandQuery(queryText)
 		if expanded != "" {
-			rows, err := s.Queries.SearchWorkspaceMemoryBM25(ctx, expanded, workspaceID, candidateLimit)
+			rows, err := s.Queries.SearchWorkspaceMemoryBM25(ctx, db.SearchWorkspaceMemoryBM25Params{
+				SearchQuery: expanded,
+				WorkspaceID: workspaceID,
+				LimitCount:  candidateLimit,
+			})
 			if err == nil {
 				for i, r := range rows {
 					bm25Results = append(bm25Results, memory.SearchResult{
-						Memory: r,
-						Score:  r.Similarity, // BM25 score stored in Similarity field
+						Memory: bm25RowToAgentMemory(r),
+						Score:  float64(r.BM25Score),
 						Rank:   i + 1,
 					})
 				}
@@ -323,14 +340,14 @@ func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, 
 
 	// Vector channel.
 	var vectorResults []memory.SearchResult
-	if len(embedding) > 0 {
+	if len(embedding.Slice()) > 0 {
 		rows, err := s.Queries.SearchWorkspaceMemory(ctx, db.SearchWorkspaceMemoryParams{
 			Embedding:   embedding,
 			WorkspaceID: workspaceID,
 			Limit:       candidateLimit,
 		})
 		if err == nil {
-			vectorResults = memory.RankResults(vectorToSearchResults(rows))
+			vectorResults = memory.RankResults(workspaceMemoryRowsToSearchResults(rows))
 		} else {
 			slog.Debug("hybrid memory: vector search failed", "error", err)
 		}
@@ -358,7 +375,7 @@ func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, 
 	} else if len(bm25Results) > 0 {
 		for _, b := range bm25Results {
 			fused = append(fused, memory.FusedResult{
-				Memory:    b.Memory,
+				Memory:     b.Memory,
 				FusedScore: b.Score,
 				BM25Score:  b.Score,
 			})
@@ -410,15 +427,85 @@ func (s *CollaborationService) HybridRecallWorkspaceMemory(ctx context.Context, 
 	return recalls, nil
 }
 
-func vectorToSearchResults(rows []db.AgentMemory) []memory.SearchResult {
+// agentMemoryRowsToSearchResults converts SearchAgentMemoryRow to SearchResult.
+func agentMemoryRowsToSearchResults(rows []db.SearchAgentMemoryRow) []memory.SearchResult {
 	results := make([]memory.SearchResult, 0, len(rows))
 	for _, r := range rows {
 		results = append(results, memory.SearchResult{
-			Memory: r,
-			Score:  r.Similarity,
+			Memory: db.AgentMemory{
+				ID:          r.ID,
+				WorkspaceID: r.WorkspaceID,
+				AgentID:     r.AgentID,
+				Content:     r.Content,
+				Embedding:   r.Embedding,
+				Metadata:    r.Metadata,
+				CreatedAt:   r.CreatedAt,
+				ExpiresAt:   r.ExpiresAt,
+				TsvContent:  r.TsvContent,
+			},
+			Score: float64(r.Similarity),
 		})
 	}
 	return results
+}
+
+// workspaceMemoryRowsToSearchResults converts SearchWorkspaceMemoryRow to SearchResult.
+func workspaceMemoryRowsToSearchResults(rows []db.SearchWorkspaceMemoryRow) []memory.SearchResult {
+	results := make([]memory.SearchResult, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, memory.SearchResult{
+			Memory: db.AgentMemory{
+				ID:          r.ID,
+				WorkspaceID: r.WorkspaceID,
+				AgentID:     r.AgentID,
+				Content:     r.Content,
+				Embedding:   r.Embedding,
+				Metadata:    r.Metadata,
+				CreatedAt:   r.CreatedAt,
+				ExpiresAt:   r.ExpiresAt,
+				TsvContent:  r.TsvContent,
+			},
+			Score: float64(r.Similarity),
+		})
+	}
+	return results
+}
+
+// recentMemoryRowsToSearchResults converts ListRecentWorkspaceMemoryRow to SearchResult.
+func recentMemoryRowsToSearchResults(rows []db.ListRecentWorkspaceMemoryRow) []memory.SearchResult {
+	results := make([]memory.SearchResult, 0, len(rows))
+	for _, r := range rows {
+		results = append(results, memory.SearchResult{
+			Memory: db.AgentMemory{
+				ID:          r.ID,
+				WorkspaceID: r.WorkspaceID,
+				AgentID:     r.AgentID,
+				Content:     r.Content,
+				Embedding:   r.Embedding,
+				Metadata:    r.Metadata,
+				CreatedAt:   r.CreatedAt,
+				ExpiresAt:   r.ExpiresAt,
+				TsvContent:  r.TsvContent,
+			},
+			Score: r.Similarity,
+		})
+	}
+	return results
+}
+
+// bm25RowToAgentMemory converts SearchWorkspaceMemoryBM25Row to AgentMemory.
+func bm25RowToAgentMemory(r db.SearchWorkspaceMemoryBM25Row) db.AgentMemory {
+	return db.AgentMemory{
+		ID:          r.ID,
+		WorkspaceID: r.WorkspaceID,
+		AgentID:     r.AgentID,
+		Content:     r.Content,
+		Embedding:   r.Embedding,
+		Metadata:    r.Metadata,
+		CreatedAt:   r.CreatedAt,
+		ExpiresAt:   r.ExpiresAt,
+		TsvContent:  r.TsvContent,
+	}
 }
 
 // --- Task Checkpoints ---
@@ -493,7 +580,7 @@ func (s *CollaborationService) GetLatestCheckpoint(ctx context.Context, taskID p
 // prompt: colleagues, pending messages, dependencies, workspace memory, and
 // the last checkpoint. queryText (e.g. issue title + description) enables
 // hybrid BM25+vector memory search; pass empty string to fall back.
-func (s *CollaborationService) BuildSharedContext(ctx context.Context, workspaceID, agentID, taskID pgtype.UUID, embedding []byte, queryText string) (*protocol.SharedContext, error) {
+func (s *CollaborationService) BuildSharedContext(ctx context.Context, workspaceID, agentID, taskID pgtype.UUID, embedding pgvector_go.Vector, queryText string) (*protocol.SharedContext, error) {
 	sc := &protocol.SharedContext{}
 
 	// 1. Load colleagues (other active agents in workspace).

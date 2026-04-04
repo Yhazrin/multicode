@@ -76,9 +76,8 @@ func main() {
 	outboxCtx, outboxCancel := context.WithCancel(context.Background())
 	go outboxWorker.Start(outboxCtx)
 
-	// Order matters: subscriber listeners must register BEFORE notification listeners.
-	// The notification listener queries the subscriber table to determine recipients,
-	// so subscribers must be written first within the same synchronous event dispatch.
+	// Handler priority is explicit: subscribers (10) → activity (20) → notifications (30).
+	// Registration order within each tier does not matter — the bus sorts by priority.
 	registerSubscriberListeners(bus, queries)
 	registerActivityListeners(bus, queries)
 	registerNotificationListeners(bus, queries)

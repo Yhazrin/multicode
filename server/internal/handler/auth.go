@@ -303,6 +303,17 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Set HttpOnly auth cookie (72h, same as JWT expiry).
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    tokenString,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   int(72 * time.Hour.Seconds()),
+	})
+
 	// Set CloudFront signed cookies for CDN access.
 	if h.CFSigner != nil {
 		for _, cookie := range h.CFSigner.SignedCookies(time.Now().Add(72 * time.Hour)) {
@@ -315,6 +326,19 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 		Token: tokenString,
 		User:  userToResponse(user),
 	})
+}
+
+func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "token",
+		Value:    "",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https",
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *Handler) GetMe(w http.ResponseWriter, r *http.Request) {

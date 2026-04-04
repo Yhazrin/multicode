@@ -17,7 +17,7 @@ import { api } from "@/shared/api";
 import type { RuntimeHourlyActivity } from "@/shared/types";
 
 const hourlyChartConfig = {
-  count: { label: "Tasks", color: "hsl(var(--chart-2))" },
+  count: { label: "Tasks", color: "var(--chart-2)" },
 } satisfies ChartConfig;
 
 export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {
@@ -53,7 +53,7 @@ export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {
         </div>
       ) : !hasData ? (
         <div className="flex h-[140px] flex-col items-center justify-center">
-          <BarChart3 className="h-5 w-5 text-muted-foreground/40" />
+          <BarChart3 className="h-5 w-5 text-muted-foreground/40" aria-hidden="true" />
           <p className="mt-2 text-xs text-muted-foreground">No task data yet</p>
         </div>
       ) : (

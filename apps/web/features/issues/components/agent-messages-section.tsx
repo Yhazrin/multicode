@@ -73,7 +73,7 @@ export function AgentMessagesSection({
   return (
     <CollapsibleSection
       title="Agent Messages"
-      icon={<MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />}
+      icon={<MessageSquare className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />}
       count={messages.length}
       defaultOpen={messages.length > 0}
     >
@@ -138,8 +138,9 @@ export function AgentMessagesSection({
             className="h-8 w-8 p-0 shrink-0"
             onClick={handleSendMessage}
             disabled={!replyText.trim() || !selectedAgentId}
+            aria-label="Send message"
           >
-            <Send className="h-3.5 w-3.5" />
+            <Send className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </div>
       </div>

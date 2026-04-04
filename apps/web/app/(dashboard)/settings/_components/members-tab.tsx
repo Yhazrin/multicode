@@ -80,8 +80,8 @@ function MemberRow({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" size="icon-sm" disabled={busy}>
-                <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+              <Button variant="ghost" size="icon-sm" disabled={busy} aria-label="Member actions">
+                <MoreHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
               </Button>
             }
           />
@@ -89,7 +89,7 @@ function MemberRow({
             {canEditRole && (
               <DropdownMenuSub>
                 <DropdownMenuSubTrigger>
-                  <Shield className="h-3.5 w-3.5" />
+                  <Shield className="h-3.5 w-3.5" aria-hidden="true" />
                   Change role
                 </DropdownMenuSubTrigger>
                 <DropdownMenuSubContent className="w-auto">
@@ -102,7 +102,7 @@ function MemberRow({
                           key={role}
                           onClick={() => onRoleChange(role)}
                         >
-                          <Icon className="h-3.5 w-3.5" />
+                          <Icon className="h-3.5 w-3.5" aria-hidden="true" />
                           <div className="flex flex-col">
                             <span>{config.label}</span>
                             <span className="text-xs text-muted-foreground font-normal">
@@ -122,7 +122,7 @@ function MemberRow({
             {canEditRole && canRemove && <DropdownMenuSeparator />}
             {canRemove && (
               <DropdownMenuItem variant="destructive" onClick={onRemove}>
-                <UserMinus className="h-3.5 w-3.5" />
+                <UserMinus className="h-3.5 w-3.5" aria-hidden="true" />
                 Remove from workspace
               </DropdownMenuItem>
             )}
@@ -130,7 +130,7 @@ function MemberRow({
         </DropdownMenu>
       )}
       <Badge variant="secondary">
-        <RoleIcon className="h-3 w-3" />
+        <RoleIcon className="h-3 w-3" aria-hidden="true" />
         {rc.label}
       </Badge>
     </div>
@@ -218,7 +218,7 @@ export function MembersTab() {
     <div className="space-y-8">
       <section className="space-y-4">
         <div className="flex items-center gap-2">
-          <Users className="h-4 w-4 text-muted-foreground" />
+          <Users className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <h2 className="text-sm font-semibold">Members ({members.length})</h2>
         </div>
 
@@ -226,7 +226,7 @@ export function MembersTab() {
           <Card>
             <CardContent className="space-y-3">
               <div className="flex items-center gap-2">
-                <Plus className="h-4 w-4 text-muted-foreground" />
+                <Plus className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 <h3 className="text-sm font-medium">Add member</h3>
               </div>
               <div className="grid gap-3 sm:grid-cols-[1fr_120px_auto]">
@@ -235,6 +235,7 @@ export function MembersTab() {
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   placeholder="user@company.com"
+                  aria-label="Invite email"
                 />
                 <Select value={inviteRole} onValueChange={(value) => setInviteRole(value as MemberRole)}>
                   <SelectTrigger size="sm"><SelectValue /></SelectTrigger>

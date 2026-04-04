@@ -114,7 +114,24 @@ func (s *TaskService) EnqueueTaskForMention(ctx context.Context, issue db.Issue,
 
 // CancelTasksForIssue cancels all active tasks for an issue.
 func (s *TaskService) CancelTasksForIssue(ctx context.Context, issueID pgtype.UUID) error {
-	return s.Queries.CancelAgentTasksByIssue(ctx, issueID)
+	// Fetch active tasks before cancelling so we can broadcast per-task events.
+	activeTasks, err := s.Queries.ListActiveTasksByIssue(ctx, issueID)
+	if err != nil {
+		return fmt.Errorf("list active tasks: %w", err)
+	}
+
+	if err := s.Queries.CancelAgentTasksByIssue(ctx, issueID); err != nil {
+		return fmt.Errorf("cancel tasks: %w", err)
+	}
+
+	// Broadcast cancel event for each task so frontends update immediately.
+	for _, t := range activeTasks {
+		t.Status = "cancelled"
+		s.broadcastTaskEvent(ctx, protocol.EventTaskCancelled, t)
+		s.ReconcileAgentStatus(ctx, t.AgentID)
+	}
+
+	return nil
 }
 
 // CancelTask cancels a single task by ID. It broadcasts a task:cancelled event
@@ -267,7 +284,10 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 		// Trigger async review
 		go func() {
 			if _, reviewErr := reviewService.ReviewTask(context.Background(), taskID); reviewErr != nil {
-				slog.Error("automated review failed", "task_id", util.UUIDToString(taskID), "error", reviewErr)
+				slog.Error("automated review failed, marking task as failed", "task_id", util.UUIDToString(taskID), "error", reviewErr)
+				if _, failErr := s.FailTask(context.Background(), taskID, fmt.Sprintf("automated review failed: %v", reviewErr)); failErr != nil {
+					slog.Error("failed to mark task as failed after review error", "task_id", util.UUIDToString(taskID), "error", failErr)
+				}
 			}
 		}()
 

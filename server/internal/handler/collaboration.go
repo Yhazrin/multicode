@@ -1,18 +1,18 @@
 package handler
 
 import (
-	"encoding/binary"
 	"encoding/json"
 	"log/slog"
-	"math"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multicode/server/internal/logger"
+	"github.com/multica-ai/multicode/server/internal/memory"
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
 	"github.com/multica-ai/multicode/server/pkg/protocol"
+	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
 // --- Agent Messaging ---
@@ -240,7 +240,13 @@ func (h *Handler) GetReadyTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tasks, err := h.CollaborationService.GetReadyTasks(r.Context())
+	agentID := chi.URLParam(r, "agentID")
+	if agentID == "" {
+		writeError(w, http.StatusBadRequest, "agentID is required")
+		return
+	}
+
+	tasks, err := h.CollaborationService.GetReadyTasks(r.Context(), parseUUID(agentID))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to get ready tasks")
 		return
@@ -368,7 +374,7 @@ type MemoryResponse struct {
 	ExpiresAt   *string `json:"expires_at"`
 }
 
-func memoryToResponse(m db.AgentMemory) MemoryResponse {
+func memoryToResponse(m db.AgentMemory, similarity float64) MemoryResponse {
 	var meta any
 	json.Unmarshal(m.Metadata, &meta)
 	resp := MemoryResponse{
@@ -376,7 +382,7 @@ func memoryToResponse(m db.AgentMemory) MemoryResponse {
 		AgentID:    uuidToString(m.AgentID),
 		Content:    m.Content,
 		Metadata:   meta,
-		Similarity: m.Similarity,
+		Similarity: similarity,
 		CreatedAt:  timestampToString(m.CreatedAt),
 	}
 	if m.ExpiresAt.Valid {
@@ -384,6 +390,10 @@ func memoryToResponse(m db.AgentMemory) MemoryResponse {
 		resp.ExpiresAt = &s
 	}
 	return resp
+}
+
+func searchResultToResponse(sr memory.SearchResult) MemoryResponse {
+	return memoryToResponse(sr.Memory, sr.Score)
 }
 
 func (h *Handler) StoreAgentMemory(w http.ResponseWriter, r *http.Request) {
@@ -404,9 +414,9 @@ func (h *Handler) StoreAgentMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var embeddingBytes []byte
+	var embedding pgvector_go.Vector
 	if len(req.Embedding) > 0 {
-		embeddingBytes = float64SliceToVector(req.Embedding)
+		embedding = float64SliceToVector(req.Embedding)
 	}
 
 	var expiresAt pgtype.Timestamptz
@@ -422,7 +432,7 @@ func (h *Handler) StoreAgentMemory(w http.ResponseWriter, r *http.Request) {
 		parseUUID(workspaceID),
 		parseUUID(agentID),
 		req.Content,
-		embeddingBytes,
+		embedding,
 		req.Metadata,
 		expiresAt,
 	)
@@ -432,7 +442,7 @@ func (h *Handler) StoreAgentMemory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, memoryToResponse(mem))
+	writeJSON(w, http.StatusCreated, memoryToResponse(mem, 0))
 }
 
 type RecallMemoryRequest struct {
@@ -473,7 +483,7 @@ func (h *Handler) RecallAgentMemory(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]MemoryResponse, len(memories))
 	for i, m := range memories {
-		resp[i] = memoryToResponse(m)
+		resp[i] = searchResultToResponse(m)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -496,7 +506,7 @@ func (h *Handler) ListAgentMemory(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]MemoryResponse, len(memories))
 	for i, m := range memories {
-		resp[i] = memoryToResponse(m)
+		resp[i] = memoryToResponse(m, 0)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -557,7 +567,7 @@ func (h *Handler) RecallWorkspaceMemory(w http.ResponseWriter, r *http.Request) 
 
 	resp := make([]MemoryResponse, len(memories))
 	for i, m := range memories {
-		resp[i] = memoryToResponse(m)
+		resp[i] = searchResultToResponse(m)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -572,12 +582,10 @@ func optionalUUID(s *string) pgtype.UUID {
 	return parseUUID(*s)
 }
 
-func float64SliceToVector(vals []float64) []byte {
-	b := make([]byte, 0, len(vals)*4)
-	for _, v := range vals {
-		var buf [4]byte
-		binary.LittleEndian.PutUint32(buf[:], math.Float32bits(float32(v)))
-		b = append(b, buf[:]...)
+func float64SliceToVector(vals []float64) pgvector_go.Vector {
+	float32s := make([]float32, len(vals))
+	for i, v := range vals {
+		float32s[i] = float32(v)
 	}
-	return b
+	return pgvector_go.NewVector(float32s)
 }

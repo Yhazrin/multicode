@@ -95,10 +95,10 @@ export function ListView({
                     className="cursor-pointer accent-primary"
                   />
                 </div>
-                <Accordion.Trigger className="group/trigger flex flex-1 items-center gap-2 px-2 h-full text-left outline-none">
-                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-aria-expanded/trigger:rotate-90" />
+                <Accordion.Trigger className="group/trigger flex flex-1 items-center gap-2 px-2 h-full text-left outline-none focus-visible:ring-2 focus-visible:ring-ring rounded">
+                  <ChevronRight className="size-3.5 shrink-0 text-muted-foreground transition-transform group-aria-expanded/trigger:rotate-90" aria-hidden="true" />
                   <span className={`inline-flex items-center gap-1.5 rounded px-2 py-0.5 text-xs font-semibold ${cfg.badgeBg} ${cfg.badgeText}`}>
-                    <StatusIcon status={status} className="h-3 w-3" inheritColor />
+                    <StatusIcon status={status} className="h-3 w-3" inheritColor aria-hidden="true" />
                     {cfg.label}
                   </span>
                   <span className="text-xs text-muted-foreground">
@@ -122,7 +122,7 @@ export function ListView({
                         />
                       }
                     >
-                      <Plus className="size-3.5" />
+                      <Plus className="size-3.5" aria-hidden="true" />
                     </TooltipTrigger>
                     <TooltipContent>Add issue</TooltipContent>
                   </Tooltip>

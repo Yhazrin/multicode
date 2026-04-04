@@ -36,10 +36,34 @@ func (q *Queries) CreateTaskDependency(ctx context.Context, arg CreateTaskDepend
 	return i, err
 }
 
+const deleteAllDependenciesForTask = `-- name: DeleteAllDependenciesForTask :exec
+DELETE FROM task_dependency
+WHERE task_id = $1 OR depends_on_task_id = $1
+`
+
+func (q *Queries) DeleteAllDependenciesForTask(ctx context.Context, taskID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAllDependenciesForTask, taskID)
+	return err
+}
+
+const deleteTaskDependency = `-- name: DeleteTaskDependency :exec
+DELETE FROM task_dependency
+WHERE task_id = $1 AND depends_on_task_id = $2
+`
+
+type DeleteTaskDependencyParams struct {
+	TaskID          pgtype.UUID `json:"task_id"`
+	DependsOnTaskID pgtype.UUID `json:"depends_on_task_id"`
+}
+
+func (q *Queries) DeleteTaskDependency(ctx context.Context, arg DeleteTaskDependencyParams) error {
+	_, err := q.db.Exec(ctx, deleteTaskDependency, arg.TaskID, arg.DependsOnTaskID)
+	return err
+}
+
 const getTaskDependencies = `-- name: GetTaskDependencies :many
 SELECT id, workspace_id, task_id, depends_on_task_id, created_at FROM task_dependency
 WHERE task_id = $1
-ORDER BY created_at ASC
 `
 
 func (q *Queries) GetTaskDependencies(ctx context.Context, taskID pgtype.UUID) ([]TaskDependency, error) {
@@ -71,7 +95,6 @@ func (q *Queries) GetTaskDependencies(ctx context.Context, taskID pgtype.UUID) (
 const getTaskDependents = `-- name: GetTaskDependents :many
 SELECT id, workspace_id, task_id, depends_on_task_id, created_at FROM task_dependency
 WHERE depends_on_task_id = $1
-ORDER BY created_at ASC
 `
 
 func (q *Queries) GetTaskDependents(ctx context.Context, dependsOnTaskID pgtype.UUID) ([]TaskDependency, error) {
@@ -101,27 +124,21 @@ func (q *Queries) GetTaskDependents(ctx context.Context, dependsOnTaskID pgtype.
 }
 
 const listReadyTasks = `-- name: ListReadyTasks :many
-SELECT atq.id, atq.agent_id, atq.issue_id, atq.status, atq.priority,
-       atq.dispatched_at, atq.started_at, atq.completed_at, atq.result,
-       atq.error, atq.created_at, atq.context, atq.runtime_id, atq.session_id,
-       atq.work_dir, atq.trigger_comment_id, atq.review_status, atq.review_count,
-       atq.max_reviews, atq.chain_source_task_id, atq.chain_reason
-FROM agent_task_queue atq
+SELECT atq.id, atq.agent_id, atq.issue_id, atq.status, atq.priority, atq.dispatched_at, atq.started_at, atq.completed_at, atq.result, atq.error, atq.created_at, atq.context, atq.runtime_id, atq.session_id, atq.work_dir, atq.trigger_comment_id, atq.review_status, atq.review_count, atq.max_reviews, atq.chain_source_task_id, atq.chain_reason FROM agent_task_queue atq
 WHERE atq.status = 'queued'
+  AND atq.agent_id = $1
   AND NOT EXISTS (
-      SELECT 1 FROM task_dependency td
-      WHERE td.task_id = atq.id
-        AND NOT EXISTS (
-            SELECT 1 FROM agent_task_queue dep
-            WHERE dep.id = td.depends_on_task_id
-              AND dep.status = 'completed'
-        )
+    SELECT 1 FROM task_dependency td
+    JOIN agent_task_queue dep ON td.depends_on_task_id = dep.id
+    WHERE td.task_id = atq.id
+      AND dep.status NOT IN ('completed', 'failed', 'cancelled')
   )
 ORDER BY atq.priority DESC, atq.created_at ASC
 `
 
-func (q *Queries) ListReadyTasks(ctx context.Context) ([]AgentTaskQueue, error) {
-	rows, err := q.db.Query(ctx, listReadyTasks)
+// Returns tasks that have no unresolved dependencies (all deps are completed/cancelled/failed).
+func (q *Queries) ListReadyTasks(ctx context.Context, agentID pgtype.UUID) ([]AgentTaskQueue, error) {
+	rows, err := q.db.Query(ctx, listReadyTasks, agentID)
 	if err != nil {
 		return nil, err
 	}
@@ -160,29 +177,4 @@ func (q *Queries) ListReadyTasks(ctx context.Context) ([]AgentTaskQueue, error) 
 		return nil, err
 	}
 	return items, nil
-}
-
-const deleteTaskDependency = `-- name: DeleteTaskDependency :exec
-DELETE FROM task_dependency
-WHERE task_id = $1 AND depends_on_task_id = $2
-`
-
-type DeleteTaskDependencyParams struct {
-	TaskID          pgtype.UUID `json:"task_id"`
-	DependsOnTaskID pgtype.UUID `json:"depends_on_task_id"`
-}
-
-func (q *Queries) DeleteTaskDependency(ctx context.Context, arg DeleteTaskDependencyParams) error {
-	_, err := q.db.Exec(ctx, deleteTaskDependency, arg.TaskID, arg.DependsOnTaskID)
-	return err
-}
-
-const deleteAllDependenciesForTask = `-- name: DeleteAllDependenciesForTask :exec
-DELETE FROM task_dependency
-WHERE task_id = $1 OR depends_on_task_id = $1
-`
-
-func (q *Queries) DeleteAllDependenciesForTask(ctx context.Context, taskID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteAllDependenciesForTask, taskID)
-	return err
 }

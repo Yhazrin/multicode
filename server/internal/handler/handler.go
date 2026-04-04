@@ -41,6 +41,7 @@ type Handler struct {
 	TaskService          *service.TaskService
 	CollaborationService *service.CollaborationService
 	ReviewService        *service.ReviewService
+	RunOrchestrator      *service.RunOrchestrator
 	EmailService         *service.EmailService
 	PingStore            *PingStore
 	UpdateStore          *UpdateStore
@@ -55,15 +56,19 @@ func New(queries *db.Queries, txStarter txStarter, hub *realtime.Hub, bus *event
 		executor = candidate
 	}
 
+	taskSvc := service.NewTaskService(queries, hub, bus)
+	compactor := service.NewCompactor()
+
 	return &Handler{
 		Queries:              queries,
 		DB:                   executor,
 		TxStarter:            txStarter,
 		Hub:                  hub,
 		Bus:                  bus,
-		TaskService:          service.NewTaskService(queries, hub, bus),
+		TaskService:          taskSvc,
 		CollaborationService: service.NewCollaborationService(queries, hub, bus),
-		ReviewService:        service.NewReviewService(queries, hub, bus),
+		ReviewService:        service.NewReviewService(queries, hub, bus, taskSvc),
+		RunOrchestrator:      service.NewRunOrchestrator(queries, compactor, hub, bus),
 		EmailService:         emailService,
 		PingStore:            NewPingStore(),
 		UpdateStore:          NewUpdateStore(),
