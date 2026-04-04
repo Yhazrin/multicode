@@ -14,7 +14,7 @@ function RuntimeListItem({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
       }`}
     >
