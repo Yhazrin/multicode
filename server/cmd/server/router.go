@@ -89,6 +89,8 @@ func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Route
 	registerAuthRoutes(r, h, queries)
 
 	// Daemon API routes
+	// Public route - no auth required (uses join token instead)
+	r.Post("/api/daemon/register-with-join-token", h.RegisterRuntimeWithJoinToken)
 	registerDaemonRoutes(r, h, queries)
 
 	// Protected API routes

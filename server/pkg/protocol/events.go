@@ -103,4 +103,11 @@ const (
 	EventRunStepCompleted = "run:step_completed"
 	EventRunTodoCreated   = "run:todo_created"
 	EventRunTodoUpdated   = "run:todo_updated"
+
+	// Team events
+	EventTeamCreated       = "team:created"
+	EventTeamUpdated       = "team:updated"
+	EventTeamDeleted       = "team:deleted"
+	EventTeamMemberAdded   = "team:member_added"
+	EventTeamMemberRemoved = "team:member_removed"
 )

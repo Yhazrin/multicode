@@ -255,7 +255,7 @@ func (h *Handler) UpdateTeam(w http.ResponseWriter, r *http.Request) {
 		updates.Name = pgtype.Text{String: *req.Name, Valid: true}
 	}
 	if req.Description != nil {
-		updates.Description = strToText(*req.Description)
+		updates.Description = pgtype.Text{String: *req.Description, Valid: true}
 	}
 	if req.AvatarURL != nil {
 		updates.AvatarUrl = ptrToText(req.AvatarURL)

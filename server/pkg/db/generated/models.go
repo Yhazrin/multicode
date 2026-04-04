@@ -42,6 +42,34 @@ type Agent struct {
 	ArchivedBy         pgtype.UUID        `json:"archived_by"`
 }
 
+type AgentRuntime struct {
+	ID                             pgtype.UUID        `json:"id"`
+	WorkspaceID                    pgtype.UUID        `json:"workspace_id"`
+	DaemonID                      pgtype.Text        `json:"daemon_id"`
+	InstanceID                    string             `json:"instance_id"`
+	Name                          string             `json:"name"`
+	RuntimeMode                   string             `json:"runtime_mode"`
+	Provider                      string             `json:"provider"`
+	Status                        string             `json:"status"`
+	DeviceInfo                    string             `json:"device_info"`
+	Metadata                      []byte             `json:"metadata"`
+	LastSeenAt                    pgtype.Timestamptz `json:"last_seen_at"`
+	CreatedAt                     pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                     pgtype.Timestamptz `json:"updated_at"`
+	OwnerUserID                   pgtype.UUID        `json:"owner_user_id"`
+	ApprovalStatus                string             `json:"approval_status"`
+	Visibility                    string             `json:"visibility"`
+	TrustLevel                    string             `json:"trust_level"`
+	DrainMode                     bool               `json:"drain_mode"`
+	Paused                        bool               `json:"paused"`
+	Tags                          []byte             `json:"tags"`
+	MaxConcurrentTasksOverride    pgtype.Int4        `json:"max_concurrent_tasks_override"`
+	LastClaimedAt                 pgtype.Timestamptz `json:"last_claimed_at"`
+	SuccessCount24h               int32              `json:"success_count_24h"`
+	FailureCount24h               int32              `json:"failure_count_24h"`
+	AvgTaskDurationMs             int64              `json:"avg_task_duration_ms"`
+}
+
 type AgentMemory struct {
 	ID          pgtype.UUID        `json:"id"`
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
@@ -66,22 +94,6 @@ type AgentMessage struct {
 	MessageType string             `json:"message_type"`
 	ReadAt      pgtype.Timestamptz `json:"read_at"`
 	ReplyToID   pgtype.UUID        `json:"reply_to_id"`
-}
-
-type AgentRuntime struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	DaemonID    pgtype.Text        `json:"daemon_id"`
-	Name        string             `json:"name"`
-	RuntimeMode string             `json:"runtime_mode"`
-	Provider    string             `json:"provider"`
-	Status      string             `json:"status"`
-	DeviceInfo  string             `json:"device_info"`
-	Metadata    []byte             `json:"metadata"`
-	LastSeenAt  pgtype.Timestamptz `json:"last_seen_at"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	InstanceID  string             `json:"instance_id"`
 }
 
 type AgentSkill struct {
@@ -375,6 +387,29 @@ type RuntimeUsage struct {
 	CacheWriteTokens int64              `json:"cache_write_tokens"`
 	CreatedAt        pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+}
+
+
+type RuntimeJoinToken struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	CreatedBy   pgtype.UUID        `json:"created_by"`
+	TokenHash   string             `json:"token_hash"`
+	TokenPrefix string             `json:"token_prefix"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	UsedAt      pgtype.Timestamptz `json:"used_at"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	Metadata    []byte             `json:"metadata"`
+}
+
+type RuntimeAuditLog struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	RuntimeID   pgtype.UUID        `json:"runtime_id"`
+	ActorUserID pgtype.UUID        `json:"actor_user_id"`
+	Action      string             `json:"action"`
+	Details     []byte             `json:"details"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Skill struct {

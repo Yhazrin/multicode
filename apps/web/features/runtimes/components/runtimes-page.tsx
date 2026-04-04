@@ -43,6 +43,12 @@ export default function RuntimesPage() {
 
   const selected = runtimes.find((r) => r.id === selectedId) ?? null;
 
+  const handleRuntimeUpdate = useCallback((updated: typeof selected) => {
+    if (updated) {
+      useRuntimeStore.getState().patchRuntime(updated.id, updated);
+    }
+  }, []);
+
   if (isLoading || fetching) {
     return (
       <div className="flex flex-1 min-h-0">
@@ -104,7 +110,7 @@ export default function RuntimesPage() {
 
       <ResizablePanel id="detail" minSize="50%">
         {selected ? (
-          <RuntimeDetail key={selected.id} runtime={selected} />
+          <RuntimeDetail key={selected.id} runtime={selected} onUpdate={handleRuntimeUpdate} />
         ) : (
           <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
             <Server className="h-10 w-10 text-muted-foreground/30" aria-hidden="true" />

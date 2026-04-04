@@ -22,6 +22,19 @@ var runtimeListCmd = &cobra.Command{
 	RunE:  runRuntimeList,
 }
 
+var runtimeJoinCmd = &cobra.Command{
+	Use:   "join <join-token>",
+	Short: "Register this machine as a runtime using a join token",
+	Args:  cobra.ExactArgs(1),
+	RunE:  runRuntimeJoin,
+}
+
+var runtimeLeaveCmd = &cobra.Command{
+	Use:   "leave",
+	Short: "Unregister this machine from the runtime pool",
+	RunE:  runRuntimeLeave,
+}
+
 var runtimeUsageCmd = &cobra.Command{
 	Use:   "usage <runtime-id>",
 	Short: "Get token usage for a runtime",
@@ -52,6 +65,8 @@ var runtimeUpdateCmd = &cobra.Command{
 
 func init() {
 	runtimeCmd.AddCommand(runtimeListCmd)
+	runtimeCmd.AddCommand(runtimeJoinCmd)
+	runtimeCmd.AddCommand(runtimeLeaveCmd)
 	runtimeCmd.AddCommand(runtimeUsageCmd)
 	runtimeCmd.AddCommand(runtimeActivityCmd)
 	runtimeCmd.AddCommand(runtimePingCmd)
@@ -113,6 +128,49 @@ func runRuntimeList(cmd *cobra.Command, _ []string) error {
 		})
 	}
 	cli.PrintTable(os.Stdout, headers, rows)
+	return nil
+}
+
+func runRuntimeJoin(cmd *cobra.Command, args []string) error {
+	joinToken := args[0]
+	if joinToken == "" {
+		return fmt.Errorf("join token is required")
+	}
+
+	// Save the join token to the local profile config
+	profile, _ := cmd.Flags().GetString("profile")
+	configDir, err := cli.ProfileDir(profile)
+	if err != nil {
+		return fmt.Errorf("get profile directory: %w", err)
+	}
+
+	configPath := configDir + "/join_token"
+	if err := os.WriteFile(configPath, []byte(joinToken), 0600); err != nil {
+		return fmt.Errorf("save join token: %w", err)
+	}
+
+	fmt.Printf("Join token saved. Run 'multicode daemon start' to register this machine as a runtime.\n")
+	fmt.Printf("Token prefix: %s...\n", joinToken[:8])
+	return nil
+}
+
+func runRuntimeLeave(cmd *cobra.Command, _ []string) error {
+	profile, _ := cmd.Flags().GetString("profile")
+	configDir, err := cli.ProfileDir(profile)
+	if err != nil {
+		return fmt.Errorf("get profile directory: %w", err)
+	}
+
+	configPath := configDir + "/join_token"
+	if err := os.Remove(configPath); err != nil {
+		if os.IsNotExist(err) {
+			fmt.Println("No join token found. This machine is not registered as a runtime.")
+			return nil
+		}
+		return fmt.Errorf("remove join token: %w", err)
+	}
+
+	fmt.Println("Join token removed. This machine will no longer be registered as a runtime.")
 	return nil
 }
 

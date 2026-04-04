@@ -1,4 +1,4 @@
-import { Server } from "lucide-react";
+import { Server, Clock } from "lucide-react";
 import type { AgentRuntime } from "@/shared/types";
 import { RuntimeModeIcon } from "./shared";
 
@@ -11,31 +11,43 @@ function RuntimeListItem({
   isSelected: boolean;
   onClick: () => void;
 }) {
+  const isPending = runtime.approval_status === "pending";
+  const isApproved = runtime.approval_status === "approved";
+
   return (
     <button
       onClick={onClick}
       className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
-      }`}
+      } ${isPending ? "opacity-60" : ""}`}
     >
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
           runtime.status === "online" ? "bg-success/10" : "bg-muted"
         }`}
       >
-        <RuntimeModeIcon mode={runtime.runtime_mode} />
+        {isPending ? (
+          <Clock className="h-4 w-4 text-warning" />
+        ) : (
+          <RuntimeModeIcon mode={runtime.runtime_mode} />
+        )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="truncate text-sm font-medium">{runtime.name}</div>
         <div className="mt-0.5 truncate text-xs text-muted-foreground">
           {runtime.provider} &middot; {runtime.runtime_mode}
+          {isPending && " &middot; Pending approval"}
         </div>
       </div>
-      <div
-        className={`h-2 w-2 shrink-0 rounded-full ${
-          runtime.status === "online" ? "bg-success" : "bg-muted-foreground/40"
-        }`}
-      />
+      {isPending ? (
+        <Clock className="h-3 w-3 shrink-0 text-warning" />
+      ) : (
+        <div
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            runtime.status === "online" ? "bg-success" : "bg-muted-foreground/40"
+          }`}
+        />
+      )}
     </button>
   );
 }

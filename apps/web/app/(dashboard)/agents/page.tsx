@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   Bot,
@@ -9,7 +9,30 @@ import {
   Search,
   Sparkles,
   ChevronRight,
-  Eye,
+  Clock,
+  CheckCircle2,
+  Play,
+  Loader2,
+  XCircle,
+  Globe,
+  Lock,
+  Cloud,
+  Monitor,
+  ChevronDown,
+  FileText,
+  BookOpenText,
+  Wrench,
+  Timer,
+  ListTodo,
+  Settings,
+  Trash2,
+  MoreHorizontal,
+  Save,
+  Camera,
+  Link2,
+  Key,
+  AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 import {
   PRESET_AGENTS,
@@ -22,12 +45,36 @@ import type {
   Agent,
   CreateAgentRequest,
   UpdateAgentRequest,
+  AgentStatus,
+  RuntimeDevice,
+  AgentVisibility,
+  AgentTool,
+  AgentTrigger,
+  AgentTriggerType,
+  AgentTask,
 } from "@/shared/types";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -39,7 +86,6 @@ import { useRuntimeStore } from "@/features/runtimes";
 import { useIssueStore } from "@/features/issues";
 import { ActorAvatar } from "@/components/common/actor-avatar";
 import { useFileUpload } from "@/shared/hooks/use-file-upload";
-import { PromptPreviewTab } from "./_components/agent-prompt-preview";
 
 
 // ---------------------------------------------------------------------------
@@ -1474,7 +1520,7 @@ function SettingsTab({
 // Agent Detail
 // ---------------------------------------------------------------------------
 
-type DetailTab = "instructions" | "skills" | "tools" | "triggers" | "tasks" | "prompt" | "settings";
+type DetailTab = "instructions" | "skills" | "tools" | "triggers" | "tasks" | "settings";
 
 const detailTabs: { id: DetailTab; label: string; icon: typeof FileText }[] = [
   { id: "instructions", label: "Instructions", icon: FileText },
@@ -1482,7 +1528,6 @@ const detailTabs: { id: DetailTab; label: string; icon: typeof FileText }[] = [
   { id: "tools", label: "Tools", icon: Wrench },
   { id: "triggers", label: "Triggers", icon: Timer },
   { id: "tasks", label: "Tasks", icon: ListTodo },
-  { id: "prompt", label: "Prompt", icon: Eye },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
@@ -1608,7 +1653,6 @@ function AgentDetail({
           />
         )}
         {activeTab === "tasks" && <TasksTab agent={agent} />}
-        {activeTab === "prompt" && <PromptPreviewTab agent={agent} />}
         {activeTab === "settings" && (
           <SettingsTab
             agent={agent}

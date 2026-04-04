@@ -13,18 +13,22 @@ const (
 	ticketPrefix  = "wst_"
 )
 
+// TicketStore is the interface for one-time-use short-lived WebSocket auth tickets.
+// Implementations: MemoryTicketStore (in-process), or a future Redis-backed store.
+type TicketStore interface {
+	// Generate creates a new ticket for the given workspace and user, returns the ticket string.
+	Generate(workspaceID, userID string) string
+	// Validate checks a ticket: returns (workspaceID, userID, true) if valid and not expired,
+	// or ("", "", false) if missing, expired, or workspace mismatch.
+	// The ticket is consumed (deleted) on successful validation.
+	Validate(ticket, workspaceID string) (string, string, bool)
+}
+
 // ticketEntry stores a ticket with its expiration and workspace context.
 type ticketEntry struct {
 	workspaceID string
 	userID      string
 	expiresAt   time.Time
-}
-
-// TicketStore is the interface for one-time-use short-lived ticket management.
-// Implementations must provide Generate and Validate for WebSocket auth flow.
-type TicketStore interface {
-	Generate(workspaceID, userID string) string
-	Validate(ticket, workspaceID string) (string, string, bool)
 }
 
 // MemoryTicketStore holds one-time-use short-lived tickets for WebSocket auth.
@@ -34,7 +38,6 @@ type TicketStore interface {
 type MemoryTicketStore struct {
 	tickets sync.Map // map[string]*ticketEntry
 	stopCh  chan struct{}
-	wg      sync.Once
 }
 
 var globalTicketStore TicketStore
@@ -48,7 +51,7 @@ func InitTicketStore() {
 	go store.cleanupLoop()
 }
 
-// StopTicketStore stops the cleanup goroutine. For testing/ graceful shutdown.
+// StopTicketStore stops the cleanup goroutine. For testing / graceful shutdown.
 func StopTicketStore() {
 	if store, ok := globalTicketStore.(*MemoryTicketStore); ok {
 		close(store.stopCh)

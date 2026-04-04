@@ -5,7 +5,7 @@ import type { Workspace, MemberWithUser, Agent, Skill } from "@/shared/types";
 import { useIssueStore } from "@/features/issues";
 import { useInboxStore } from "@/features/inbox";
 import { toast } from "sonner";
-import { api, workspaceApi, agentsApi, skillsApi } from "@/shared/api";
+import { api } from "@/shared/api";
 import { createLogger } from "@/shared/logger";
 import { resetStores } from "./orchestration";
 
@@ -77,17 +77,17 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
     logger.debug("hydrate workspace", nextWorkspace.name, nextWorkspace.id);
     const [nextMembers, nextAgents, nextSkills] = await Promise.all([
-      workspaceApi.listMembers(nextWorkspace.id).catch((e) => {
+      api.listMembers(nextWorkspace.id).catch((e) => {
         logger.error("failed to load members", e);
         toast.error("Failed to load members");
         return [] as MemberWithUser[];
       }),
-      agentsApi.list({ workspace_id: nextWorkspace.id, include_archived: true }).catch((e) => {
+      api.listAgents({ workspace_id: nextWorkspace.id, include_archived: true }).catch((e) => {
         logger.error("failed to load agents", e);
         toast.error("Failed to load agents");
         return [] as Agent[];
       }),
-      skillsApi.list().catch(() => [] as Skill[]),
+      api.listSkills().catch(() => [] as Skill[]),
       useIssueStore.getState().fetch().catch((e) => console.error("Failed to fetch issues:", e)),
       useInboxStore.getState().fetch().catch((e) => console.error("Failed to fetch inbox:", e)),
     ]);
@@ -135,7 +135,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const { workspace } = get();
     if (!workspace) return;
     try {
-      const members = await workspaceApi.listMembers(workspace.id);
+      const members = await api.listMembers(workspace.id);
       set({ members });
     } catch (e) {
       logger.error("failed to refresh members", e);
@@ -152,7 +152,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const { workspace } = get();
     if (!workspace) return;
     try {
-      const agents = await agentsApi.list({ workspace_id: workspace.id, include_archived: true });
+      const agents = await api.listAgents({ workspace_id: workspace.id, include_archived: true });
       set({ agents });
     } catch (e) {
       logger.error("failed to refresh agents", e);
@@ -164,7 +164,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
     const { workspace, skills: existing } = get();
     if (!workspace) return;
     try {
-      const fetched = await skillsApi.list();
+      const fetched = await api.listSkills();
       // listSkills doesn't include files — preserve files from existing entries
       const filesById = new Map(
         existing.filter((s) => s.files?.length).map((s) => [s.id, s.files]),
@@ -198,7 +198,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   createWorkspace: async (data) => {
     try {
-      const ws = await workspaceApi.createWorkspace(data);
+      const ws = await api.createWorkspace(data);
       set((state) => ({ workspaces: [...state.workspaces, ws] }));
       return ws;
     } catch (e) {
@@ -219,7 +219,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   leaveWorkspace: async (workspaceId) => {
     try {
-      await workspaceApi.leaveWorkspace(workspaceId);
+      await api.leaveWorkspace(workspaceId);
       const { workspace, hydrateWorkspace } = get();
       const wsList = await api.listWorkspaces();
       const preferredWorkspaceId =
@@ -234,7 +234,7 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
 
   deleteWorkspace: async (workspaceId) => {
     try {
-      await workspaceApi.deleteWorkspace(workspaceId);
+      await api.deleteWorkspace(workspaceId);
       const { workspace, hydrateWorkspace } = get();
       const wsList = await api.listWorkspaces();
       const preferredWorkspaceId =

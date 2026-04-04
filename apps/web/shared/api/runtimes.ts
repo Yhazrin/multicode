@@ -4,6 +4,12 @@ import type {
   RuntimeHourlyActivity,
   RuntimePing,
   RuntimeUpdate,
+  RuntimeJoinToken,
+  RuntimeAuditLog,
+  CreateRuntimeJoinTokenRequest,
+  CreateRuntimeJoinTokenResponse,
+  RegisterRuntimeWithJoinTokenRequest,
+  RegisterRuntimeWithJoinTokenResponse,
 } from "@/shared/types";
 import type { Logger } from "@/shared/logger";
 import { noopLogger } from "@/shared/logger";
@@ -79,11 +85,55 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const runtimesApi = {
-  async list(params?: { workspace_id?: string }): Promise<AgentRuntime[]> {
+  async list(params?: { workspace_id?: string; approval_status?: string }): Promise<AgentRuntime[]> {
     const search = new URLSearchParams();
     const wsId = params?.workspace_id ?? _workspaceId;
     if (wsId) search.set("workspace_id", wsId);
+    if (params?.approval_status) search.set("approval_status", params.approval_status);
     return apiFetch(`/api/runtimes?${search}`);
+  },
+
+  async get(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}`);
+  },
+
+  async createJoinToken(workspaceId: string, body?: CreateRuntimeJoinTokenRequest): Promise<CreateRuntimeJoinTokenResponse> {
+    return apiFetch(`/api/workspaces/${workspaceId}/runtime-join-tokens`, {
+      method: "POST",
+      body: JSON.stringify(body ?? {}),
+    });
+  },
+
+  async listJoinTokens(workspaceId: string): Promise<RuntimeJoinToken[]> {
+    return apiFetch(`/api/workspaces/${workspaceId}/runtime-join-tokens`);
+  },
+
+  async getRuntimeAuditLogs(runtimeId: string, limit = 50): Promise<RuntimeAuditLog[]> {
+    return apiFetch(`/api/runtimes/${runtimeId}/audit-logs?limit=${limit}`);
+  },
+
+  async approve(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/approve`, { method: "POST" });
+  },
+
+  async reject(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/reject`, { method: "POST" });
+  },
+
+  async pause(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/pause`, { method: "POST" });
+  },
+
+  async resume(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/resume`, { method: "POST" });
+  },
+
+  async revoke(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/revoke`, { method: "POST" });
+  },
+
+  async drain(runtimeId: string): Promise<AgentRuntime> {
+    return apiFetch(`/api/runtimes/${runtimeId}/drain`, { method: "POST" });
   },
 
   async getUsage(runtimeId: string, params?: { days?: number }): Promise<RuntimeUsage[]> {
@@ -113,5 +163,12 @@ export const runtimesApi = {
 
   async getUpdateResult(runtimeId: string, updateId: string): Promise<RuntimeUpdate> {
     return apiFetch(`/api/runtimes/${runtimeId}/update/${updateId}`);
+  },
+
+  async registerWithJoinToken(body: RegisterRuntimeWithJoinTokenRequest): Promise<RegisterRuntimeWithJoinTokenResponse> {
+    return apiFetch("/api/daemon/register-with-join-token", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
   },
 };
