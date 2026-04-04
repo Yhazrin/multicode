@@ -21,22 +21,22 @@ export function LandingHeader({
         "inset-x-0 top-0 z-30",
         variant === "dark"
           ? "absolute bg-transparent"
-          : "border-b border-[#0a0d12]/8 bg-white",
+          : "border-b border-border bg-background",
       )}
     >
-      <div className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-4 sm:px-6 lg:px-8">
+      <nav className="mx-auto flex h-[76px] max-w-[1320px] items-center justify-between px-4 sm:px-6 lg:px-8" aria-label="Main navigation">
         <Link href="/" className="flex items-center gap-3">
           <MulticodeIcon
             className={cn(
               "size-5",
-              variant === "dark" ? "text-white" : "text-[#0a0d12]",
+              variant === "dark" ? "text-landing-dark-foreground" : "text-foreground",
             )}
             noSpin
           />
           <span
             className={cn(
               "text-[18px] font-semibold tracking-[0.04em] lowercase sm:text-[20px]",
-              variant === "dark" ? "text-white/92" : "text-[#0a0d12]",
+              variant === "dark" ? "text-landing-dark-foreground/90" : "text-foreground",
             )}
           >
             multicode
@@ -47,7 +47,7 @@ export function LandingHeader({
           <Link
             href={githubUrl}
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className={headerButtonClassName("ghost", variant)}
           >
             <GitHubMark className="size-3.5" />
@@ -60,7 +60,7 @@ export function LandingHeader({
             {user ? t.header.dashboard : t.header.login}
           </Link>
         </div>
-      </div>
+      </nav>
     </header>
   );
 }
