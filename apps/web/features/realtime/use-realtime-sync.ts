@@ -71,6 +71,10 @@ export function useRealtimeSync(ws: WSClient | null) {
         });
       },
       skill: () => void useWorkspaceStore.getState().refreshSkills(),
+      // Run events are page-specific — handled by useRunTimeline hook.
+      // No global store refresh needed, but register the prefix so onAny
+      // doesn't log warnings for unknown prefixes.
+      run: () => {},
     };
 
     const timers = new Map<string, ReturnType<typeof setTimeout>>();

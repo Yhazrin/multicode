@@ -12,6 +12,7 @@ export { tasksApi, configureTasksApi } from "./tasks";
 export { agentsApi, configureAgentsApi } from "./agents";
 export { runtimesApi, configureRuntimesApi } from "./runtimes";
 export { skillsApi, configureSkillsApi } from "./skills";
+export { runsApi, configureRunsApi } from "./runs";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "";
 

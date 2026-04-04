@@ -61,7 +61,17 @@ export type WSEventType =
   | "task_dep:deleted"
   | "task:checkpoint"
   | "memory:stored"
-  | "memory:recalled";
+  | "memory:recalled"
+  | "run:created"
+  | "run:started"
+  | "run:phase_changed"
+  | "run:completed"
+  | "run:failed"
+  | "run:cancelled"
+  | "run:step_started"
+  | "run:step_completed"
+  | "run:todo_created"
+  | "run:todo_updated";
 
 export interface WSMessage<T = unknown> {
   type: WSEventType;
@@ -353,4 +363,90 @@ export interface AgentSessionStartPayload {
   task_id: string;
   issue_id: string;
   session_id: string;
+}
+
+// --- Run lifecycle event payloads ---
+
+export interface RunCreatedPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunStartedPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunPhaseChangedPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunCompletedPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunFailedPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunCancelledPayload {
+  run_id: string;
+  phase: string;
+  status: string;
+  agent_id?: string;
+  issue_id?: string;
+  task_id?: string;
+}
+
+export interface RunStepStartedPayload {
+  run_id: string;
+  step_id: string;
+  seq: number;
+  tool_name: string;
+  is_error: boolean;
+}
+
+export interface RunStepCompletedPayload {
+  run_id: string;
+  step_id: string;
+  tool_name: string;
+  is_error: boolean;
+}
+
+export interface RunTodoCreatedPayload {
+  run_id: string;
+  todo_id: string;
+  seq: number;
+  title: string;
+  status: string;
+}
+
+export interface RunTodoUpdatedPayload {
+  run_id: string;
+  todo_id: string;
+  status: string;
+  blocker?: string;
 }

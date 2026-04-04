@@ -24,6 +24,7 @@ import { ActorAvatar } from "@/components/common/actor-avatar";
 import type { UpdateIssueRequest } from "@/shared/types";
 import { AgentLiveCard, TaskRunHistory } from "./agent-live-card";
 import { CollaborationPanel } from "./collaboration-panel";
+import { RunTimeline } from "./run-timeline";
 import { api } from "@/shared/api";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore, useActorName } from "@/features/workspace";
@@ -436,6 +437,11 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
             {/* Agent execution history */}
             <div className="mt-3">
               <TaskRunHistory issueId={id} />
+            </div>
+
+            {/* Agent run timeline */}
+            <div className="mt-3">
+              <RunTimeline issueId={id} />
             </div>
 
             {/* Collaboration panel (messages, dependencies, checkpoints) */}
