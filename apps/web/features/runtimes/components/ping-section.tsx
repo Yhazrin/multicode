@@ -84,16 +84,16 @@ export function PingSection({ runtimeId }: { runtimeId: string }) {
           disabled={testing}
         >
           {testing ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
-            <Zap className="h-3 w-3" />
+            <Zap className="h-3 w-3" aria-hidden="true" />
           )}
           {testing ? "Testing..." : "Test Connection"}
         </Button>
 
         {config && Icon && (
           <span className={`inline-flex items-center gap-1 text-xs ${config.color}`}>
-            <Icon className={`h-3 w-3 ${isActive ? "animate-spin" : ""}`} />
+            <Icon className={`h-3 w-3 ${isActive ? "animate-spin" : ""}`} aria-hidden="true" />
             {config.label}
             {durationMs != null && (
               <span className="text-muted-foreground">
