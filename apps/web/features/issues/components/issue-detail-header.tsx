@@ -126,6 +126,7 @@ function IssueDetailHeaderImpl({
                     className="text-muted-foreground"
                     disabled={!prevIssueId}
                     onClick={() => prevIssueId && router.push(`/issues/${prevIssueId}`)}
+                    aria-label="Previous issue"
                   >
                     <ChevronLeft className="h-4 w-4" />
                   </Button>
@@ -145,6 +146,7 @@ function IssueDetailHeaderImpl({
                     className="text-muted-foreground"
                     disabled={!nextIssueId}
                     onClick={() => nextIssueId && router.push(`/issues/${nextIssueId}`)}
+                    aria-label="Next issue"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </Button>
@@ -157,7 +159,7 @@ function IssueDetailHeaderImpl({
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
-              <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
+              <Button variant="ghost" size="icon-xs" className="text-muted-foreground" aria-label="Issue actions">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             }
@@ -305,6 +307,7 @@ function IssueDetailHeaderImpl({
                 variant={sidebarOpen ? "secondary" : "ghost"}
                 size="icon-xs"
                 className={sidebarOpen ? "" : "text-muted-foreground"}
+                aria-label="Toggle sidebar"
                 onClick={() => {
                   const panel = sidebarRef.current;
                   if (!panel) return;
