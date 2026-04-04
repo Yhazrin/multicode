@@ -30,7 +30,17 @@ import {
   Settings,
   Camera,
   Archive,
+  Search,
+  Sparkles,
+  ChevronRight,
 } from "lucide-react";
+import {
+  PRESET_AGENTS,
+  PRESET_CATEGORIES,
+  searchPresets,
+  getPresetsByCategory,
+  type PresetAgent,
+} from "@/shared/data/preset-agents";
 import type {
   Agent,
   AgentStatus,
@@ -115,6 +125,37 @@ function getRuntimeDevice(agent: Agent, runtimes: RuntimeDevice[]): RuntimeDevic
 // Create Agent Dialog
 // ---------------------------------------------------------------------------
 
+function PresetAgentCard({
+  preset,
+  onSelect,
+}: {
+  preset: PresetAgent;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      onClick={onSelect}
+      className="flex w-full items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:bg-accent/50 hover:border-primary/30"
+    >
+      <div
+        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-xs font-bold"
+        style={{
+          backgroundColor: `var(--${preset.color === "gold" ? "amber" : preset.color}, hsl(var(--primary)))`,
+          color: "white",
+          opacity: 0.9,
+        }}
+      >
+        <Sparkles className="h-4 w-4" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium truncate">{preset.name}</div>
+        <div className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{preset.description}</div>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground mt-1" />
+    </button>
+  );
+}
+
 function CreateAgentDialog({
   runtimes,
   onClose,
@@ -124,12 +165,17 @@ function CreateAgentDialog({
   onClose: () => void;
   onCreate: (data: CreateAgentRequest) => Promise<void>;
 }) {
+  const [mode, setMode] = useState<"preset" | "custom">("preset");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [instructions, setInstructions] = useState("");
   const [selectedRuntimeId, setSelectedRuntimeId] = useState(runtimes[0]?.id ?? "");
   const [visibility, setVisibility] = useState<AgentVisibility>("private");
   const [creating, setCreating] = useState(false);
   const [runtimeOpen, setRuntimeOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedPreset, setSelectedPreset] = useState<PresetAgent | null>(null);
 
   useEffect(() => {
     if (!selectedRuntimeId && runtimes[0]) {
@@ -139,6 +185,24 @@ function CreateAgentDialog({
 
   const selectedRuntime = runtimes.find((d) => d.id === selectedRuntimeId) ?? null;
 
+  const filteredPresets = useMemo(() => {
+    if (searchQuery.trim()) {
+      return searchPresets(searchQuery);
+    }
+    if (selectedCategory) {
+      return getPresetsByCategory(selectedCategory);
+    }
+    return PRESET_AGENTS;
+  }, [searchQuery, selectedCategory]);
+
+  const handleSelectPreset = (preset: PresetAgent) => {
+    setSelectedPreset(preset);
+    setName(preset.name);
+    setDescription(preset.description);
+    setInstructions(preset.instructions);
+    setMode("custom");
+  };
+
   const handleSubmit = async () => {
     if (!name.trim() || !selectedRuntime) return;
     setCreating(true);
@@ -146,6 +210,7 @@ function CreateAgentDialog({
       await onCreate({
         name: name.trim(),
         description: description.trim(),
+        instructions: instructions.trim() || undefined,
         runtime_id: selectedRuntime.id,
         visibility,
         triggers: [
@@ -162,155 +227,254 @@ function CreateAgentDialog({
 
   return (
     <Dialog open onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className={mode === "preset" ? "sm:max-w-lg" : "sm:max-w-md"}>
         <DialogHeader>
-          <DialogTitle>Create Agent</DialogTitle>
+          <DialogTitle>
+            {mode === "preset" ? "Create Agent" : selectedPreset ? `Create: ${selectedPreset.name}` : "Create Agent"}
+          </DialogTitle>
           <DialogDescription>
-            Create a new AI agent for your workspace.
+            {mode === "preset"
+              ? "Choose a preset template or create from scratch."
+              : "Configure your new AI agent."}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div>
-            <Label className="text-xs text-muted-foreground">Name</Label>
-            <Input
-              autoFocus
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g. Deep Research Agent"
-              className="mt-1"
-              onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-            />
-          </div>
+        {mode === "preset" ? (
+          /* Preset selection view */
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search presets..."
+                className="pl-9"
+              />
+            </div>
 
-          <div>
-            <Label className="text-xs text-muted-foreground">Description</Label>
-            <Input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="What does this agent do?"
-              className="mt-1"
-            />
-          </div>
-
-          <div>
-            <Label className="text-xs text-muted-foreground">Visibility</Label>
-            <div className="mt-1.5 flex gap-2">
+            {/* Category filters */}
+            <div className="flex flex-wrap gap-1.5">
               <button
-                type="button"
-                onClick={() => setVisibility("workspace")}
-                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                  visibility === "workspace"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted"
+                onClick={() => setSelectedCategory(null)}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                  selectedCategory === null
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
                 }`}
               >
-                <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="text-left">
-                  <div className="font-medium">Workspace</div>
-                  <div className="text-xs text-muted-foreground">All members can assign</div>
-                </div>
+                All ({PRESET_AGENTS.length})
               </button>
+              {PRESET_CATEGORIES.map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                    selectedCategory === cat.id
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+                >
+                  {cat.label} ({cat.count})
+                </button>
+              ))}
+            </div>
+
+            {/* Preset list */}
+            <div className="max-h-[400px] overflow-y-auto space-y-1.5 pr-1">
+              {filteredPresets.length === 0 ? (
+                <div className="py-8 text-center text-sm text-muted-foreground">
+                  No presets found
+                </div>
+              ) : (
+                filteredPresets.map((preset) => (
+                  <PresetAgentCard
+                    key={preset.id}
+                    preset={preset}
+                    onSelect={() => handleSelectPreset(preset)}
+                  />
+                ))
+              )}
+            </div>
+
+            <DialogFooter>
+              <Button variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button variant="outline" onClick={() => setMode("custom")}>
+                Create from scratch
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
+          /* Custom / configured view */
+          <div className="space-y-4">
+            {selectedPreset && (
               <button
-                type="button"
-                onClick={() => setVisibility("private")}
-                className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                  visibility === "private"
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:bg-muted"
-                }`}
+                onClick={() => { setMode("preset"); setSelectedPreset(null); }}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <div className="text-left">
-                  <div className="font-medium">Private</div>
-                  <div className="text-xs text-muted-foreground">Only you can assign</div>
-                </div>
+                ← Back to presets
               </button>
+            )}
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Name</Label>
+              <Input
+                autoFocus={!selectedPreset}
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Deep Research Agent"
+                className="mt-1"
+                onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Description</Label>
+              <Input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="What does this agent do?"
+                className="mt-1"
+              />
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Instructions</Label>
+              <textarea
+                value={instructions}
+                onChange={(e) => setInstructions(e.target.value)}
+                placeholder="Define this agent's identity and working style..."
+                className="mt-1 flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring min-h-[120px] resize-y"
+              />
+              {instructions.length > 0 && (
+                <div className="mt-1 text-xs text-muted-foreground">{instructions.length} characters</div>
+              )}
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Visibility</Label>
+              <div className="mt-1.5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setVisibility("workspace")}
+                  className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                    visibility === "workspace"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <Globe className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="text-left">
+                    <div className="font-medium">Workspace</div>
+                    <div className="text-xs text-muted-foreground">All members can assign</div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setVisibility("private")}
+                  className={`flex flex-1 items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                    visibility === "private"
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  <div className="text-left">
+                    <div className="font-medium">Private</div>
+                    <div className="text-xs text-muted-foreground">Only you can assign</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <Label className="text-xs text-muted-foreground">Runtime</Label>
+              <Popover open={runtimeOpen} onOpenChange={setRuntimeOpen}>
+                <PopoverTrigger
+                  disabled={runtimes.length === 0}
+                  className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
+                >
+                  {selectedRuntime?.runtime_mode === "cloud" ? (
+                    <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium">
+                        {selectedRuntime?.name ?? "No runtime available"}
+                      </span>
+                      {selectedRuntime?.runtime_mode === "cloud" && (
+                        <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
+                          Cloud
+                        </span>
+                      )}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {selectedRuntime?.device_info ?? "Register a runtime before creating an agent"}
+                    </div>
+                  </div>
+                  <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[var(--anchor-width)] p-1 max-h-60 overflow-y-auto">
+                  {runtimes.map((device) => (
+                    <button
+                      key={device.id}
+                      onClick={() => {
+                        setSelectedRuntimeId(device.id);
+                        setRuntimeOpen(false);
+                      }}
+                      className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
+                        device.id === selectedRuntimeId ? "bg-accent" : "hover:bg-accent/50"
+                      }`}
+                    >
+                      {device.runtime_mode === "cloud" ? (
+                        <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      ) : (
+                        <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate font-medium">{device.name}</span>
+                          {device.runtime_mode === "cloud" && (
+                            <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
+                              Cloud
+                            </span>
+                          )}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">{device.device_info}</div>
+                      </div>
+                      <span
+                        className={`h-2 w-2 shrink-0 rounded-full ${
+                          device.status === "online" ? "bg-success" : "bg-muted-foreground/40"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
+        )}
 
-          <div>
-            <Label className="text-xs text-muted-foreground">Runtime</Label>
-            <Popover open={runtimeOpen} onOpenChange={setRuntimeOpen}>
-              <PopoverTrigger
-                disabled={runtimes.length === 0}
-                className="flex w-full items-center gap-3 rounded-lg border border-border bg-background px-3 py-2.5 mt-1.5 text-left text-sm transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-50"
-              >
-                {selectedRuntime?.runtime_mode === "cloud" ? (
-                  <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
-                ) : (
-                  <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium">
-                      {selectedRuntime?.name ?? "No runtime available"}
-                    </span>
-                    {selectedRuntime?.runtime_mode === "cloud" && (
-                      <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
-                        Cloud
-                      </span>
-                    )}
-                  </div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {selectedRuntime?.device_info ?? "Register a runtime before creating an agent"}
-                  </div>
-                </div>
-                <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${runtimeOpen ? "rotate-180" : ""}`} />
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-[var(--anchor-width)] p-1 max-h-60 overflow-y-auto">
-                {runtimes.map((device) => (
-                  <button
-                    key={device.id}
-                    onClick={() => {
-                      setSelectedRuntimeId(device.id);
-                      setRuntimeOpen(false);
-                    }}
-                    className={`flex w-full items-center gap-3 rounded-md px-3 py-2.5 text-left text-sm transition-colors ${
-                      device.id === selectedRuntimeId ? "bg-accent" : "hover:bg-accent/50"
-                    }`}
-                  >
-                    {device.runtime_mode === "cloud" ? (
-                      <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <Monitor className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate font-medium">{device.name}</span>
-                        {device.runtime_mode === "cloud" && (
-                          <span className="shrink-0 rounded bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info">
-                            Cloud
-                          </span>
-                        )}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">{device.device_info}</div>
-                    </div>
-                    <span
-                      className={`h-2 w-2 shrink-0 rounded-full ${
-                        device.status === "online" ? "bg-success" : "bg-muted-foreground/40"
-                      }`}
-                    />
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={creating || !name.trim() || !selectedRuntime}
-          >
-            {creating ? "Creating..." : "Create"}
-          </Button>
-        </DialogFooter>
+        {mode === "custom" && (
+          <DialogFooter>
+            <Button variant="ghost" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={creating || !name.trim() || !selectedRuntime}
+            >
+              {creating ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   );
