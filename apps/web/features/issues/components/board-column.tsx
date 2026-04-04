@@ -94,7 +94,7 @@ export function BoardColumn({
       <div
         ref={setNodeRef}
         className={`min-h-[200px] flex-1 space-y-2 overflow-y-auto rounded-lg p-1 transition-colors ${
-          isOver ? "bg-accent/60" : ""
+          isOver ? "bg-accent/80 ring-1 ring-inset ring-primary/20" : ""
         }`}
       >
         <SortableContext items={sortedIds} strategy={verticalListSortingStrategy}>

@@ -52,6 +52,7 @@ export function useRealtimeSync(ws: WSClient | null) {
       inbox: () => void useInboxStore.getState().fetch(),
       agent: () => void useWorkspaceStore.getState().refreshAgents(),
       member: () => void useWorkspaceStore.getState().refreshMembers(),
+      task: () => void useIssueStore.getState().fetch(),
       workspace: () => {
         // Lightweight: only re-fetch workspace list, don't hydrate everything.
         // workspace:deleted is handled by a precise side-effect handler below.

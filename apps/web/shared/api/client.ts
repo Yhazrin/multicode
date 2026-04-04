@@ -44,6 +44,8 @@ import type {
   AgentMemory,
   StoreMemoryRequest,
   RecallMemoryRequest,
+  ChainTaskRequest,
+  SubmitReviewRequest,
 } from "@/shared/types";
 import { type Logger, noopLogger } from "@/shared/logger";
 
@@ -696,6 +698,22 @@ export class ApiClient {
 
   async recallWorkspaceMemory(data: RecallMemoryRequest): Promise<AgentMemory[]> {
     return this.fetch("/api/workspace/memory/recall", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Task Chaining
+  async chainTask(taskId: string, data: ChainTaskRequest): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}/chain`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Task Review
+  async submitReview(taskId: string, data: SubmitReviewRequest): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}/review`, {
       method: "POST",
       body: JSON.stringify(data),
     });

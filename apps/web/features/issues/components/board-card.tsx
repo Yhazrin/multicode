@@ -64,8 +64,16 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showDueDate = storeProperties.dueDate && issue.due_date;
   const showBottom = showAssignee || showDueDate;
 
+  const priorityBorder: Record<string, string> = {
+    urgent: "border-l-destructive",
+    high: "border-l-warning",
+    medium: "border-l-warning/50",
+    low: "border-l-info/40",
+  };
+  const borderClass = priorityBorder[issue.priority] ?? "";
+
   return (
-    <div className="rounded-lg border bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
+    <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
       {/* Row 1: Identifier */}
       <p className="text-xs text-muted-foreground">{issue.identifier}</p>
 
