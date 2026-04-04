@@ -174,7 +174,7 @@ function TeammatesVisual() {
 
       <div className="flex h-[calc(100%-40px)]">
         {/* Main content area */}
-        <div className="flex-1 overflow-hidden px-8 py-5">
+        <div className="flex-1 overflow-hidden px-4 py-4 sm:px-8 sm:py-5">
           <h3 className="text-lg font-bold leading-snug tracking-tight">
             Refactor API error handling middleware
           </h3>
@@ -227,7 +227,7 @@ function TeammatesVisual() {
         </div>
 
         {/* Properties sidebar */}
-        <div className="w-[220px] shrink-0 overflow-hidden border-l">
+        <div className="hidden sm:block w-[220px] shrink-0 overflow-hidden border-l">
           <div className="p-4 space-y-4">
             <div>
               <div className="flex items-center gap-1 text-xs font-medium mb-2">
@@ -240,6 +240,8 @@ function TeammatesVisual() {
                   <PropRow label="Status">
                     <button
                       className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                      aria-expanded={statusOpen}
+                      aria-haspopup="listbox"
                       onClick={() => { setStatusOpen(!statusOpen); setPriorityOpen(false); }}
                     >
                       <StatusIcon status={status} className="h-3.5 w-3.5 shrink-0" />
@@ -252,7 +254,7 @@ function TeammatesVisual() {
                         <button
                           key={s}
                           className={cn(
-                            "flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors",
+                            "flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             s === status && "bg-accent",
                           )}
                           onClick={() => { setStatus(s); setStatusOpen(false); }}
@@ -271,6 +273,8 @@ function TeammatesVisual() {
                   <PropRow label="Priority">
                     <button
                       className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                      aria-expanded={priorityOpen}
+                      aria-haspopup="listbox"
                       onClick={() => { setPriorityOpen(!priorityOpen); setStatusOpen(false); }}
                     >
                       <PriorityIcon priority={priority} />
@@ -283,7 +287,7 @@ function TeammatesVisual() {
                         <button
                           key={p}
                           className={cn(
-                            "flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors",
+                            "flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                             p === priority && "bg-accent",
                           )}
                           onClick={() => { setPriority(p); setPriorityOpen(false); }}
@@ -301,6 +305,8 @@ function TeammatesVisual() {
                 <PropRow label="Assignee">
                   <button
                     className="flex items-center gap-1.5 cursor-pointer rounded px-1 -mx-1 hover:bg-accent/30 transition-colors"
+                    aria-expanded={pickerOpen}
+                    aria-haspopup="listbox"
                     onClick={() => { setPickerOpen(!pickerOpen); setStatusOpen(false); setPriorityOpen(false); }}
                   >
                     {assignee.type ? (
@@ -325,7 +331,7 @@ function TeammatesVisual() {
                 <div className="p-1">
                   <button
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors",
+                      "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs text-muted-foreground hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       !assignee.type && "bg-accent",
                     )}
                     onClick={() => { setAssignee(allAssignees[0]!); setPickerOpen(false); }}
@@ -343,7 +349,7 @@ function TeammatesVisual() {
                     <button
                       key={m.id}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs hover:bg-accent transition-colors",
+                        "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         assignee.id === m.id && "bg-accent",
                       )}
                       onClick={() => { setAssignee(m); setPickerOpen(false); }}
@@ -362,7 +368,7 @@ function TeammatesVisual() {
                     <button
                       key={a.id}
                       className={cn(
-                        "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs hover:bg-accent transition-colors",
+                        "flex w-full items-center gap-2 rounded-sm px-2 py-1 text-xs hover:bg-accent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                         assignee.id === a.id && "bg-accent",
                       )}
                       onClick={() => { setAssignee(a); setPickerOpen(false); }}
@@ -423,7 +429,7 @@ function AutonomousVisual() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-hidden px-8 py-5">
+      <div className="flex-1 overflow-hidden px-4 py-4 sm:px-8 sm:py-5">
         {/* Agent live card */}
         <div className="rounded-lg border border-info/20 bg-info/5">
           {/* Live card header */}
@@ -432,7 +438,7 @@ function AutonomousVisual() {
               <Bot className="h-3 w-3" />
             </div>
             <div className="flex items-center gap-1.5 text-xs font-medium">
-              <Loader2 className="h-3 w-3 animate-spin text-info" />
+              <Loader2 className="h-3 w-3 animate-spin text-info" aria-hidden="true" />
               Agent is working
             </div>
             <span className="ml-auto text-xs tabular-nums text-muted-foreground">7m 17s</span>
@@ -448,7 +454,7 @@ function AutonomousVisual() {
                 return (
                   <button
                     key={i}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-info/5 transition-colors"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-info/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setExpanded(isExpanded ? null : i)}
                   >
                     <ChevronRight className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
@@ -462,7 +468,7 @@ function AutonomousVisual() {
                 return (
                   <button
                     key={i}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-info/5 transition-colors"
+                    className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-info/5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setExpanded(isExpanded ? null : i)}
                   >
                     <ChevronRight className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
@@ -476,7 +482,7 @@ function AutonomousVisual() {
               return (
                 <button
                   key={i}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 transition-colors"
+                  className="flex w-full items-center gap-2 rounded px-2 py-1 text-xs hover:bg-accent/50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   onClick={() => setExpanded(isExpanded ? null : i)}
                 >
                   <ChevronRight className={cn("h-3 w-3 shrink-0 text-muted-foreground transition-transform", isExpanded && "rotate-90")} />
@@ -497,7 +503,7 @@ function AutonomousVisual() {
                 {task.status === "completed" ? (
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />
                 ) : (
-                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-info" />
+                  <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-info" aria-hidden="true" />
                 )}
                 <span className={task.status === "running" ? "font-medium" : "text-muted-foreground"}>
                   {task.title}
@@ -538,7 +544,7 @@ function SkillsVisual() {
     <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
       <div className="flex h-full">
         {/* Skills list panel */}
-        <div className="w-[200px] shrink-0 border-r flex flex-col">
+        <div className="hidden sm:block w-[200px] shrink-0 border-r flex flex-col">
           <div className="flex items-center justify-between border-b px-3 py-2">
             <span className="text-xs font-semibold">Skills</span>
             <button className="rounded p-0.5 text-muted-foreground hover:bg-accent transition-colors">
@@ -550,7 +556,7 @@ function SkillsVisual() {
               <button
                 key={skill.name}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors",
+                  "flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   i === selectedSkill ? "bg-accent" : "hover:bg-accent/50",
                 )}
                 onClick={() => setSelectedSkill(i)}
@@ -579,7 +585,7 @@ function SkillsVisual() {
           {/* File browser */}
           <div className="flex flex-1 min-h-0">
             {/* File tree */}
-            <div className="w-44 shrink-0 border-r">
+            <div className="hidden sm:block w-44 shrink-0 border-r">
               <div className="flex items-center justify-between border-b px-3 py-1.5">
                 <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Files</span>
               </div>
@@ -588,7 +594,7 @@ function SkillsVisual() {
                   <button
                     key={f.name}
                     className={cn(
-                      "flex w-full items-center gap-1.5 py-1 text-xs transition-colors",
+                      "flex w-full items-center gap-1.5 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                       selectedFile === f.name && !f.isDir ? "bg-accent text-accent-foreground" : "hover:bg-accent/50",
                     )}
                     style={{ paddingLeft: f.isDir ? f.depth * 12 + 8 : f.depth * 12 + 24 }}
@@ -703,11 +709,11 @@ const mockUsageData = USAGE_SEEDS.map((s, i) => ({
 /* Heatmap color helper — same as real ActivityHeatmap */
 function getHeatmapColor(level: number): string {
   const colors = [
-    "var(--color-muted, hsl(var(--muted)))",
-    "hsl(var(--chart-3) / 0.3)",
-    "hsl(var(--chart-3) / 0.5)",
-    "hsl(var(--chart-3) / 0.75)",
-    "hsl(var(--chart-3) / 1)",
+    "var(--color-muted)",
+    "color-mix(in oklch, var(--chart-3) 30%, transparent)",
+    "color-mix(in oklch, var(--chart-3) 50%, transparent)",
+    "color-mix(in oklch, var(--chart-3) 75%, transparent)",
+    "var(--chart-3)",
   ];
   return colors[level] ?? colors[0]!;
 }
@@ -756,7 +762,7 @@ function DailyCostBars({ data }: { data: typeof mockUsageData }) {
   const barW = 100 / data.length;
   const chartH = 64;
   return (
-    <svg viewBox={`0 0 ${data.length * 10} ${chartH}`} className="h-[72px] w-full" preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${data.length * 10} ${chartH}`} className="h-[72px] w-full" preserveAspectRatio="none" aria-hidden="true">
       {costs.map((cost, i) => {
         const h = maxCost > 0 ? (cost / maxCost) * (chartH - 4) : 0;
         return (
@@ -767,7 +773,7 @@ function DailyCostBars({ data }: { data: typeof mockUsageData }) {
             width={8}
             height={Math.max(h, 2)}
             rx={1}
-            fill="hsl(var(--chart-1))"
+            fill="var(--chart-1)"
           />
         );
       })}
@@ -805,7 +811,7 @@ function RuntimesVisual() {
     <div className="relative aspect-video overflow-hidden rounded-lg border bg-background text-foreground shadow-2xl">
       <div className="flex h-full">
         {/* Runtime list */}
-        <div className="w-[200px] shrink-0 border-r flex flex-col">
+        <div className="hidden sm:block w-[200px] shrink-0 border-r flex flex-col">
           <div className="flex items-center justify-between border-b px-3 py-2">
             <span className="text-xs font-semibold">Runtimes</span>
           </div>
@@ -814,7 +820,7 @@ function RuntimesVisual() {
               <button
                 key={rt.name}
                 className={cn(
-                  "flex w-full items-center gap-2.5 px-3 py-2.5 transition-colors",
+                  "flex w-full items-center gap-2.5 px-3 py-2.5 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
                   i === selectedRuntime ? "bg-accent" : "hover:bg-accent/50",
                 )}
                 onClick={() => setSelectedRuntime(i)}
@@ -869,7 +875,7 @@ function RuntimesVisual() {
                     key={range}
                     onClick={() => setTimeRange(range)}
                     className={cn(
-                      "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors",
+                      "rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       timeRange === range
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-accent",
@@ -882,7 +888,7 @@ function RuntimesVisual() {
             </div>
 
             {/* Token summary cards — same as real TokenCard */}
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
                 { label: "Input", value: formatTokens(totals.input) },
                 { label: "Output", value: formatTokens(totals.output) },
@@ -897,12 +903,12 @@ function RuntimesVisual() {
             </div>
 
             {/* Charts row — Heatmap + Hourly bar */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               {/* Activity Heatmap — mirrors real ActivityHeatmap */}
               <div className="rounded-lg border p-3">
                 <h4 className="text-[10px] font-medium text-muted-foreground mb-2">Activity</h4>
                 <div className="overflow-x-auto">
-                  <svg width={svgWidth} height={svgHeight} className="block">
+                  <svg width={svgWidth} height={svgHeight} className="block" aria-hidden="true">
                     {["", "Mon", "", "Wed", "", "Fri", ""].map((label, i) =>
                       label ? (
                         <text key={i} x={0} y={12 + i * (CELL_SIZE + CELL_GAP) + CELL_SIZE - 2} className="fill-muted-foreground" fontSize={8}>
@@ -994,7 +1000,7 @@ export function FeaturesSection() {
   };
 
   return (
-    <section id="features" className="bg-white text-[#0a0d12]">
+    <section id="features" className="bg-background text-foreground">
       <div className="mx-auto max-w-[1320px] px-4 sm:px-6 lg:px-8">
         <div className="relative lg:flex lg:gap-20">
           {/* Sticky left nav */}
@@ -1004,17 +1010,18 @@ export function FeaturesSection() {
                 <button
                   key={f.label}
                   onClick={() => scrollToPanel(i)}
+                  aria-current={i === activeIndex ? "true" : undefined}
                   className={cn(
                     "group flex items-center gap-3 rounded-lg px-4 py-3 text-left text-[11px] font-semibold tracking-[0.12em] transition-colors",
                     i === activeIndex
-                      ? "text-[#0a0d12]"
-                      : "text-[#0a0d12]/36 hover:text-[#0a0d12]/60",
+                      ? "text-foreground"
+                      : "text-muted-foreground/60 hover:text-muted-foreground",
                   )}
                 >
                   <span
                     className={cn(
                       "size-2 shrink-0 rounded-full transition-colors",
-                      i === activeIndex ? "bg-[#0a0d12]" : "bg-transparent",
+                      i === activeIndex ? "bg-foreground" : "bg-transparent",
                     )}
                   />
                   {f.label}
@@ -1034,14 +1041,14 @@ export function FeaturesSection() {
                 data-index={i}
                 className={cn(
                   "py-20 lg:py-28",
-                  i < features.length - 1 && "border-b border-[#0a0d12]/8",
+                  i < features.length - 1 && "border-b border-border",
                 )}
               >
                 {/* Title + description */}
-                <h2 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] text-[#0a0d12] sm:text-[3.4rem] lg:text-[4.2rem]">
+                <h2 className="font-[family-name:var(--font-serif)] text-[2.6rem] leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[3.4rem] lg:text-[4.2rem]">
                   {feature.title}
                 </h2>
-                <p className="mt-5 max-w-[640px] text-[15px] leading-7 text-[#0a0d12]/60 sm:text-[16px]">
+                <p className="mt-5 max-w-[640px] text-[15px] leading-7 text-muted-foreground sm:text-[16px]">
                   {feature.description}
                 </p>
 
@@ -1062,14 +1069,14 @@ export function FeaturesSection() {
                       </div>
                     </div>
                   ) : (
-                    <div className="relative overflow-hidden border border-[#0a0d12]/8 bg-[#f5f5f5]">
+                    <div className="relative overflow-hidden border border-border bg-muted">
                       <div className="aspect-[16/9] w-full" />
                       <div className="absolute inset-0 flex items-center justify-center">
                         <div className="flex flex-col items-center gap-4 text-center">
-                          <div className="grid size-14 place-items-center rounded-2xl border border-[#0a0d12]/8 bg-white shadow-sm">
-                            <ImageIcon className="size-6 text-[#0a0d12]/30" />
+                          <div className="grid size-14 place-items-center rounded-2xl border border-border bg-background shadow-sm">
+                            <ImageIcon className="size-6 text-muted-foreground/50" />
                           </div>
-                          <p className="text-[13px] text-[#0a0d12]/36">
+                          <p className="text-[13px] text-muted-foreground/60">
                             {feature.label.toLowerCase()} visual
                           </p>
                         </div>
@@ -1082,10 +1089,10 @@ export function FeaturesSection() {
                 <div className="mt-14 grid gap-8 sm:mt-18 md:grid-cols-3 md:gap-10">
                   {feature.cards.map((card) => (
                     <div key={card.title}>
-                      <h3 className="text-[15px] font-semibold leading-snug text-[#0a0d12] sm:text-[16px]">
+                      <h3 className="text-[15px] font-semibold leading-snug text-foreground sm:text-[16px]">
                         {card.title}
                       </h3>
-                      <p className="mt-2.5 text-[14px] leading-[1.7] text-[#0a0d12]/56 sm:text-[15px]">
+                      <p className="mt-2.5 text-[14px] leading-[1.7] text-muted-foreground sm:text-[15px]">
                         {card.description}
                       </p>
                     </div>

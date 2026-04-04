@@ -224,8 +224,8 @@ const CommentRow = memo(function CommentRow({
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button aria-label="Comment actions" variant="ghost" size="icon-xs" className="text-muted-foreground">
+                  <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                 </Button>
               }
             />
@@ -234,19 +234,19 @@ const CommentRow = memo(function CommentRow({
                 copyMarkdown(entry.content ?? "");
                 toast.success("Copied");
               }}>
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                 Copy
               </DropdownMenuItem>
               {isOwn && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={startEdit}>
-                    <Pencil className="h-3.5 w-3.5" />
+                    <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                     Edit
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setConfirmDelete(true)} variant="destructive">
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                     Delete
                   </DropdownMenuItem>
                 </>
@@ -388,8 +388,8 @@ const CommentCard = memo(function CommentCard({
         {/* Header — always visible, acts as toggle */}
         <div className="px-4 py-3">
           <div className="flex items-center gap-2.5">
-            <CollapsibleTrigger className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-              <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")} />
+            <CollapsibleTrigger aria-label={open ? "Collapse comment" : "Expand comment"} className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+              <ChevronRight className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-90")} aria-hidden="true" />
             </CollapsibleTrigger>
             <ActorAvatar actorType={entry.actor_type} actorId={entry.actor_id} size={24} />
             <span className="shrink-0 text-sm font-medium">
@@ -428,8 +428,8 @@ const CommentCard = memo(function CommentCard({
               <DropdownMenu>
                 <DropdownMenuTrigger
                   render={
-                    <Button variant="ghost" size="icon-xs" className="text-muted-foreground">
-                      <MoreHorizontal className="h-4 w-4" />
+                    <Button aria-label="Comment actions" variant="ghost" size="icon-xs" className="text-muted-foreground">
+                      <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
                     </Button>
                   }
                 />
@@ -438,19 +438,19 @@ const CommentCard = memo(function CommentCard({
                     copyMarkdown(entry.content ?? "");
                     toast.success("Copied");
                   }}>
-                    <Copy className="h-3.5 w-3.5" />
+                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                     Copy
                   </DropdownMenuItem>
                   {isOwn && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={startEdit}>
-                        <Pencil className="h-3.5 w-3.5" />
+                        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
                         Edit
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setConfirmDelete(true)} variant="destructive">
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                         Delete
                       </DropdownMenuItem>
                     </>

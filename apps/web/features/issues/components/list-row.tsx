@@ -28,8 +28,8 @@ export const ListRow = memo(function ListRow({ issue }: { issue: Issue }) {
           checked={selected}
           aria-label={`Select issue ${issue.identifier}`}
           onChange={() => toggle(issue.id)}
-          className={`absolute inset-0 cursor-pointer accent-primary ${
-            selected ? "" : "hidden group-hover/row:block"
+          className={`absolute inset-0 cursor-pointer accent-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            selected ? "opacity-100" : "opacity-0 group-hover/row:opacity-100"
           }`}
         />
       </div>

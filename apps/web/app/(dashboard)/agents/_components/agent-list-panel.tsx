@@ -23,7 +23,8 @@ export function AgentListItem({
   return (
     <button
       onClick={onClick}
-      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+      aria-current={isSelected ? "true" : undefined}
+      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
       }`}
     >
@@ -33,9 +34,9 @@ export function AgentListItem({
         <div className="flex items-center gap-2">
           <span className={`truncate text-sm font-medium ${isArchived ? "text-muted-foreground" : ""}`}>{agent.name}</span>
           {agent.runtime_mode === "cloud" ? (
-            <Cloud className="h-3 w-3 text-muted-foreground" />
+            <Cloud className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           ) : (
-            <Monitor className="h-3 w-3 text-muted-foreground" />
+            <Monitor className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
           )}
         </div>
         <div className="flex items-center gap-1.5 mt-0.5">

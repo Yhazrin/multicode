@@ -157,7 +157,7 @@ function InboxListItem({
           onClick();
         }
       }}
-      className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer ${
+      className={`group flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         isSelected ? "bg-accent" : "hover:bg-accent/50"
       }`}
     >
@@ -181,14 +181,14 @@ function InboxListItem({
           <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              title="Archive"
+              aria-label="Archive"
               onClick={(e) => {
                 e.stopPropagation();
                 onArchive();
               }}
               className="hidden rounded p-0.5 text-muted-foreground hover:bg-accent hover:text-foreground group-hover:inline-flex"
             >
-              <Archive className="h-3.5 w-3.5" />
+              <Archive className="h-3.5 w-3.5" aria-hidden="true" />
             </button>
             {item.issue_status && (
               <StatusIcon status={item.issue_status} className="h-3.5 w-3.5 shrink-0" />
@@ -379,24 +379,24 @@ export default function InboxPage() {
                 />
               }
             >
-              <MoreHorizontal className="h-4 w-4" />
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-auto">
               <DropdownMenuItem onClick={handleMarkAllRead}>
-                <CheckCheck className="h-4 w-4" />
+                <CheckCheck className="h-4 w-4" aria-hidden="true" />
                 Mark all as read
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleArchiveAll}>
-                <Archive className="h-4 w-4" />
+                <Archive className="h-4 w-4" aria-hidden="true" />
                 Archive all
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleArchiveAllRead}>
-                <BookCheck className="h-4 w-4" />
+                <BookCheck className="h-4 w-4" aria-hidden="true" />
                 Archive all read
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleArchiveCompleted}>
-                <ListChecks className="h-4 w-4" />
+                <ListChecks className="h-4 w-4" aria-hidden="true" />
                 Archive completed
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -479,7 +479,7 @@ export default function InboxPage() {
                 size="sm"
                 onClick={() => handleArchive(selected.id)}
               >
-                <Archive className="mr-1.5 h-3.5 w-3.5" />
+                <Archive className="mr-1.5 h-3.5 w-3.5" aria-hidden="true" />
                 Archive
               </Button>
             </div>

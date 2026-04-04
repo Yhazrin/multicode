@@ -96,8 +96,9 @@ function InstructionsTab({
       <textarea
         value={value}
         onChange={(e) => setValue(e.target.value)}
+        aria-label="Agent instructions"
         placeholder={`Define this agent's role, expertise, and working style.\n\nExample:\nYou are a frontend engineer specializing in React and TypeScript.\n\n## Working Style\n- Write small, focused PRs — one commit per logical change\n- Prefer composition over inheritance\n- Always add unit tests for new components\n\n## Constraints\n- Do not modify shared/ types without explicit approval\n- Follow the existing component patterns in features/`}
-        className="w-full min-h-[300px] rounded-md border bg-transparent px-3 py-2 text-sm font-mono placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y"
+        className="w-full min-h-[300px] rounded-md border bg-transparent px-3 py-2 text-sm font-mono placeholder:text-muted-foreground/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-y"
       />
 
       <div className="flex items-center justify-between">
@@ -110,9 +111,9 @@ function InstructionsTab({
           disabled={!isDirty || saving}
         >
           {saving ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
+            <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
           ) : (
-            <Save className="h-3 w-3" />
+            <Save className="h-3 w-3" aria-hidden="true" />
           )}
           Save
         </Button>
@@ -161,8 +162,9 @@ function AddToolDialog({
 
         <div className="space-y-3">
           <div>
-            <Label className="text-xs text-muted-foreground">Tool Name</Label>
+            <Label htmlFor="tool-name" className="text-xs text-muted-foreground">Tool Name</Label>
             <Input
+              id="tool-name"
               autoFocus
               type="text"
               value={name}
@@ -173,8 +175,9 @@ function AddToolDialog({
             />
           </div>
           <div>
-            <Label className="text-xs text-muted-foreground">Description</Label>
+            <Label htmlFor="tool-description" className="text-xs text-muted-foreground">Description</Label>
             <Input
+              id="tool-description"
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
@@ -278,7 +281,7 @@ function ToolsTab({
               disabled={saving}
               size="xs"
             >
-              <Save className="h-3 w-3" />
+              <Save className="h-3 w-3" aria-hidden="true" />
               {saving ? "Saving..." : "Save"}
             </Button>
           )}
@@ -287,7 +290,7 @@ function ToolsTab({
             size="xs"
             onClick={() => setShowAdd(true)}
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3 w-3" aria-hidden="true" />
             Add Tool
           </Button>
         </div>
@@ -295,14 +298,14 @@ function ToolsTab({
 
       {tools.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
-          <Wrench className="h-8 w-8 text-muted-foreground/40" />
+          <Wrench className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
           <p className="mt-3 text-sm text-muted-foreground">No tools configured</p>
           <Button
             onClick={() => setShowAdd(true)}
             size="xs"
             className="mt-3"
           >
-            <Plus className="h-3 w-3" />
+            <Plus className="h-3 w-3" aria-hidden="true" />
             Add Tool
           </Button>
         </div>
@@ -315,11 +318,11 @@ function ToolsTab({
             >
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                 {tool.auth_type === "oauth" ? (
-                  <Link2 className="h-4 w-4 text-muted-foreground" />
+                  <Link2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 ) : tool.auth_type === "api_key" ? (
-                  <Key className="h-4 w-4 text-muted-foreground" />
+                  <Key className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 ) : (
-                  <Wrench className="h-4 w-4 text-muted-foreground" />
+                  <Wrench className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -346,10 +349,11 @@ function ToolsTab({
                 <Button
                   variant="ghost"
                   size="icon-xs"
+                  aria-label={`Remove ${tool.name}`}
                   onClick={() => removeTool(tool.id)}
                   className="text-muted-foreground hover:text-destructive"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -440,7 +444,7 @@ function TriggersTab({
               disabled={saving}
               size="xs"
             >
-              <Save className="h-3 w-3" />
+              <Save className="h-3 w-3" aria-hidden="true" />
               {saving ? "Saving..." : "Save"}
             </Button>
           )}
@@ -456,11 +460,11 @@ function TriggersTab({
             <div className="flex items-center gap-3">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
                 {trigger.type === "on_assign" ? (
-                  <Bot className="h-4 w-4 text-muted-foreground" />
+                  <Bot className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 ) : trigger.type === "on_comment" ? (
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                  <MessageSquare className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 ) : (
-                  <Timer className="h-4 w-4 text-muted-foreground" />
+                  <Timer className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
                 )}
               </div>
               <div className="min-w-0 flex-1">
@@ -481,24 +485,28 @@ function TriggersTab({
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  role="switch"
+                  aria-checked={trigger.enabled}
+                  aria-label={`${trigger.type === "on_assign" ? "On Issue Assign" : trigger.type === "on_comment" ? "On Comment" : "Scheduled"} trigger`}
                   onClick={() => toggleTrigger(trigger.id)}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${
+                  className={`relative h-5 w-9 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
                     trigger.enabled ? "bg-primary" : "bg-muted"
                   }`}
                 >
                   <span
-                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
-                      trigger.enabled ? "left-4.5" : "left-0.5"
+                    className={`absolute top-0.5 h-4 w-4 rounded-full bg-background shadow-sm transition-transform ${
+                      trigger.enabled ? "left-[18px]" : "left-0.5"
                     }`}
                   />
                 </button>
                 <Button
                   variant="ghost"
                   size="icon-xs"
+                  aria-label="Remove trigger"
                   onClick={() => removeTrigger(trigger.id)}
                   className="text-muted-foreground hover:text-destructive"
                 >
-                  <Trash2 className="h-3.5 w-3.5" />
+                  <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                 </Button>
               </div>
             </div>
@@ -506,10 +514,11 @@ function TriggersTab({
             {trigger.type === "scheduled" && (
               <div className="mt-3 grid grid-cols-2 gap-3 pl-12">
                 <div>
-                  <Label className="text-xs text-muted-foreground">
+                  <Label htmlFor={`cron-${trigger.id}`} className="text-xs text-muted-foreground">
                     Cron Expression
                   </Label>
                   <Input
+                    id={`cron-${trigger.id}`}
                     type="text"
                     value={(trigger.config as { cron?: string }).cron ?? ""}
                     onChange={(e) =>
@@ -523,10 +532,11 @@ function TriggersTab({
                   />
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">
+                  <Label htmlFor={`tz-${trigger.id}`} className="text-xs text-muted-foreground">
                     Timezone
                   </Label>
                   <Input
+                    id={`tz-${trigger.id}`}
                     type="text"
                     value={(trigger.config as { timezone?: string }).timezone ?? ""}
                     onChange={(e) =>
@@ -552,7 +562,7 @@ function TriggersTab({
           onClick={() => addTrigger("on_assign")}
           className="border-dashed text-muted-foreground hover:text-foreground"
         >
-          <Bot className="h-3 w-3" />
+          <Bot className="h-3 w-3" aria-hidden="true" />
           Add On Assign
         </Button>
         <Button
@@ -561,7 +571,7 @@ function TriggersTab({
           onClick={() => addTrigger("on_comment")}
           className="border-dashed text-muted-foreground hover:text-foreground"
         >
-          <MessageSquare className="h-3 w-3" />
+          <MessageSquare className="h-3 w-3" aria-hidden="true" />
           Add On Comment
         </Button>
         <Button
@@ -570,7 +580,7 @@ function TriggersTab({
           onClick={() => addTrigger("scheduled")}
           className="border-dashed text-muted-foreground hover:text-foreground"
         >
-          <Timer className="h-3 w-3" />
+          <Timer className="h-3 w-3" aria-hidden="true" />
           Add Scheduled
         </Button>
       </div>
@@ -616,7 +626,7 @@ export function AgentDetail({
       {/* Archive Banner */}
       {isArchived && (
         <div className="flex items-center gap-2 bg-muted/50 px-4 py-2 text-xs text-muted-foreground border-b">
-          <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span className="flex-1">This agent is archived. It cannot be assigned or mentioned.</span>
           <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => onRestore(agent.id)}>
             Restore
@@ -642,9 +652,9 @@ export function AgentDetail({
             )}
             <span className="flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {agent.runtime_mode === "cloud" ? (
-                <Cloud className="h-3 w-3" />
+                <Cloud className="h-3 w-3" aria-hidden="true" />
               ) : (
-                <Monitor className="h-3 w-3" />
+                <Monitor className="h-3 w-3" aria-hidden="true" />
               )}
               {runtimeDevice?.name ?? (agent.runtime_mode === "cloud" ? "Cloud" : "Local")}
             </span>
@@ -657,14 +667,14 @@ export function AgentDetail({
                 <Button variant="ghost" size="icon-sm" aria-label="More actions" />
               }
             >
-              <MoreHorizontal className="h-4 w-4 text-muted-foreground" />
+              <MoreHorizontal className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
                 className="text-destructive"
                 onClick={() => setConfirmArchive(true)}
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
                 Archive Agent
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -677,7 +687,7 @@ export function AgentDetail({
         <TabsList variant="line" className="w-full justify-start rounded-none border-b px-6 gap-0">
           {detailTabs.map((tab) => (
             <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5 px-3 py-2.5 text-xs">
-              <tab.icon className="h-3.5 w-3.5" />
+              <tab.icon className="h-3.5 w-3.5" aria-hidden="true" />
               {tab.label}
             </TabsTrigger>
           ))}
@@ -725,7 +735,7 @@ export function AgentDetail({
           <DialogContent className="max-w-sm" showCloseButton={false}>
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-destructive/10">
-                <AlertCircle className="h-5 w-5 text-destructive" />
+                <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
               </div>
               <DialogHeader className="flex-1 gap-1">
                 <DialogTitle className="text-sm font-semibold">Archive agent?</DialogTitle>

@@ -72,7 +72,7 @@ export const BoardCardContent = memo(function BoardCardContent({
   const borderClass = PRIORITY_BORDER[issue.priority] ?? "";
 
   return (
-    <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
+    <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-xs dark:shadow-none transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
       {/* Row 1: Identifier + agent activity indicator */}
       <div className="flex items-center gap-1.5">
         <p className="text-xs text-muted-foreground">{issue.identifier}</p>
@@ -157,7 +157,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                             : "text-muted-foreground"
                         }`}
                       >
-                        <CalendarDays className="size-3" />
+                        <CalendarDays className="size-3" aria-hidden="true" />
                         {shortDate(issue.due_date!)}
                       </span>
                     }
@@ -171,7 +171,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                       : "text-muted-foreground"
                   }`}
                 >
-                  <CalendarDays className="size-3" />
+                  <CalendarDays className="size-3" aria-hidden="true" />
                   {shortDate(issue.due_date!)}
                 </span>
               )}
@@ -211,7 +211,7 @@ export const DraggableBoardCard = memo(function DraggableBoardCard({ issue }: { 
     >
       <Link
         href={`/issues/${issue.id}`}
-        className={`group block transition-colors ${isDragging ? "pointer-events-none" : ""}`}
+        className={`group block rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${isDragging ? "pointer-events-none" : ""}`}
       >
         <BoardCardContent issue={issue} editable />
       </Link>
