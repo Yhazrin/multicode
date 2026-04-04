@@ -16,6 +16,17 @@ import { PriorityPicker, AssigneePicker, DueDatePicker } from "./pickers";
 import { PRIORITY_CONFIG } from "@/features/issues/config";
 import { useViewStore } from "@/features/issues/stores/view-store-context";
 
+const PRIORITY_BORDER: Record<string, string> = {
+  urgent: "border-l-destructive",
+  high: "border-l-warning",
+  medium: "border-l-warning/50",
+  low: "border-l-info/40",
+};
+
+function isOverdue(date: string): boolean {
+  return new Date(date).getTime() < Date.now();
+}
+
 /** Stops event from bubbling to Link/drag handlers */
 function PickerWrapper({ children }: { children: React.ReactNode }) {
   const stop = (e: React.SyntheticEvent) => {
@@ -41,14 +52,15 @@ export const BoardCardContent = memo(function BoardCardContent({
 
   const handleUpdate = useCallback(
     (updates: Partial<UpdateIssueRequest>) => {
-      const prev = { ...issue };
+      const current = useIssueStore.getState().issues.find(i => i.id === issue.id);
+      const prev = current ? { ...current } : { ...issue };
       useIssueStore.getState().updateIssue(issue.id, updates);
       api.updateIssue(issue.id, updates).catch(() => {
         useIssueStore.getState().updateIssue(issue.id, prev);
         toast.error("Failed to update issue");
       });
     },
-    [issue],
+    [issue.id],
   );
 
   const showPriority = storeProperties.priority;
@@ -57,13 +69,7 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showDueDate = storeProperties.dueDate && issue.due_date;
   const showBottom = showAssignee || showDueDate;
 
-  const priorityBorder: Record<string, string> = {
-    urgent: "border-l-destructive",
-    high: "border-l-warning",
-    medium: "border-l-warning/50",
-    low: "border-l-info/40",
-  };
-  const borderClass = priorityBorder[issue.priority] ?? "";
+  const borderClass = PRIORITY_BORDER[issue.priority] ?? "";
 
   return (
     <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
@@ -146,7 +152,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                     trigger={
                       <span
                         className={`flex items-center gap-1 text-xs ${
-                          new Date(issue.due_date!) < new Date()
+                          isOverdue(issue.due_date!)
                             ? "text-destructive"
                             : "text-muted-foreground"
                         }`}

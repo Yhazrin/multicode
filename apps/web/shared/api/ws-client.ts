@@ -169,24 +169,9 @@ export class WSClient {
       try {
         msg = JSON.parse(event.data as string) as WSMessage;
       } catch {
-        this.logger.warn("failed to parse WebSocket message, skipping");
+        this.logger.warn("failed to parse WS message", event.data);
         return;
       }
-
-      if (isAuthExpired(msg)) {
-        this.logger.warn("auth expired, transitioning to unauthorized");
-        this._setState(ConnectionState.Unauthorized);
-        this._stopReconnect();
-        for (const cb of this._unauthorizedHandlers) {
-          try {
-            cb();
-          } catch {
-            // ignore callback errors
-          }
-        }
-        return;
-      }
-
       this.logger.debug("received", msg.type);
       const eventHandlers = this.handlers.get(msg.type);
       if (eventHandlers) {
@@ -200,13 +185,12 @@ export class WSClient {
     };
 
     this.ws.onclose = () => {
-      if (this._connectionState === ConnectionState.Unauthorized) {
-        return;
-      }
-      if (this._connectionState === ConnectionState.Connecting) {
-        this._setState(ConnectionState.Reconnecting);
-      }
-      this._scheduleReconnect();
+      const baseDelay = Math.min(1000 * 2 ** this.reconnectAttempt, this.maxReconnectDelay);
+      const jitter = baseDelay * (0.7 + Math.random() * 0.6); // 70%-130% of base
+      const delay = Math.round(jitter);
+      this.reconnectAttempt++;
+      this.logger.warn(`disconnected, reconnecting in ${delay}ms (attempt ${this.reconnectAttempt})`);
+      this.reconnectTimer = setTimeout(() => this.connect(), delay);
     };
 
     this.ws.onerror = () => {
