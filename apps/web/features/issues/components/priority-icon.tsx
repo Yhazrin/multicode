@@ -5,11 +5,12 @@ export function PriorityIcon({
   priority,
   className = "",
   inheritColor = false,
+  ...rest
 }: {
   priority: IssuePriority;
   className?: string;
   inheritColor?: boolean;
-}) {
+} & React.ComponentProps<"svg">) {
   const cfg = PRIORITY_CONFIG[priority];
 
   // "none" — simple horizontal dashes
@@ -22,6 +23,7 @@ export function PriorityIcon({
         stroke="currentColor"
         strokeWidth="1.5"
         strokeLinecap="round"
+        {...rest}
       >
         <line x1="3" y1="8" x2="13" y2="8" />
       </svg>
@@ -36,6 +38,7 @@ export function PriorityIcon({
       className={`h-3.5 w-3.5 ${inheritColor ? "" : cfg.color} shrink-0 ${className}`}
       fill="currentColor"
       style={isUrgent ? { animation: "priority-pulse 2s ease-in-out infinite" } : undefined}
+      {...rest}
     >
       {[0, 1, 2, 3].map((i) => (
         <rect

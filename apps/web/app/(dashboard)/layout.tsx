@@ -24,7 +24,7 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isLoading && !user) {
-      router.push("/");
+      router.replace("/");
     }
   }, [user, isLoading, router]);
 
@@ -34,8 +34,8 @@ export default function DashboardLayout({
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <MulticodeIcon className="size-6" />
+      <div className="flex h-svh items-center justify-center" role="status" aria-label="Loading">
+        <MulticodeIcon className="size-6" aria-hidden="true" />
       </div>
     );
   }
@@ -50,8 +50,8 @@ export default function DashboardLayout({
           {workspace ? (
             children
           ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <MulticodeIcon className="size-6 animate-pulse" />
+            <div className="flex flex-1 items-center justify-center" role="status" aria-label="Loading workspace">
+              <MulticodeIcon className="size-6 animate-pulse" aria-hidden="true" />
             </div>
           )}
         </ErrorBoundary>

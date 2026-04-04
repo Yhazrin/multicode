@@ -12,10 +12,10 @@ interface Message {
 }
 
 const SUGGESTIONS = [
-  "如何启动多个 Claude 实例？",
-  "如何连接到远程服务器？",
-  "如何配置内网穿透？",
-  "创建新任务的步骤是什么？",
+  "How do I start multiple Claude instances?",
+  "How do I connect to a remote server?",
+  "How do I configure a tunnel?",
+  "What are the steps to create a new task?",
 ];
 
 export function AIAssistant() {
@@ -24,7 +24,7 @@ export function AIAssistant() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "你好！我是 Multicode AI 助手。我可以帮你：\n\n• 启动和配置多个 Claude 实例\n• 连接到远程服务器\n• 配置内网穿透\n• 创建和管理任务\n\n有什么我可以帮你的吗？",
+      content: "Hi! I'm the Multicode AI assistant. I can help with:\n\n• Starting and configuring agent instances\n• Connecting to remote servers\n• Setting up tunnels\n• Creating and managing tasks\n\nWhat can I help you with?",
     },
   ]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,18 +53,13 @@ export function AIAssistant() {
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
     setIsLoading(true);
 
-    // Simulated AI response - in production, this would call the API
+    // TODO: Replace with real AI API call
     setTimeout(() => {
-      const responses = [
-        "根据你的需求，我建议使用 `start-claude-cluster.sh` 脚本来启动多个实例。这个脚本会自动配置 MiniMax API 并管理端口。",
-        "要连接到远程服务器，你需要在其他设备上运行 `connect-to-server.sh` 脚本，然后配置 `MULTICODE_SERVER_URL` 环境变量。",
-        "对于内网穿透，我推荐使用 ngrok。你可以在服务器上运行 `ngrok http 8080` 来创建公网访问地址。",
-        "创建任务的流程是：1) 在 Issues 页面创建 issue，2) 分配给 agent，3) agent 会自动接收并执行任务。",
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)]!;
+      const response =
+        "This is a placeholder response. The AI assistant is not yet connected to a backend service.";
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: randomResponse },
+        { role: "assistant", content: response },
       ]);
       setIsLoading(false);
     }, 1000);
@@ -75,21 +70,20 @@ export function AIAssistant() {
       {/* Floating Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close AI assistant" : "Open AI assistant"}
+        aria-expanded={isOpen}
         className={cn(
           "fixed bottom-6 right-6 z-50 flex items-center justify-center rounded-full",
-          "bg-gradient-to-br from-purple-500 to-pink-500",
-          "shadow-lg hover:shadow-xl transition-all duration-300",
-          "w-14 h-14 text-white",
-          isOpen ? "w-10 h-10 rounded-full" : "w-14 h-14 rounded-full"
+          "bg-brand text-brand-foreground",
+          "shadow-lg dark:shadow-none hover:shadow-xl dark:hover:shadow-none transition-all duration-300",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          isOpen ? "size-10" : "size-14"
         )}
-        style={{
-          boxShadow: "0 4px 20px rgba(168, 85, 247, 0.4)",
-        }}
       >
         {isOpen ? (
-          <X className="h-5 w-5" />
+          <X className="h-5 w-5" aria-hidden="true" />
         ) : (
-          <Sparkles className="h-6 w-6" />
+          <Sparkles className="h-6 w-6" aria-hidden="true" />
         )}
       </button>
 
@@ -97,32 +91,34 @@ export function AIAssistant() {
       <div
         className={cn(
           "fixed bottom-24 right-6 z-50 w-96 rounded-xl",
-          "bg-background border shadow-2xl",
+          "bg-background border shadow-2xl dark:shadow-none",
           "transition-all duration-300 ease-out",
           "origin-bottom-right",
           isOpen
             ? "opacity-100 scale-100 translate-y-0"
             : "opacity-0 scale-95 translate-y-4 pointer-events-none"
         )}
+        aria-hidden={!isOpen}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-500/10 to-pink-500/10">
+        <div className="flex items-center justify-between p-4 border-b bg-brand/5">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-purple-500" />
-            <span className="font-semibold">Multicode AI 助手</span>
+            <Sparkles className="h-5 w-5 text-brand" aria-hidden="true" />
+            <span className="font-semibold">Multicode AI Assistant</span>
           </div>
           <Button
             variant="ghost"
             size="icon"
             className="h-8 w-8"
             onClick={() => setIsOpen(false)}
+            aria-label="Minimize AI assistant"
           >
-            <ChevronDown className="h-4 w-4" />
+            <ChevronDown className="h-4 w-4" aria-hidden="true" />
           </Button>
         </div>
 
         {/* Messages */}
-        <div className="h-80 overflow-y-auto p-4 space-y-4">
+        <div className="h-80 overflow-y-auto p-4 space-y-4" role="log" aria-live="polite" aria-label="Chat messages">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -133,9 +129,9 @@ export function AIAssistant() {
             >
               <div
                 className={cn(
-                  "max-w-[85%] rounded-2xl px-4 py-2 text-sm",
+                  "max-w-[85%] rounded-2xl px-4 py-2 text-sm break-words",
                   message.role === "user"
-                    ? "bg-purple-500 text-white rounded-br-md"
+                    ? "bg-primary text-primary-foreground rounded-br-md"
                     : "bg-muted rounded-bl-md"
                 )}
               >
@@ -146,7 +142,7 @@ export function AIAssistant() {
           {isLoading && (
             <div className="flex justify-start">
               <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               </div>
             </div>
           )}
@@ -156,13 +152,13 @@ export function AIAssistant() {
         {/* Suggestions */}
         {!messages.some((m) => m.role === "user") && (
           <div className="px-4 pb-2">
-            <p className="text-xs text-muted-foreground mb-2">试试问：</p>
+            <p className="text-xs text-muted-foreground mb-2">Try asking:</p>
             <div className="flex flex-wrap gap-1">
               {SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   onClick={() => handleSuggestion(suggestion)}
-                  className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-full hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors"
+                  className="text-xs bg-brand/10 text-brand px-2 py-1 rounded-full hover:bg-brand/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   {suggestion}
                 </button>
@@ -177,7 +173,7 @@ export function AIAssistant() {
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="输入你的问题..."
+              placeholder="Ask a question..."
               className="min-h-[60px] resize-none"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -191,8 +187,9 @@ export function AIAssistant() {
               size="icon"
               disabled={!input.trim() || isLoading}
               className="shrink-0"
+              aria-label="Send message"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </form>
