@@ -6,9 +6,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/multica-ai/multica/server/internal/logger"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/multica-ai/multicode/server/internal/logger"
+	db "github.com/multica-ai/multicode/server/pkg/db/generated"
+	"github.com/multica-ai/multicode/server/pkg/protocol"
 )
 
 type TeamResponse struct {
@@ -214,7 +215,7 @@ func (h *Handler) CreateTeam(w http.ResponseWriter, r *http.Request) {
 		h.Queries.AddTeamMember(r.Context(), db.AddTeamMemberParams{
 			TeamID:  team.ID,
 			AgentID: parseUUID(agentIDStr),
-			Role:    "member",
+			Role:    pgtype.Text{String: "member", Valid: true},
 		})
 	}
 
@@ -251,17 +252,16 @@ func (h *Handler) UpdateTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if req.Name != nil {
-		updates.Name = *req.Name
+		updates.Name = pgtype.Text{String: *req.Name, Valid: true}
 	}
 	if req.Description != nil {
 		updates.Description = strToText(*req.Description)
 	}
 	if req.AvatarURL != nil {
-		updates.AvatarUrl = ptrToText(*req.AvatarURL)
+		updates.AvatarUrl = ptrToText(req.AvatarURL)
 	}
 	if req.LeadAgentID != nil {
-		leadAgentID := parseUUID(*req.LeadAgentID)
-		updates.LeadAgentID = &leadAgentID
+		updates.LeadAgentID = parseUUID(*req.LeadAgentID)
 	}
 
 	updated, err := h.Queries.UpdateTeam(r.Context(), updates)
@@ -288,7 +288,7 @@ func (h *Handler) ArchiveTeam(w http.ResponseWriter, r *http.Request) {
 
 	archived, err := h.Queries.ArchiveTeam(r.Context(), db.ArchiveTeamParams{
 		ID:         team.ID,
-		ArchivedBy: parseUUIDPtr(userID),
+		ArchivedBy: parseUUID(userID),
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to archive team")
@@ -328,7 +328,7 @@ func (h *Handler) AddTeamMember(w http.ResponseWriter, r *http.Request) {
 	_, err := h.Queries.AddTeamMember(r.Context(), db.AddTeamMemberParams{
 		TeamID:  parseUUID(teamID),
 		AgentID: parseUUID(req.AgentID),
-		Role:    "member",
+		Role:    pgtype.Text{String: "member", Valid: true},
 	})
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to add team member")
@@ -366,7 +366,7 @@ func (h *Handler) SetTeamLead(w http.ResponseWriter, r *http.Request) {
 	// Update all members to "member" first
 	members, _ := h.Queries.ListTeamMembers(r.Context(), parseUUID(teamID))
 	for _, m := range members {
-		h.Queries.UpdateTeamMemberRole(r.Context(), db.UpdateTeamMemberRoleParams{
+		_, _ = h.Queries.UpdateTeamMemberRole(r.Context(), db.UpdateTeamMemberRoleParams{
 			TeamID:  m.TeamID,
 			AgentID: m.AgentID,
 			Role:    "member",
@@ -374,7 +374,7 @@ func (h *Handler) SetTeamLead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set new lead
-	err := h.Queries.UpdateTeamMemberRole(r.Context(), db.UpdateTeamMemberRoleParams{
+	_, err := h.Queries.UpdateTeamMemberRole(r.Context(), db.UpdateTeamMemberRoleParams{
 		TeamID:  parseUUID(teamID),
 		AgentID: parseUUID(req.AgentID),
 		Role:    "lead",

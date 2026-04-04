@@ -59,6 +59,11 @@ const (
 	EventSkillUpdated = "skill:updated"
 	EventSkillDeleted = "skill:deleted"
 
+	// Team events
+	EventTeamCreated = "team:created"
+	EventTeamUpdated = "team:updated"
+	EventTeamDeleted = "team:deleted"
+
 	// Agent communication events
 	EventAgentMessage = "agent:message"
 
