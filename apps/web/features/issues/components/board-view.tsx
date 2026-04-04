@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, memo } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -177,7 +177,7 @@ export function BoardView({
           <BoardColumn
             key={status}
             status={status}
-            issues={issues.filter((i) => i.status === status)}
+            issues={issuesByStatus[status] ?? []}
           />
         ))}
 
@@ -200,7 +200,7 @@ export function BoardView({
   );
 }
 
-function HiddenColumnsPanel({
+const HiddenColumnsPanel = memo(function HiddenColumnsPanel({
   hiddenStatuses,
   issues,
 }: {
@@ -268,4 +268,4 @@ function HiddenColumnsPanel({
       </div>
     </div>
   );
-}
+});

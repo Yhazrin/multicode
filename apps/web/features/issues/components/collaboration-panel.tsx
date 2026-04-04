@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo, memo } from "react";
 import {
   MessageSquare,
   GitBranch,
@@ -14,7 +14,14 @@ import {
   Plus,
   X,
   Link2,
+  Search,
+  GitMerge,
+  RotateCcw,
+  ThumbsUp,
+  ThumbsDown,
+  RefreshCw,
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +43,8 @@ import type {
   TaskCheckpoint,
   AgentTask,
   AgentMemory,
+  SubmitReviewRequest,
+  ChainTaskRequest,
 } from "@/shared/types";
 import type {
   AgentMessagePayload,
@@ -57,7 +66,7 @@ interface SectionProps {
   children: React.ReactNode;
 }
 
-function CollapsibleSection({ title, icon, count, defaultOpen = false, children }: SectionProps) {
+const CollapsibleSection = memo(function CollapsibleSection({ title, icon, count, defaultOpen = false, children }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -83,7 +92,7 @@ function CollapsibleSection({ title, icon, count, defaultOpen = false, children 
       {open && <div className="border-t px-3 py-2.5">{children}</div>}
     </div>
   );
-}
+});
 
 function formatTime(ts: string): string {
   return timeAgo(ts);
@@ -95,10 +104,10 @@ function useAgentName(agentId: string): string {
   return agent?.name ?? `Agent ${agentId.slice(0, 8)}`;
 }
 
-function AgentLabel({ agentId }: { agentId: string }) {
+const AgentLabel = memo(function AgentLabel({ agentId }: { agentId: string }) {
   const name = useAgentName(agentId);
   return <span className="font-medium truncate">{name}</span>;
-}
+});
 
 export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
   const [activeTask, setActiveTask] = useState<AgentTask | null>(null);
@@ -115,6 +124,14 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
   const [showAddDep, setShowAddDep] = useState(false);
   const [addDepTaskId, setAddDepTaskId] = useState("");
   const [memoryContent, setMemoryContent] = useState("");
+  const [reviewVerdict, setReviewVerdict] = useState<"pass" | "fail" | "retry">("pass");
+  const [reviewFeedback, setReviewFeedback] = useState("");
+  const [showReview, setShowReview] = useState(false);
+  const [chainAgentId, setChainAgentId] = useState("");
+  const [chainReason, setChainReason] = useState("");
+  const [showChain, setShowChain] = useState(false);
+  const [memorySearch, setMemorySearch] = useState("");
+  const [depStatuses, setDepStatuses] = useState<Record<string, string>>({});
 
   const agents = useWorkspaceStore((s) => s.agents);
 
@@ -191,6 +208,20 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
     loadCheckpoints();
     loadMemories();
   }, [loadMessages, loadDependencies, loadCheckpoints, loadMemories]);
+
+  // Fetch statuses for dependency targets
+  useEffect(() => {
+    if (dependencies.length === 0) return;
+    const missing = dependencies.filter((d) => !(d.depends_on_id in depStatuses));
+    if (missing.length === 0) return;
+    for (const dep of missing) {
+      api.getTask(dep.depends_on_id).then((task) => {
+        setDepStatuses((prev) => ({ ...prev, [dep.depends_on_id]: task.status }));
+      }).catch(() => {
+        setDepStatuses((prev) => ({ ...prev, [dep.depends_on_id]: "unknown" }));
+      });
+    }
+  }, [dependencies]);
 
   // --- Real-time updates ---
   useWSEvent("agent:message", () => {
@@ -281,10 +312,41 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
     }
   };
 
+  const handleSubmitReview = async () => {
+    if (!taskId) return;
+    try {
+      await api.submitReview(taskId, { verdict: reviewVerdict, feedback: reviewFeedback.trim() || undefined });
+      setReviewFeedback("");
+      setShowReview(false);
+      toast.success(`Review submitted: ${reviewVerdict}`);
+    } catch {
+      toast.error("Failed to submit review");
+    }
+  };
+
+  const handleChainTask = async () => {
+    if (!taskId || !chainAgentId) return;
+    try {
+      await api.chainTask(taskId, { target_agent_id: chainAgentId, chain_reason: chainReason.trim() || undefined });
+      setChainAgentId("");
+      setChainReason("");
+      setShowChain(false);
+      toast.success("Task chained successfully");
+    } catch {
+      toast.error("Failed to chain task");
+    }
+  };
+
   // Don't render if no task context
   if (!taskId && !agentId) return null;
 
-  const activeAgents = agents.filter((a) => !a.archived_at);
+  const activeAgents = useMemo(() => agents.filter((a) => !a.archived_at), [agents]);
+
+  const filteredMemories = useMemo(() => {
+    if (!memorySearch.trim()) return memories;
+    const q = memorySearch.toLowerCase();
+    return memories.filter((m) => m.content.toLowerCase().includes(q));
+  }, [memories, memorySearch]);
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -383,10 +445,24 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
               {dependencies.map((dep) => (
                 <div key={`${dep.task_id}-${dep.depends_on_id}`} className="flex items-center gap-2 text-xs group">
                   <GitBranch className="h-3 w-3 text-muted-foreground shrink-0" />
-                  <span className="font-mono truncate flex-1">
+                  <span className="font-mono truncate">
                     {dep.depends_on_id.slice(0, 8)}
                   </span>
-                  <span className="text-muted-foreground">
+                  {depStatuses[dep.depends_on_id] && (
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "h-4 px-1.5 text-[10px] shrink-0",
+                        depStatuses[dep.depends_on_id] === "completed" && "border-success/30 text-success",
+                        depStatuses[dep.depends_on_id] === "running" && "border-info/30 text-info",
+                        depStatuses[dep.depends_on_id] === "failed" && "border-destructive/30 text-destructive",
+                        depStatuses[dep.depends_on_id] === "in_review" && "border-warning/30 text-warning",
+                      )}
+                    >
+                      {depStatuses[dep.depends_on_id]}
+                    </Badge>
+                  )}
+                  <span className="text-muted-foreground ml-auto">
                     {formatTime(dep.created_at)}
                   </span>
                   <Button
@@ -482,6 +558,129 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
         </CollapsibleSection>
       )}
 
+      {/* Review */}
+      {taskId && (
+        <CollapsibleSection
+          title="Review"
+          icon={<ThumbsUp className="h-3.5 w-3.5 text-muted-foreground" />}
+          defaultOpen={false}
+        >
+          {showReview ? (
+            <div className="space-y-2">
+              <div className="flex gap-1.5">
+                <Button
+                  size="sm"
+                  variant={reviewVerdict === "pass" ? "default" : "outline"}
+                  className="h-7 text-xs flex-1"
+                  onClick={() => setReviewVerdict("pass")}
+                >
+                  <ThumbsUp className="h-3 w-3 mr-1" /> Pass
+                </Button>
+                <Button
+                  size="sm"
+                  variant={reviewVerdict === "fail" ? "destructive" : "outline"}
+                  className="h-7 text-xs flex-1"
+                  onClick={() => setReviewVerdict("fail")}
+                >
+                  <ThumbsDown className="h-3 w-3 mr-1" /> Fail
+                </Button>
+                <Button
+                  size="sm"
+                  variant={reviewVerdict === "retry" ? "secondary" : "outline"}
+                  className="h-7 text-xs flex-1"
+                  onClick={() => setReviewVerdict("retry")}
+                >
+                  <RotateCcw className="h-3 w-3 mr-1" /> Retry
+                </Button>
+              </div>
+              <Input
+                value={reviewFeedback}
+                onChange={(e) => setReviewFeedback(e.target.value)}
+                placeholder="Feedback (optional)..."
+                className="h-8 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleSubmitReview(); }
+                  if (e.key === "Escape") { setShowReview(false); setReviewFeedback(""); }
+                }}
+                autoFocus
+              />
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs flex-1" onClick={handleSubmitReview}>
+                  Submit review
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setShowReview(false); setReviewFeedback(""); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-muted-foreground w-full"
+              onClick={() => setShowReview(true)}
+            >
+              <ThumbsUp className="h-3 w-3 mr-1" />
+              Submit review
+            </Button>
+          )}
+        </CollapsibleSection>
+      )}
+
+      {/* Chain Task */}
+      {taskId && (
+        <CollapsibleSection
+          title="Chain Task"
+          icon={<GitMerge className="h-3.5 w-3.5 text-muted-foreground" />}
+          defaultOpen={false}
+        >
+          {showChain ? (
+            <div className="space-y-2">
+              <Select value={chainAgentId} onValueChange={(v) => setChainAgentId(v ?? "")}>
+                <SelectTrigger className="h-7 text-xs">
+                  <SelectValue placeholder="Select target agent..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {activeAgents.map((a) => (
+                    <SelectItem key={a.id} value={a.id} className="text-xs">
+                      {a.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                value={chainReason}
+                onChange={(e) => setChainReason(e.target.value)}
+                placeholder="Reason (optional)..."
+                className="h-8 text-xs"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleChainTask(); }
+                  if (e.key === "Escape") { setShowChain(false); setChainAgentId(""); setChainReason(""); }
+                }}
+              />
+              <div className="flex gap-1.5">
+                <Button size="sm" className="h-7 text-xs flex-1" onClick={handleChainTask} disabled={!chainAgentId}>
+                  <GitMerge className="h-3 w-3 mr-1" /> Chain task
+                </Button>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => { setShowChain(false); setChainAgentId(""); setChainReason(""); }}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 text-xs text-muted-foreground w-full"
+              onClick={() => setShowChain(true)}
+            >
+              <GitMerge className="h-3 w-3 mr-1" />
+              Chain to another agent
+            </Button>
+          )}
+        </CollapsibleSection>
+      )}
+
       {/* Agent Memory */}
       {agentId && (
         <CollapsibleSection
@@ -497,33 +696,50 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           ) : memories.length === 0 ? (
             <p className="text-xs text-muted-foreground py-1">No memories stored.</p>
           ) : (
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {memories.map((mem) => (
-                <div key={mem.id} className="group rounded-md border px-2 py-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-xs text-muted-foreground flex-1 break-words">{mem.content}</p>
-                    <Button
-                      variant="ghost"
-                      size="icon-sm"
-                      className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                      onClick={() => handleDeleteMemory(mem.id)}
-                    >
-                      <Trash2 className="h-3 w-3 text-destructive" />
-                    </Button>
-                  </div>
-                  <div className="mt-1 flex items-center gap-2">
-                    <span className="text-[10px] text-muted-foreground">
-                      {formatTime(mem.created_at)}
-                    </span>
-                    {mem.similarity !== undefined && (
-                      <Badge variant="outline" className="text-[9px] px-1 py-0">
-                        {(mem.similarity * 100).toFixed(0)}% match
-                      </Badge>
-                    )}
-                  </div>
+            <>
+              {memories.length > 3 && (
+                <div className="relative mb-1.5">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                  <Input
+                    value={memorySearch}
+                    onChange={(e) => setMemorySearch(e.target.value)}
+                    placeholder="Search memories..."
+                    className="h-7 pl-7 text-xs"
+                  />
                 </div>
-              ))}
-            </div>
+              )}
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {filteredMemories.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-1">No matching memories.</p>
+                ) : (
+                  filteredMemories.map((mem) => (
+                    <div key={mem.id} className="group rounded-md border px-2 py-1.5">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs text-muted-foreground flex-1 break-words">{mem.content}</p>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                          onClick={() => handleDeleteMemory(mem.id)}
+                        >
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatTime(mem.created_at)}
+                        </span>
+                        {mem.similarity !== undefined && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0">
+                            {(mem.similarity * 100).toFixed(0)}% match
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </>
           )}
           <div className="mt-2 flex gap-1.5">
             <Input

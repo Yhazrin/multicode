@@ -653,6 +653,10 @@ export class ApiClient {
     return this.fetch(`/api/tasks/${taskId}/dependencies`);
   }
 
+  async getTask(taskId: string): Promise<AgentTask> {
+    return this.fetch(`/api/tasks/${taskId}`);
+  }
+
   async getReadyTasks(): Promise<AgentTask[]> {
     return this.fetch("/api/tasks/ready");
   }

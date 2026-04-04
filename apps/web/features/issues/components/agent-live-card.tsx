@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from "react";
 import { Bot, ChevronRight, ChevronUp, Loader2, ArrowDown, Brain, AlertCircle, Clock, CheckCircle2, XCircle, Square } from "lucide-react";
 import { api } from "@/shared/api";
 import { useWSEvent } from "@/features/realtime";
-import type { TaskMessagePayload, TaskCompletedPayload, TaskFailedPayload, TaskCancelledPayload } from "@/shared/types/events";
+import type { TaskMessagePayload, TaskCompletedPayload, TaskFailedPayload, TaskCancelledPayload, TaskProgressPayload } from "@/shared/types/events";
 import type { AgentTask } from "@/shared/types/agent";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -110,6 +110,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [elapsed, setElapsed] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
+  const [progress, setProgress] = useState<{ summary: string; step: number; total: number } | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [isStuck, setIsStuck] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -171,6 +172,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
       if (p.issue_id !== issueId) return;
       setActiveTask(null);
       setItems([]);
+      setProgress(null);
       seenSeqs.current.clear();
       setCancelling(false);
     }, [issueId]),
@@ -183,6 +185,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
       if (p.issue_id !== issueId) return;
       setActiveTask(null);
       setItems([]);
+      setProgress(null);
       seenSeqs.current.clear();
       setCancelling(false);
     }, [issueId]),
@@ -195,6 +198,7 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
       if (p.issue_id !== issueId) return;
       setActiveTask(null);
       setItems([]);
+      setProgress(null);
       seenSeqs.current.clear();
       setCancelling(false);
     }, [issueId]),
@@ -211,10 +215,21 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
         if (task) {
           setActiveTask(task);
           setItems([]);
+          setProgress(null);
           seenSeqs.current.clear();
         }
       }).catch(console.error);
     }, [issueId, activeTask]),
+  );
+
+  // Handle task progress updates
+  useWSEvent(
+    "task:progress",
+    useCallback((payload: unknown) => {
+      const p = payload as TaskProgressPayload;
+      if (activeTask && p.task_id !== activeTask.id) return;
+      setProgress({ summary: p.summary, step: p.step, total: p.total });
+    }, [activeTask]),
   );
 
   // Elapsed time
@@ -274,9 +289,12 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
     }
   }, [activeTask, issueId, cancelling]);
 
-  if (!activeTask) return null;
+  const toolCount = useMemo(
+    () => items.filter((i) => i.type === "tool_use").length,
+    [items]
+  );
 
-  const toolCount = items.filter((i) => i.type === "tool_use").length;
+  if (!activeTask) return null;
   const name = (activeTask.agent_id ? getActorName("agent", activeTask.agent_id) : agentName) ?? "Agent";
 
   return (
@@ -338,6 +356,25 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
             </button>
           )}
         </div>
+
+        {/* Progress bar */}
+        {progress && progress.total > 0 && (
+          <div className="px-3 pb-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-1">
+              <span className="truncate">{progress.summary}</span>
+              <span className="shrink-0 tabular-nums">{progress.step}/{progress.total}</span>
+            </div>
+            <div className="h-1 rounded-full bg-muted overflow-hidden">
+              <div
+                className={cn(
+                  "h-full rounded-full transition-all duration-500",
+                  isStuck ? "bg-brand" : "bg-info",
+                )}
+                style={{ width: `${Math.min(100, (progress.step / progress.total) * 100)}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Timeline content — collapses when stuck */}
         <div
@@ -503,7 +540,7 @@ function TaskRunEntry({ task }: { task: AgentTask }) {
 
 // ─── Shared timeline row rendering ──────────────────────────────────────────
 
-function TimelineRow({ item }: { item: TimelineItem }) {
+const TimelineRow = memo(function TimelineRow({ item }: { item: TimelineItem }) {
   switch (item.type) {
     case "tool_use":
       return <ToolCallRow item={item} />;
@@ -518,9 +555,9 @@ function TimelineRow({ item }: { item: TimelineItem }) {
     default:
       return null;
   }
-}
+});
 
-function ToolCallRow({ item }: { item: TimelineItem }) {
+const ToolCallRow = memo(function ToolCallRow({ item }: { item: TimelineItem }) {
   const [open, setOpen] = useState(false);
   const summary = getToolSummary(item);
   const hasInput = item.input && Object.keys(item.input).length > 0;
@@ -547,9 +584,9 @@ function ToolCallRow({ item }: { item: TimelineItem }) {
       )}
     </Collapsible>
   );
-}
+});
 
-function ToolResultRow({ item }: { item: TimelineItem }) {
+const ToolResultRow = memo(function ToolResultRow({ item }: { item: TimelineItem }) {
   const [open, setOpen] = useState(false);
   const output = item.output ?? "";
   if (!output) return null;
@@ -573,9 +610,9 @@ function ToolResultRow({ item }: { item: TimelineItem }) {
       </CollapsibleContent>
     </Collapsible>
   );
-}
+});
 
-function ThinkingRow({ item }: { item: TimelineItem }) {
+const ThinkingRow = memo(function ThinkingRow({ item }: { item: TimelineItem }) {
   const [open, setOpen] = useState(false);
   const text = item.content ?? "";
   if (!text) return null;
@@ -595,9 +632,9 @@ function ThinkingRow({ item }: { item: TimelineItem }) {
       </CollapsibleContent>
     </Collapsible>
   );
-}
+});
 
-function TextRow({ item }: { item: TimelineItem }) {
+const TextRow = memo(function TextRow({ item }: { item: TimelineItem }) {
   const text = item.content ?? "";
   if (!text.trim()) return null;
   const lines = text.trim().split("\n").filter(Boolean);
@@ -610,13 +647,13 @@ function TextRow({ item }: { item: TimelineItem }) {
       <span className="text-muted-foreground/60 truncate">{last}</span>
     </div>
   );
-}
+});
 
-function ErrorRow({ item }: { item: TimelineItem }) {
+const ErrorRow = memo(function ErrorRow({ item }: { item: TimelineItem }) {
   return (
     <div className="flex items-start gap-1.5 px-1 -mx-1 py-0.5 text-xs">
       <AlertCircle className="h-3 w-3 shrink-0 text-destructive mt-0.5" />
       <span className="text-destructive">{item.content}</span>
     </div>
   );
-}
+});
