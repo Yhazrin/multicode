@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { toast } from "sonner";
+import { shortDate } from "@/shared/utils";
 import type { Issue, UpdateIssueRequest } from "@/shared/types";
 import { CalendarDays } from "lucide-react";
 import { ActorAvatar } from "@/components/common/actor-avatar";
@@ -13,15 +14,7 @@ import { useIssueStore } from "@/features/issues/store";
 import { PriorityIcon } from "./priority-icon";
 import { PriorityPicker, AssigneePicker, DueDatePicker } from "./pickers";
 import { PRIORITY_CONFIG } from "@/features/issues/config";
-import type { CardProperties } from "@/features/issues/stores/view-store";
 import { useViewStore } from "@/features/issues/stores/view-store-context";
-
-function formatDate(date: string): string {
-  return new Date(date).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 /** Stops event from bubbling to Link/drag handlers */
 function PickerWrapper({ children }: { children: React.ReactNode }) {
@@ -64,10 +57,26 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showDueDate = storeProperties.dueDate && issue.due_date;
   const showBottom = showAssignee || showDueDate;
 
+  const priorityBorder: Record<string, string> = {
+    urgent: "border-l-destructive",
+    high: "border-l-warning",
+    medium: "border-l-warning/50",
+    low: "border-l-info/40",
+  };
+  const borderClass = priorityBorder[issue.priority] ?? "";
+
   return (
-    <div className="rounded-lg border bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5">
-      {/* Row 1: Identifier */}
-      <p className="text-xs text-muted-foreground">{issue.identifier}</p>
+    <div className={`rounded-lg border border-l-2 bg-card p-3.5 shadow-[0_1px_2px_0_rgba(0,0,0,0.03)] transition-all group-hover:shadow-md group-hover:-translate-y-0.5 ${borderClass}`}>
+      {/* Row 1: Identifier + agent activity indicator */}
+      <div className="flex items-center gap-1.5">
+        <p className="text-xs text-muted-foreground">{issue.identifier}</p>
+        {issue.assignee_type === "agent" && issue.status === "in_progress" && (
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-info opacity-75" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-info" />
+          </span>
+        )}
+      </div>
 
       {/* Row 2: Title */}
       <p className="mt-1 text-sm font-medium leading-snug line-clamp-2">
@@ -143,7 +152,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                         }`}
                       >
                         <CalendarDays className="size-3" />
-                        {formatDate(issue.due_date!)}
+                        {shortDate(issue.due_date!)}
                       </span>
                     }
                   />
@@ -157,7 +166,7 @@ export const BoardCardContent = memo(function BoardCardContent({
                   }`}
                 >
                   <CalendarDays className="size-3" />
-                  {formatDate(issue.due_date!)}
+                  {shortDate(issue.due_date!)}
                 </span>
               )}
             </div>

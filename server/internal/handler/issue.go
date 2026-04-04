@@ -88,6 +88,12 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	offset := 0
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil {
+			if v < 0 {
+				v = 0
+			}
+			if v > 200 {
+				v = 200
+			}
 			limit = v
 		}
 	}
@@ -191,6 +197,10 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "title is required")
 		return
 	}
+	if len(req.Title) > 500 {
+		writeError(w, http.StatusBadRequest, "title must be 500 characters or fewer")
+		return
+	}
 
 	workspaceID := resolveWorkspaceID(r)
 
@@ -278,7 +288,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to create issue: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to create issue")
 		return
 	}
 
@@ -337,7 +347,10 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 
 	// Track which fields were explicitly present in JSON (even if null)
 	var rawFields map[string]json.RawMessage
-	json.Unmarshal(bodyBytes, &rawFields)
+	if err := json.Unmarshal(bodyBytes, &rawFields); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
 
 	// Pre-fill nullable fields (bare sqlc.narg) with current values
 	params := db.UpdateIssueParams{
@@ -402,7 +415,7 @@ func (h *Handler) UpdateIssue(w http.ResponseWriter, r *http.Request) {
 	issue, err := h.Queries.UpdateIssue(r.Context(), params)
 	if err != nil {
 		slog.Warn("update issue failed", append(logger.RequestAttrs(r), "error", err, "issue_id", id, "workspace_id", workspaceID)...)
-		writeError(w, http.StatusInternalServerError, "failed to update issue: "+err.Error())
+		writeError(w, http.StatusInternalServerError, "failed to update issue")
 		return
 	}
 
@@ -577,9 +590,13 @@ func (h *Handler) DeleteIssue(w http.ResponseWriter, r *http.Request) {
 	h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
 
 	// Collect all attachment URLs (issue-level + comment-level) before CASCADE delete.
-	attachmentURLs, _ := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+	attachmentURLs, err := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+	if err != nil {
+		slog.Warn("failed to list attachment URLs for issue cleanup", "issue_id", uuidToString(issue.ID), "error", err)
+		attachmentURLs = nil
+	}
 
-	err := h.Queries.DeleteIssue(r.Context(), parseUUID(id))
+	err = h.Queries.DeleteIssue(r.Context(), parseUUID(id))
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, "failed to delete issue")
 		return
@@ -619,6 +636,10 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "issue_ids is required")
 		return
 	}
+	if len(req.IssueIDs) > 500 {
+		writeError(w, http.StatusBadRequest, "too many issue IDs (max 500)")
+		return
+	}
 
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -627,20 +648,48 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 
 	// Detect which fields in "updates" were explicitly set (including null).
 	var rawTop map[string]json.RawMessage
-	json.Unmarshal(bodyBytes, &rawTop)
+	if err := json.Unmarshal(bodyBytes, &rawTop); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
 	var rawUpdates map[string]json.RawMessage
 	if raw, exists := rawTop["updates"]; exists {
-		json.Unmarshal(raw, &rawUpdates)
+		if err := json.Unmarshal(raw, &rawUpdates); err != nil {
+			writeError(w, http.StatusBadRequest, "invalid request body")
+			return
+		}
 	}
 
 	workspaceID := resolveWorkspaceID(r)
+
+	// Batch fetch all issues in a single query instead of N+1.
+	prevIssues, err := h.batchGetIssuesByIDs(r.Context(), req.IssueIDs, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch issues")
+		return
+	}
+
+	// Index by ID for quick lookup.
+	prevByID := make(map[string]db.Issue, len(prevIssues))
+	for _, issue := range prevIssues {
+		prevByID[uuidToString(issue.ID)] = issue
+	}
+
 	updated := 0
+	prefix := h.getIssuePrefix(r.Context(), parseUUID(workspaceID))
+
+	// Wrap batch updates in a transaction for atomicity.
+	tx, err := h.TxStarter.Begin(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to begin transaction")
+		return
+	}
+	defer tx.Rollback(r.Context())
+	txQueries := h.Queries.WithTx(tx)
+
 	for _, issueID := range req.IssueIDs {
-		prevIssue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-			ID:          parseUUID(issueID),
-			WorkspaceID: parseUUID(workspaceID),
-		})
-		if err != nil {
+		prevIssue, ok := prevByID[issueID]
+		if !ok {
 			continue
 		}
 
@@ -699,13 +748,12 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 
-		issue, err := h.Queries.UpdateIssue(r.Context(), params)
+		issue, err := txQueries.UpdateIssue(r.Context(), params)
 		if err != nil {
 			slog.Warn("batch update issue failed", "issue_id", issueID, "error", err)
 			continue
 		}
 
-		prefix := h.getIssuePrefix(r.Context(), issue.WorkspaceID)
 		resp := issueToResponse(issue, prefix)
 		actorType, actorID := h.resolveActor(r, userID, workspaceID)
 
@@ -731,6 +779,11 @@ func (h *Handler) BatchUpdateIssues(w http.ResponseWriter, r *http.Request) {
 		updated++
 	}
 
+	if err := tx.Commit(r.Context()); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to commit transaction")
+		return
+	}
+
 	slog.Info("batch update issues", append(logger.RequestAttrs(r), "count", updated)...)
 	writeJSON(w, http.StatusOK, map[string]any{"updated": updated})
 }
@@ -750,6 +803,10 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "issue_ids is required")
 		return
 	}
+	if len(req.IssueIDs) > 500 {
+		writeError(w, http.StatusBadRequest, "too many issue IDs (max 500)")
+		return
+	}
 
 	userID, ok := requireUserID(w, r)
 	if !ok {
@@ -757,28 +814,43 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	workspaceID := resolveWorkspaceID(r)
-	deleted := 0
-	for _, issueID := range req.IssueIDs {
-		issue, err := h.Queries.GetIssueInWorkspace(r.Context(), db.GetIssueInWorkspaceParams{
-			ID:          parseUUID(issueID),
-			WorkspaceID: parseUUID(workspaceID),
-		})
-		if err != nil {
-			continue
-		}
 
-		h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
-
-		if err := h.Queries.DeleteIssue(r.Context(), parseUUID(issueID)); err != nil {
-			slog.Warn("batch delete issue failed", "issue_id", issueID, "error", err)
-			continue
-		}
-
-		actorType, actorID := h.resolveActor(r, userID, workspaceID)
-		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": issueID})
-		deleted++
+	// Batch fetch all issues in a single query instead of N+1.
+	issues, err := h.batchGetIssuesByIDs(r.Context(), req.IssueIDs, workspaceID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to fetch issues")
+		return
 	}
 
+	// Cancel tasks for all fetched issues.
+	for _, issue := range issues {
+		h.TaskService.CancelTasksForIssue(r.Context(), issue.ID)
+	}
+
+	// Collect attachment URLs before delete.
+	for _, issue := range issues {
+		attachmentURLs, err := h.Queries.ListAttachmentURLsByIssueOrComments(r.Context(), issue.ID)
+		if err != nil {
+			slog.Warn("failed to list attachment URLs for batch issue cleanup", "issue_id", uuidToString(issue.ID), "error", err)
+			continue
+		}
+		h.deleteS3Objects(r.Context(), attachmentURLs)
+	}
+
+	// Batch delete all issues in a single query.
+	if err := h.batchDeleteIssues(r.Context(), req.IssueIDs, workspaceID); err != nil {
+		slog.Warn("batch delete issues failed", "error", err)
+		writeError(w, http.StatusInternalServerError, "failed to delete issues")
+		return
+	}
+
+	// Publish delete events for each issue.
+	actorType, actorID := h.resolveActor(r, userID, workspaceID)
+	for _, issue := range issues {
+		h.publish(protocol.EventIssueDeleted, workspaceID, actorType, actorID, map[string]any{"issue_id": uuidToString(issue.ID)})
+	}
+
+	deleted := len(issues)
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
 }

@@ -7,6 +7,7 @@ import {
   useState,
   useRef,
   useCallback,
+  useMemo,
   type ReactNode,
 } from "react";
 import { WSClient } from "@/shared/api";
@@ -20,7 +21,7 @@ const WS_URL =
   process.env.NEXT_PUBLIC_WS_URL ||
   (typeof window !== "undefined"
     ? `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/ws`
-    : "ws://localhost:8080/ws");
+    : "");
 
 type EventHandler = (payload: unknown) => void;
 
@@ -77,8 +78,13 @@ export function WSProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const value = useMemo(
+    () => ({ subscribe, onReconnect: onReconnectCb }),
+    [subscribe, onReconnectCb],
+  );
+
   return (
-    <WSContext.Provider value={{ subscribe, onReconnect: onReconnectCb }}>
+    <WSContext.Provider value={value}>
       {children}
     </WSContext.Provider>
   );
