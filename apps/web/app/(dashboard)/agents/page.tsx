@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   Bot,
@@ -9,6 +9,30 @@ import {
   Search,
   Sparkles,
   ChevronRight,
+  Clock,
+  CheckCircle2,
+  Play,
+  Loader2,
+  XCircle,
+  Globe,
+  Lock,
+  Cloud,
+  Monitor,
+  ChevronDown,
+  FileText,
+  BookOpenText,
+  Wrench,
+  Timer,
+  ListTodo,
+  Settings,
+  Trash2,
+  MoreHorizontal,
+  Save,
+  Camera,
+  Link2,
+  Key,
+  AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 import {
   PRESET_AGENTS,
@@ -21,12 +45,36 @@ import type {
   Agent,
   CreateAgentRequest,
   UpdateAgentRequest,
+  AgentStatus,
+  RuntimeDevice,
+  AgentVisibility,
+  AgentTool,
+  AgentTrigger,
+  AgentTriggerType,
+  AgentTask,
 } from "@/shared/types";
 import {
   ResizablePanelGroup,
   ResizablePanel,
   ResizableHandle,
 } from "@/components/ui/resizable";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Skeleton } from "@/components/ui/skeleton";

@@ -6,10 +6,14 @@ export type AgentVisibility = "workspace" | "private";
 
 export type AgentTriggerType = "on_assign" | "on_comment" | "scheduled";
 
+export type ApprovalStatus = "pending" | "approved" | "rejected" | "revoked";
+export type TrustLevel = "self" | "trusted_member" | "restricted";
+
 export interface RuntimeDevice {
   id: string;
   workspace_id: string;
   daemon_id: string | null;
+  instance_id: string;
   name: string;
   runtime_mode: AgentRuntimeMode;
   provider: string;
@@ -19,6 +23,18 @@ export interface RuntimeDevice {
   last_seen_at: string | null;
   created_at: string;
   updated_at: string;
+  owner_user_id: string | null;
+  approval_status: ApprovalStatus;
+  visibility: "private" | "workspace" | "team";
+  trust_level: TrustLevel;
+  drain_mode: boolean;
+  paused: boolean;
+  tags: string[];
+  max_concurrent_tasks_override: number | null;
+  last_claimed_at: string | null;
+  success_count_24h: number;
+  failure_count_24h: number;
+  avg_task_duration_ms: number;
 }
 
 export type AgentRuntime = RuntimeDevice;
@@ -193,4 +209,52 @@ export interface RuntimeUpdate {
   error?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface RuntimeJoinToken {
+  id: string;
+  workspace_id: string;
+  created_by: string;
+  token_prefix: string;
+  expires_at: string;
+  used_at: string | null;
+  created_at: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RuntimeAuditLog {
+  id: string;
+  workspace_id: string;
+  runtime_id: string;
+  actor_user_id: string | null;
+  action: string;
+  details: Record<string, unknown>;
+  created_at: string;
+}
+
+export interface CreateRuntimeJoinTokenRequest {
+  expires_in_minutes?: number;
+}
+
+export interface CreateRuntimeJoinTokenResponse {
+  token: string;
+  token_prefix: string;
+  expires_at: string;
+}
+
+export interface RegisterRuntimeWithJoinTokenRequest {
+  join_token: string;
+  daemon_id: string;
+  instance_id: string;
+  name: string;
+  provider: string;
+  runtime_mode: "local_daemon";
+  device_info: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface RegisterRuntimeWithJoinTokenResponse {
+  runtime_id: string;
+  approval_status: ApprovalStatus;
+  status: string;
 }

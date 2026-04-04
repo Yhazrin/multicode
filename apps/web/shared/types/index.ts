@@ -10,6 +10,8 @@ export type {
   AgentTask,
   AgentRuntime,
   RuntimeDevice,
+  ApprovalStatus,
+  TrustLevel,
   CreateAgentRequest,
   UpdateAgentRequest,
   Skill,
@@ -23,6 +25,12 @@ export type {
   RuntimePingStatus,
   RuntimeUpdate,
   RuntimeUpdateStatus,
+  RuntimeJoinToken,
+  RuntimeAuditLog,
+  CreateRuntimeJoinTokenRequest,
+  CreateRuntimeJoinTokenResponse,
+  RegisterRuntimeWithJoinTokenRequest,
+  RegisterRuntimeWithJoinTokenResponse,
 } from "./agent";
 export type {
   Team,

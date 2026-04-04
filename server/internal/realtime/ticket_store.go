@@ -31,13 +31,6 @@ type ticketEntry struct {
 	expiresAt   time.Time
 }
 
-// TicketStore is the interface for one-time-use short-lived ticket management.
-// Implementations must provide Generate and Validate for WebSocket auth flow.
-type TicketStore interface {
-	Generate(workspaceID, userID string) string
-	Validate(ticket, workspaceID string) (string, string, bool)
-}
-
 // MemoryTicketStore holds one-time-use short-lived tickets for WebSocket auth.
 // It uses an in-memory sync.Map with a background goroutine that cleans up
 // expired tickets every 30 seconds. If Redis becomes available, this can be

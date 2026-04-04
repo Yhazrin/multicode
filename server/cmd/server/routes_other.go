@@ -30,6 +30,8 @@ func registerWorkspaceRoutes(r chi.Router, h *handler.Handler, queries *db.Queri
 					r.Patch("/", h.UpdateMember)
 					r.Delete("/", h.DeleteMember)
 				})
+				r.Post("/runtime-join-tokens", h.CreateRuntimeJoinToken)
+				r.Get("/runtime-join-tokens", h.ListRuntimeJoinTokens)
 			})
 			// Owner-only access
 			r.With(middleware.RequireWorkspaceRoleFromURL(queries, "id", "owner")).Delete("/", h.DeleteWorkspace)
@@ -74,10 +76,17 @@ func registerRuntimeRoutes(r chi.Router, h *handler.Handler, queries *db.Queries
 		r.Get("/", h.ListAgentRuntimes)
 		r.Get("/{runtimeId}/usage", h.GetRuntimeUsage)
 		r.Get("/{runtimeId}/activity", h.GetRuntimeTaskActivity)
+		r.Get("/{runtimeId}/audit-logs", h.GetRuntimeAuditLogs)
 		r.Post("/{runtimeId}/ping", h.InitiatePing)
 		r.Get("/{runtimeId}/ping/{pingId}", h.GetPing)
 		r.Post("/{runtimeId}/update", h.InitiateUpdate)
 		r.Get("/{runtimeId}/update/{updateId}", h.GetUpdate)
+		r.Post("/{runtimeId}/approve", h.ApproveRuntime)
+		r.Post("/{runtimeId}/reject", h.RejectRuntime)
+		r.Post("/{runtimeId}/pause", h.PauseRuntime)
+		r.Post("/{runtimeId}/resume", h.ResumeRuntime)
+		r.Post("/{runtimeId}/revoke", h.RevokeRuntime)
+		r.Post("/{runtimeId}/drain", h.DrainRuntime)
 	})
 }
 

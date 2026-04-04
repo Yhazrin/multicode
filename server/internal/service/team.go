@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/multica-ai/multica/server/internal/events"
-	"github.com/multica-ai/multica/server/internal/util"
-	db "github.com/multica-ai/multica/server/pkg/db/generated"
-	"github.com/multica-ai/multica/server/pkg/protocol"
+	"github.com/multica-ai/multicode/server/internal/events"
+	"github.com/multica-ai/multicode/server/internal/util"
+	db "github.com/multica-ai/multicode/server/pkg/db/generated"
+	"github.com/multica-ai/multicode/server/pkg/protocol"
 )
 
 // TeamService handles team-related business logic.
@@ -55,7 +55,7 @@ func (s *TeamService) CreateTeam(ctx context.Context, input CreateTeamInput) (db
 		_, err := s.Queries.AddTeamMember(ctx, db.AddTeamMemberParams{
 			TeamID:  team.ID,
 			AgentID: agentID,
-			Role:    role,
+			Role:    pgtype.Text{String: role, Valid: true},
 		})
 		if err != nil {
 			return team, fmt.Errorf("add team member: %w", err)
@@ -95,7 +95,7 @@ func (s *TeamService) AddMember(ctx context.Context, teamID, agentID pgtype.UUID
 	member, err := s.Queries.AddTeamMember(ctx, db.AddTeamMemberParams{
 		TeamID:  teamID,
 		AgentID: agentID,
-		Role:    role,
+		Role:    pgtype.Text{String: role, Valid: true},
 	})
 	if err != nil {
 		return db.TeamMember{}, fmt.Errorf("add team member: %w", err)
@@ -182,16 +182,11 @@ func (s *TeamService) GetDelegationMode(ctx context.Context, teamID pgtype.UUID)
 // If mode is LeadDelegation, status starts as 'pending'.
 // If mode is BroadcastMode, status starts as 'delegated' immediately.
 func (s *TeamService) EnqueueTeamTask(ctx context.Context, teamID, issueID, assignedBy pgtype.UUID, priority int32, mode DelegationMode) (db.TeamTaskQueue, error) {
-	status := "pending"
-	if mode == BroadcastMode {
-		status = "delegated"
-	}
-
 	task, err := s.Queries.CreateTeamTask(ctx, db.CreateTeamTaskParams{
 		TeamID:     teamID,
 		IssueID:    issueID,
 		AssignedBy: assignedBy,
-		Priority:   priority,
+		Priority:   pgtype.Int4{Int32: priority, Valid: true},
 	})
 	if err != nil {
 		return db.TeamTaskQueue{}, fmt.Errorf("create team task: %w", err)

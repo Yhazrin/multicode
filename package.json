@@ -27,5 +27,8 @@
     "@types/pg": "^8.20.0",
     "pg": "^8.20.0",
     "typescript": "catalog:"
+  },
+  "dependencies": {
+    "@tanstack/react-virtual": "^3.13.23"
   }
 }
