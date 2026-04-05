@@ -19,8 +19,8 @@ function uniqueCredentials() {
 
 /**
  * Log in as the default E2E user and ensure the workspace exists first.
- * Sets the HttpOnly auth cookie in the browser by calling verify-code from
- * the page context, so the app's AuthInitializer picks up the session.
+ * Sets the HttpOnly auth cookie in the browser by calling verify-code via
+ * Playwright's API request context, then sets localStorage and navigates.
  */
 export async function loginAsDefault(page: Page) {
   const { email, slug } = uniqueCredentials();
@@ -44,18 +44,14 @@ export async function loginAsDefault(page: Page) {
     }
   }
 
-  // Step 2: Call verify-code from the browser using the master code (888888).
-  // This avoids DB timing issues and sets the HttpOnly cookie via browser context.
-  await page.goto("/login");
-  const verifyResult = await page.evaluate(async ({ email }) => {
-    const res = await fetch("/auth/verify-code", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, code: "888888" }),
-      credentials: "include",
-    });
-    return res.json();
-  }, { email });
+  // Step 2: Verify using the master code (888888) via Playwright's request context.
+  // This properly handles Set-Cookie from the server response, setting the HttpOnly
+  // cookie in the browser context (unlike page.evaluate fetch which cannot set
+  // HttpOnly cookies).
+  const verifyRes = await page.request.post(`${API_BASE}/auth/verify-code`, {
+    data: { email, code: "888888" },
+  });
+  const verifyResult = await verifyRes.json();
   const token = verifyResult.token;
 
   if (!token) {
