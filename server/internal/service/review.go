@@ -124,6 +124,20 @@ func (s *ReviewService) SubmitManualReview(ctx context.Context, taskID, reviewer
 	}
 }
 
+// RetryTask resets an in_review task back to queued for re-execution.
+func (s *ReviewService) RetryTask(ctx context.Context, taskID pgtype.UUID) (*db.AgentTaskQueue, error) {
+	retried, err := s.Queries.RetryTaskReview(ctx, taskID)
+	if err != nil {
+		return nil, fmt.Errorf("retry task: %w", err)
+	}
+
+	slog.Info("task retried", "task_id", util.UUIDToString(taskID))
+
+	s.broadcastReviewEvent(ctx, protocol.EventTaskReviewed, retried, "retry", "")
+
+	return &retried, nil
+}
+
 func (s *ReviewService) broadcastReviewEvent(ctx context.Context, eventType string, task db.AgentTaskQueue, verdict, feedback string) {
 	s.Bus.Publish(events.Event{
 		Type:        eventType,

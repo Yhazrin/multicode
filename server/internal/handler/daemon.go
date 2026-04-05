@@ -678,6 +678,22 @@ func (h *Handler) CancelTask(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, taskToResponse(*task))
 }
 
+// RetryTask resets an in_review task back to queued for re-execution.
+// POST /api/tasks/:taskId/retry
+func (h *Handler) RetryTask(w http.ResponseWriter, r *http.Request) {
+	taskID := chi.URLParam(r, "taskId")
+
+	task, err := h.ReviewService.RetryTask(r.Context(), parseUUID(taskID))
+	if err != nil {
+		slog.Warn("retry task failed", "task_id", taskID, "error", err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	slog.Info("task retried", "task_id", taskID, "issue_id", uuidToString(task.IssueID))
+	writeJSON(w, http.StatusOK, taskToResponse(*task))
+}
+
 // ChainTask creates a follow-up task for a target agent based on a completed task.
 // POST /api/tasks/:taskId/chain
 type ChainTaskRequest struct {
