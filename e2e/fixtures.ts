@@ -216,19 +216,20 @@ export class TestApiClient {
     result?: string;
     error?: string;
   }) {
+    const runtimeId = await this.ensureRuntime();
     const client = new pg.Client(DATABASE_URL);
     await client.connect();
     try {
       const result = await client.query(
-        `INSERT INTO agent_task (workspace_id, agent_id, issue_id, runtime_id, status, result, error, created_at)
-         VALUES ($1, $2, $3, NULL, $4, $5, $6, now())
+        `INSERT INTO agent_task_queue (agent_id, runtime_id, issue_id, status, result, error, created_at)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6, now())
          RETURNING id`,
         [
-          this.workspaceId,
           agentId,
+          runtimeId,
           issueId,
           opts?.status ?? "completed",
-          opts?.result ?? null,
+          opts?.result ? JSON.stringify(opts.result) : null,
           opts?.error ?? null,
         ]
       );
@@ -247,7 +248,7 @@ export class TestApiClient {
     try {
       // Delete tasks via DB (no API endpoint for task deletion)
       for (const id of this.createdTaskIds) {
-        try { await client.query(`DELETE FROM agent_task WHERE id = $1`, [id]); } catch { /* ignore */ }
+        try { await client.query(`DELETE FROM agent_task_queue WHERE id = $1`, [id]); } catch { /* ignore */ }
       }
       // Delete policies via API
       for (const id of this.createdPolicyIds) {
