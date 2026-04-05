@@ -44,6 +44,7 @@ function deriveInboxState(items: InboxItem[]) {
 interface InboxState {
   items: InboxItem[];
   loading: boolean;
+  error: string | null;
   dedupedItems: InboxItem[];
   unreadCount: number;
   fetch: () => Promise<void>;
@@ -61,21 +62,23 @@ interface InboxState {
 export const useInboxStore = create<InboxState>((set, get) => ({
   items: [],
   loading: true,
+  error: null,
   dedupedItems: [],
   unreadCount: 0,
 
   fetch: async () => {
     logger.debug("fetch start");
     const isInitialLoad = get().items.length === 0;
-    if (isInitialLoad) set({ loading: true });
+    if (isInitialLoad) set({ loading: true, error: null });
     try {
       const data = await api.listInbox();
       logger.info("fetched", data.length, "items");
-      set({ items: data, loading: false, ...deriveInboxState(data) });
+      set({ items: data, loading: false, error: null, ...deriveInboxState(data) });
     } catch (err) {
       logger.error("fetch failed", err);
-      toast.error("Failed to load inbox");
-      if (isInitialLoad) set({ loading: false });
+      const message = err instanceof Error ? err.message : "Failed to load inbox";
+      toast.error(message);
+      if (isInitialLoad) set({ loading: false, error: message });
     }
   },
 
@@ -83,7 +86,7 @@ export const useInboxStore = create<InboxState>((set, get) => ({
     set({ items, ...deriveInboxState(items) });
   },
 
-  reset: () => set({ items: [], loading: true, dedupedItems: [], unreadCount: 0 }),
+  reset: () => set({ items: [], loading: true, error: null, dedupedItems: [], unreadCount: 0 }),
 
   addItem: (item) =>
     set((s) => {

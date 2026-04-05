@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronRight, ChevronUp, Loader2, Clock, CheckCircle2, XCircle, ExternalLink } from "lucide-react";
+import { ChevronRight, ChevronUp, Loader2, Clock, CheckCircle2, XCircle, ExternalLink, AlertCircle } from "lucide-react";
 import { api } from "@/shared/api";
+import { toast } from "sonner";
 import { useWSEvent } from "@/features/realtime";
 import type { TaskCompletedPayload, TaskFailedPayload, TaskCancelledPayload } from "@/shared/types/events";
 import type { AgentTask } from "@/shared/types/agent";
@@ -29,9 +30,16 @@ interface TaskRunHistoryProps {
 export function TaskRunHistory({ issueId }: TaskRunHistoryProps) {
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [open, setOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.listTasksByIssue(issueId).then(setTasks).catch(console.error);
+    setError(null);
+    api
+      .listTasksByIssue(issueId)
+      .then(setTasks)
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load execution history");
+      });
   }, [issueId]);
 
   // Refresh when a task completes
@@ -40,7 +48,10 @@ export function TaskRunHistory({ issueId }: TaskRunHistoryProps) {
     useCallback((payload: unknown) => {
       if (!isTaskEventPayload(payload)) return;
       if (payload.issue_id !== issueId) return;
-      api.listTasksByIssue(issueId).then(setTasks).catch(console.error);
+      api.listTasksByIssue(issueId).then(setTasks).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh execution history");
+      });
     }, [issueId]),
   );
 
@@ -49,7 +60,10 @@ export function TaskRunHistory({ issueId }: TaskRunHistoryProps) {
     useCallback((payload: unknown) => {
       if (!isTaskEventPayload(payload)) return;
       if (payload.issue_id !== issueId) return;
-      api.listTasksByIssue(issueId).then(setTasks).catch(console.error);
+      api.listTasksByIssue(issueId).then(setTasks).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh execution history");
+      });
     }, [issueId]),
   );
 
@@ -59,12 +73,24 @@ export function TaskRunHistory({ issueId }: TaskRunHistoryProps) {
     useCallback((payload: unknown) => {
       if (!isTaskEventPayload(payload)) return;
       if (payload.issue_id !== issueId) return;
-      api.listTasksByIssue(issueId).then(setTasks).catch(console.error);
+      api.listTasksByIssue(issueId).then(setTasks).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh execution history");
+      });
     }, [issueId]),
   );
 
   const completedTasks = tasks.filter((t) => t.status === "completed" || t.status === "failed" || t.status === "cancelled");
-  if (completedTasks.length === 0) return null;
+  if (completedTasks.length === 0 && !error) return null;
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-xs text-destructive">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {error}
+      </div>
+    );
+  }
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>

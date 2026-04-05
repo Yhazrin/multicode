@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronUp,
   Clock,
+  FileText,
   CheckCircle2,
   XCircle,
   Circle,
@@ -30,10 +31,20 @@ interface RunTimelineProps {
 }
 
 export function RunTimeline({ issueId }: RunTimelineProps) {
-  const { runs, stepsByRun, todosByRun, loading } = useRunTimeline(issueId);
+  const { runs, stepsByRun, todosByRun, loading, error } = useRunTimeline(issueId);
   const [open, setOpen] = useState(false);
 
   if (loading) return null;
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2 rounded border border-dashed px-3 py-2 text-xs text-destructive">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {error}
+      </div>
+    );
+  }
+
   if (runs.length === 0) return null;
 
   return (
@@ -107,6 +118,11 @@ function RunEntry({
             {run.model_name}
           </Badge>
         )}
+        {run.permission_mode && run.permission_mode !== "default" && (
+          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
+            {run.permission_mode}
+          </Badge>
+        )}
         <span className="ml-auto">
           <RunPhaseBadge phase={run.phase} />
         </span>
@@ -121,6 +137,11 @@ function RunEntry({
                 <span>${run.estimated_cost_usd.toFixed(4)}</span>
               )}
             </div>
+          )}
+
+          {/* System prompt */}
+          {run.system_prompt && (
+            <RunSystemPrompt prompt={run.system_prompt} />
           )}
 
           {/* Steps */}
@@ -216,6 +237,11 @@ function RunTodoList({ todos }: { todos: RunTodo[] }) {
                 >
                   {todo.title}
                 </span>
+                {todo.description && (
+                  <p className="text-muted-foreground/70 text-[10px] mt-0.5 leading-snug">
+                    {todo.description}
+                  </p>
+                )}
                 {todo.blocker && (
                   <p className="text-destructive text-[10px] mt-0.5">
                     Blocked: {todo.blocker}
@@ -224,6 +250,37 @@ function RunTodoList({ todos }: { todos: RunTodo[] }) {
               </div>
             </div>
           ))}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
+
+// ─── RunSystemPrompt (expandable system prompt view) ────────────────────────
+
+function RunSystemPrompt({ prompt }: { prompt: string }) {
+  const [open, setOpen] = useState(false);
+  const preview = truncate(prompt, 120);
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2">
+        <ChevronRight
+          className={cn("h-3 w-3 transition-transform", open && "rotate-90")}
+        />
+        <FileText className="h-3 w-3" />
+        <span>System prompt</span>
+        {!open && (
+          <span className="text-muted-foreground/60 truncate max-w-[200px]">
+            — {preview}
+          </span>
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <div className="ml-4 mt-1 rounded border bg-muted/30 px-3 py-2 max-h-48 overflow-y-auto">
+          <pre className="text-[11px] text-foreground whitespace-pre-wrap break-words font-mono">
+            {prompt}
+          </pre>
         </div>
       </CollapsibleContent>
     </Collapsible>

@@ -34,7 +34,10 @@ export function useIssueReactions(issueId: string, userId?: string) {
   // Reconnect recovery
   useWSReconnect(
     useCallback(() => {
-      api.getIssue(issueId).then((iss) => setReactions(iss.reactions ?? [])).catch(console.error);
+      api.getIssue(issueId).then((iss) => setReactions(iss.reactions ?? [])).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh reactions after reconnect");
+      });
     }, [issueId]),
   );
 

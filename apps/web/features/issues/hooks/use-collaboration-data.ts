@@ -28,22 +28,31 @@ export function useCollaborationData(
 ) {
   const [messages, setMessages] = useState<AgentMessage[]>([]);
   const [messagesLoading, setMessagesLoading] = useState(false);
+  const [messagesError, setMessagesError] = useState<string | null>(null);
   const [dependencies, setDependencies] = useState<TaskDependency[]>([]);
   const [depsLoading, setDepsLoading] = useState(false);
+  const [depsError, setDepsError] = useState<string | null>(null);
   const [checkpoints, setCheckpoints] = useState<TaskCheckpoint[]>([]);
   const [cpsLoading, setCpsLoading] = useState(false);
+  const [cpsError, setCpsError] = useState<string | null>(null);
   const [memories, setMemories] = useState<AgentMemory[]>([]);
   const [memLoading, setMemLoading] = useState(false);
+  const [memError, setMemError] = useState<string | null>(null);
   const [checkpointsLoaded, setCheckpointsLoaded] = useState(false);
   const [memoriesLoaded, setMemoriesLoaded] = useState(false);
 
   const loadMessages = useCallback(async () => {
     if (!agentId) return;
     setMessagesLoading(true);
+    setMessagesError(null);
     try {
       const data = await api.listAgentMessages(agentId, taskId ? { task_id: taskId } : undefined);
       setMessages(data);
-    } catch {
+      setMessagesError(null);
+      api.markAgentMessagesRead(agentId).catch(() => {});
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load messages";
+      setMessagesError(message);
       toast.error("Failed to load messages");
     } finally {
       setMessagesLoading(false);
@@ -53,10 +62,14 @@ export function useCollaborationData(
   const loadDependencies = useCallback(async () => {
     if (!taskId) return;
     setDepsLoading(true);
+    setDepsError(null);
     try {
       const data = await api.listTaskDependencies(taskId);
       setDependencies(data);
-    } catch {
+      setDepsError(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load dependencies";
+      setDepsError(message);
       toast.error("Failed to load dependencies");
     } finally {
       setDepsLoading(false);
@@ -66,10 +79,14 @@ export function useCollaborationData(
   const loadCheckpoints = useCallback(async () => {
     if (!taskId) return;
     setCpsLoading(true);
+    setCpsError(null);
     try {
       const data = await api.listTaskCheckpoints(taskId);
       setCheckpoints(data);
-    } catch {
+      setCpsError(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load checkpoints";
+      setCpsError(message);
       toast.error("Failed to load checkpoints");
     } finally {
       setCpsLoading(false);
@@ -79,10 +96,14 @@ export function useCollaborationData(
   const loadMemories = useCallback(async () => {
     if (!agentId) return;
     setMemLoading(true);
+    setMemError(null);
     try {
       const data = await api.listAgentMemory(agentId);
       setMemories(data);
-    } catch {
+      setMemError(null);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "Failed to load memories";
+      setMemError(message);
       toast.error("Failed to load memories");
     } finally {
       setMemLoading(false);
@@ -111,14 +132,18 @@ export function useCollaborationData(
     messages,
     setMessages,
     messagesLoading,
+    messagesError,
     dependencies,
     setDependencies,
     depsLoading,
+    depsError,
     checkpoints,
     cpsLoading,
+    cpsError,
     memories,
     setMemories,
     memLoading,
+    memError,
     checkpointsLoaded,
     setCheckpointsLoaded,
     memoriesLoaded,

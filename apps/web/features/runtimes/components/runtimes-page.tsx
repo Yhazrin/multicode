@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useCallback } from "react";
-import { Server } from "lucide-react";
+import { AlertCircle, Server } from "lucide-react";
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   ResizablePanelGroup,
@@ -22,6 +22,7 @@ export default function RuntimesPage() {
   const runtimes = useRuntimeStore((s) => s.runtimes);
   const selectedId = useRuntimeStore((s) => s.selectedId);
   const fetching = useRuntimeStore((s) => s.fetching);
+  const error = useRuntimeStore((s) => s.error);
   const fetchRuntimes = useRuntimeStore((s) => s.fetchRuntimes);
   const setSelectedId = useRuntimeStore((s) => s.setSelectedId);
 
@@ -80,6 +81,18 @@ export default function RuntimesPage() {
               <Skeleton key={i} className="h-16 w-full rounded-lg" />
             ))}
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive/60" aria-hidden="true" />
+          <p className="text-sm font-medium text-destructive">Failed to load runtimes</p>
+          <p className="text-xs text-destructive/70">{error}</p>
         </div>
       </div>
     );

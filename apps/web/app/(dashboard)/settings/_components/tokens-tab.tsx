@@ -146,7 +146,7 @@ export function TokensTab() {
               </Card>
             ))}
           </div>
-        ) : tokens.length > 0 && (
+        ) : tokens.length > 0 ? (
           <div className="space-y-2">
             {tokens.map((t) => (
               <Card key={t.id}>
@@ -178,6 +178,10 @@ export function TokensTab() {
               </Card>
             ))}
           </div>
+        ) : (
+          <p className="py-4 text-center text-xs text-muted-foreground">
+            No tokens yet. Create one above to authenticate the CLI or external integrations.
+          </p>
         )}
       </section>
 

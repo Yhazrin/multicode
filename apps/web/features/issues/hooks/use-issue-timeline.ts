@@ -33,6 +33,7 @@ export function useIssueTimeline(issueId: string, userId?: string) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const timelineRef = useRef(timeline);
   timelineRef.current = timeline;
@@ -41,11 +42,16 @@ export function useIssueTimeline(issueId: string, userId?: string) {
   useEffect(() => {
     setTimeline([]);
     setLoading(true);
+    setError(null);
     api
       .listTimeline(issueId)
-      .then((entries) => setTimeline(entries))
+      .then((entries) => {
+        setTimeline(entries);
+        setError(null);
+      })
       .catch((e) => {
-        console.error(e);
+        const message = e instanceof Error ? e.message : "Failed to load activity";
+        setError(message);
         toast.error("Failed to load activity");
       })
       .finally(() => setLoading(false));
@@ -54,7 +60,10 @@ export function useIssueTimeline(issueId: string, userId?: string) {
   // Reconnect recovery
   useWSReconnect(
     useCallback(() => {
-      api.listTimeline(issueId).then(setTimeline).catch(console.error);
+      api.listTimeline(issueId).then(setTimeline).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh timeline after reconnect");
+      });
     }, [issueId]),
   );
 
@@ -341,6 +350,7 @@ export function useIssueTimeline(issueId: string, userId?: string) {
   return {
     timeline,
     loading,
+    error,
     submitting,
     submitComment,
     submitReply,

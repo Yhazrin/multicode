@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, memo } from "react";
-import { MessageSquare, Send } from "lucide-react";
+import { MessageSquare, Send, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +37,7 @@ interface AgentMessagesSectionProps {
   taskId: string | undefined;
   messages: AgentMessage[];
   messagesLoading: boolean;
+  messagesError: string | null;
   onMessageSent: (msg: AgentMessage) => void;
 }
 
@@ -45,6 +46,7 @@ export function AgentMessagesSection({
   taskId,
   messages,
   messagesLoading,
+  messagesError,
   onMessageSent,
 }: AgentMessagesSectionProps) {
   const [replyText, setReplyText] = useState("");
@@ -81,6 +83,12 @@ export function AgentMessagesSection({
         <div className="space-y-2">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
+        </div>
+      ) : messagesError ? (
+        <div className="flex flex-col items-center gap-1.5 py-3 text-xs text-muted-foreground">
+          <AlertCircle className="h-4 w-4 text-destructive" aria-hidden="true" />
+          <span>Failed to load messages</span>
+          <span className="text-[10px] text-destructive">{messagesError}</span>
         </div>
       ) : messages.length === 0 ? (
         <p className="text-xs text-muted-foreground py-1">No messages yet.</p>

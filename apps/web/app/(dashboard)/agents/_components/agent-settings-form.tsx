@@ -9,6 +9,10 @@ import {
   Save,
   Globe,
   Lock,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  Clock,
 } from "lucide-react";
 import type {
   Agent,
@@ -194,6 +198,38 @@ export function SettingsTab({
           {runtimeDevice?.name ?? (agent.runtime_mode === "cloud" ? "Cloud" : "Local")}
         </div>
       </div>
+
+      {runtimeDevice && (
+        <div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Activity className="h-3 w-3" aria-hidden="true" />
+            Runtime Health (24h)
+          </span>
+          <div className="mt-1 grid grid-cols-3 gap-2">
+            <div className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs">
+              <CheckCircle2 className="h-3.5 w-3.5 text-success" aria-hidden="true" />
+              <span className="text-muted-foreground">Succeeded</span>
+              <span className="ml-auto font-medium">{runtimeDevice.success_count_24h}</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs">
+              <XCircle className="h-3.5 w-3.5 text-destructive" aria-hidden="true" />
+              <span className="text-muted-foreground">Failed</span>
+              <span className="ml-auto font-medium">{runtimeDevice.failure_count_24h}</span>
+            </div>
+            <div className="flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+              <span className="text-muted-foreground">Avg</span>
+              <span className="ml-auto font-medium">
+                {runtimeDevice.avg_task_duration_ms > 0
+                  ? runtimeDevice.avg_task_duration_ms < 60_000
+                    ? `${(runtimeDevice.avg_task_duration_ms / 1000).toFixed(1)}s`
+                    : `${(runtimeDevice.avg_task_duration_ms / 60_000).toFixed(1)}m`
+                  : "—"}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Button onClick={handleSave} disabled={!dirty || saving} size="sm">
         {saving ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" aria-hidden="true" /> : <Save className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />}

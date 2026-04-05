@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { Bot, ChevronUp, Loader2, ArrowDown, Square } from "lucide-react";
+import { AlertCircle, Bot, ChevronUp, Loader2, ArrowDown, Square } from "lucide-react";
 import type { AgentTask } from "@/shared/types/agent";
 import { cn } from "@/lib/utils";
 import { ActorAvatar } from "@/components/common/actor-avatar";
@@ -24,7 +24,7 @@ interface AgentLiveCardProps {
 
 export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentLiveCardProps) {
   const { getActorName } = useActorName();
-  const { activeTask, items, progress, cancelling, handleCancel } = useLiveTask(issueId);
+  const { activeTask, items, progress, cancelling, error, handleCancel } = useLiveTask(issueId);
   const [elapsed, setElapsed] = useState("");
   const [autoScroll, setAutoScroll] = useState(true);
   const [isStuck, setIsStuck] = useState(false);
@@ -81,6 +81,15 @@ export function AgentLiveCard({ issueId, agentName, scrollContainerRef }: AgentL
     () => items.filter((i) => i.type === "tool_use").length,
     [items]
   );
+
+  if (error && !activeTask) {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs text-destructive">
+        <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+        {error}
+      </div>
+    );
+  }
 
   if (!activeTask) return null;
   const name = (activeTask.agent_id ? getActorName("agent", activeTask.agent_id) : agentName) ?? "Agent";

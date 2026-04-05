@@ -666,6 +666,9 @@ export function AgentDetail({
               {runtimeDevice?.name ?? (agent.runtime_mode === "cloud" ? "Cloud" : "Local")}
             </span>
           </div>
+          {agent.description && (
+            <p className="text-[11px] text-muted-foreground truncate">{agent.description}</p>
+          )}
         </div>
         {!isArchived && (
           <DropdownMenu>
