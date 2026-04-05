@@ -89,7 +89,7 @@ func main() {
 	toolRegistry := tool.DefaultRegistry()
 	mcpManager := initMCPClientManager(ctx, queries, toolRegistry)
 
-	r := NewRouter(pool, hub, bus)
+	r := NewRouter(pool, hub, bus, toolRegistry)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

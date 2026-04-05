@@ -518,17 +518,21 @@ type TaskReview struct {
 }
 
 type Team struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Name        string             `json:"name"`
-	Description pgtype.Text        `json:"description"`
-	AvatarUrl   pgtype.Text        `json:"avatar_url"`
-	LeadAgentID pgtype.UUID        `json:"lead_agent_id"`
-	CreatedBy   pgtype.UUID        `json:"created_by"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
-	ArchivedAt  pgtype.Timestamptz `json:"archived_at"`
-	ArchivedBy  pgtype.UUID        `json:"archived_by"`
+	ID             pgtype.UUID        `json:"id"`
+	WorkspaceID    pgtype.UUID        `json:"workspace_id"`
+	Name           string             `json:"name"`
+	Description    pgtype.Text        `json:"description"`
+	AvatarUrl      pgtype.Text        `json:"avatar_url"`
+	LeadAgentID    pgtype.UUID        `json:"lead_agent_id"`
+	CreatedBy      pgtype.UUID        `json:"created_by"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
+	ArchivedAt     pgtype.Timestamptz `json:"archived_at"`
+	ArchivedBy     pgtype.UUID        `json:"archived_by"`
+	QueuePolicy    []byte             `json:"queue_policy"`
+	CapabilityTags []string           `json:"capability_tags"`
+	MaxRunDuration pgtype.Interval    `json:"max_run_duration"`
+	MaxConcurrent  pgtype.Int4        `json:"max_concurrent"`
 }
 
 type TeamMember struct {

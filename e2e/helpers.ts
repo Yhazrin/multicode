@@ -44,12 +44,16 @@ export async function loginAsDefault(page: Page) {
     }
   }
 
-  // Step 2: Verify using the master code (888888) via Playwright's request context.
-  // page.request.post goes through the Next.js proxy and captures Set-Cookie
-  // at the browser context level — same-origin, no page navigation needed.
+  // Step 2: Verify using the master code (888888).
+  // Use page.request.post through the Next.js proxy to get the JWT.
+  // Then manually add cookies to the browser context on the frontend origin,
+  // since Playwright's API client sets cookies on the proxy target origin.
+  const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
   await page.goto("/login");
-  const verifyRes = await page.request.post("/auth/verify-code", {
-    data: { email, code: "888888" },
+  const verifyRes = await page.request.post(`${baseUrl}/auth/verify-code`, {
+    headers: { "Content-Type": "application/json" },
+    data: JSON.stringify({ email, code: "888888" }),
+
   });
   const verifyResult = await verifyRes.json();
   const token = verifyResult.token;
@@ -57,6 +61,28 @@ export async function loginAsDefault(page: Page) {
   if (!token) {
     throw new Error(`verify-code returned no token: ${JSON.stringify(verifyResult)}`);
   }
+
+  // Set the HttpOnly "token" cookie and "multicode_logged_in" cookie on the
+  // frontend origin so the browser sends them on subsequent page loads.
+  const url = new URL(baseUrl);
+  await page.context().addCookies([
+    {
+      name: "token",
+      value: token,
+      domain: url.hostname,
+      path: "/",
+      httpOnly: true,
+      sameSite: "Lax",
+    },
+    {
+      name: "multicode_logged_in",
+      value: "1",
+      domain: url.hostname,
+      path: "/",
+      httpOnly: false,
+      sameSite: "Lax",
+    },
+  ]);
 
   // Update user name if needed
   if (verifyResult.user?.name !== DEFAULT_E2E_NAME) {
@@ -93,10 +119,10 @@ export async function loginAsDefault(page: Page) {
   }
   if (!workspace) throw new Error(`Failed to ensure workspace ${slug}`);
 
-  // Step 4: Inject localStorage + cookie BEFORE the page JS runs.
-  // addInitScript runs before any page script, so AuthInitializer will
-  // find the workspace ID in localStorage on mount.
-  await page.addInitScript((wsId) => {
+  // Set workspace ID in localStorage — navigate to /login for same-origin access
+  await page.goto("/login");
+  await page.evaluate((wsId) => {
+
     localStorage.setItem("multicode_workspace_id", wsId);
     document.cookie = "multicode_logged_in=1; path=/; max-age=31536000; samesite=lax";
   }, workspace.id);

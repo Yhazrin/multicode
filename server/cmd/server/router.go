@@ -14,12 +14,14 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/multica-ai/multicode/server/internal/auth"
+	"github.com/multica-ai/multicode/server/internal/daemon"
 	"github.com/multica-ai/multicode/server/internal/events"
 	"github.com/multica-ai/multicode/server/internal/handler"
 	"github.com/multica-ai/multicode/server/internal/middleware"
 	"github.com/multica-ai/multicode/server/internal/realtime"
 	"github.com/multica-ai/multicode/server/internal/service"
 	"github.com/multica-ai/multicode/server/internal/storage"
+	"github.com/multica-ai/multicode/server/internal/tool"
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
 )
 
@@ -47,12 +49,27 @@ func allowedOrigins() []string {
 }
 
 // NewRouter creates the fully-configured Chi router with all middleware and routes.
-func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus) chi.Router {
+func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus, toolReg *tool.Registry) chi.Router {
 	queries := db.New(pool)
 	emailSvc := service.NewEmailService()
 	s3 := storage.NewS3StorageFromEnv()
 	cfSigner := auth.NewCloudFrontSignerFromEnv()
-	h := handler.New(queries, pool, hub, bus, emailSvc, s3, cfSigner)
+	h := handler.New(queries, pool, hub, bus, emailSvc, s3, cfSigner, toolReg)
+
+	// Wire tool registry changes to event bus + prompt cache invalidation (#19).
+	if toolReg != nil {
+		toolReg.OnChange = func(e tool.ChangeEvent) {
+			daemon.SharedRegistry().InvalidateStatic()
+			bus.Publish(events.Event{
+				Type: "tool_registry.changed",
+				Payload: map[string]any{
+					"action": e.Action,
+					"names":  e.Names,
+					"source": string(e.Source),
+				},
+			})
+		}
+	}
 
 	r := chi.NewRouter()
 
