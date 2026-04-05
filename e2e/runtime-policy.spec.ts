@@ -14,7 +14,7 @@ test.describe("Runtime Policy (P0-3)", () => {
     agentId = agent.id;
 
     // Navigate to agent detail page
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
 
     // Click the Policy tab
@@ -195,7 +195,7 @@ test.describe("Runtime Policy (P0-3)", () => {
     });
 
     // Reload the page
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Policy")').click();
 
@@ -235,7 +235,7 @@ test.describe("Runtime Policy (P0-3)", () => {
     await page.locator("button:has-text('Save Changes')").click();
 
     // Reload
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Policy")').click();
 

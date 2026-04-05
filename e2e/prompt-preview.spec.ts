@@ -16,7 +16,7 @@ test.describe("Prompt Preview (P0-1)", () => {
     agentId = agent.id;
 
     // Navigate to agent detail page directly
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
 
     // Click the Prompt tab
@@ -150,7 +150,7 @@ test.describe("Prompt Preview (P0-1)", () => {
       instructions: "",
     });
 
-    await page.goto(`/agents/${emptyAgent.id}`);
+    await page.goto(`/agents/${emptyAgent.id}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${emptyAgent.id}`);
     await page.locator('[role="tab"]:has-text("Prompt")').click();
 

@@ -3,7 +3,7 @@ import { loginAsDefault } from "./helpers";
 
 test.describe("Authentication", () => {
   test("login page renders correctly", async ({ page }) => {
-    await page.goto("/login");
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
 
     await expect(page.getByTestId("auth-email-input")).toBeVisible();
     await expect(page.getByTestId("auth-submit-button")).toBeVisible();
@@ -21,7 +21,7 @@ test.describe("Authentication", () => {
     // original navigation, producing ERR_ABORTED. Catch it and verify
     // we end up at "/".
     try {
-      await page.goto("/issues");
+      await page.goto("/issues", { waitUntil: "domcontentloaded" });
     } catch {
       // ERR_ABORTED is expected — the client-side redirect fires before load
     }

@@ -49,7 +49,7 @@ export async function loginAsDefault(page: Page) {
   // Then manually add cookies to the browser context on the frontend origin,
   // since Playwright's API client sets cookies on the proxy target origin.
   const baseUrl = process.env.PLAYWRIGHT_BASE_URL || "http://localhost:3000";
-  await page.goto("/login");
+  await page.goto("/login", { waitUntil: "domcontentloaded" });
   const verifyRes = await page.request.post(`${baseUrl}/auth/verify-code`, {
     headers: { "Content-Type": "application/json" },
     data: JSON.stringify({ email, code: "888888" }),
@@ -122,7 +122,7 @@ export async function loginAsDefault(page: Page) {
   // Set workspace ID in localStorage — navigate to a page for same-origin access
   // Use try/catch because an existing auth state may redirect, causing ERR_ABORTED
   try {
-    await page.goto("/login");
+    await page.goto("/login", { waitUntil: "domcontentloaded" });
   } catch {
     // ERR_ABORTED is expected if the page redirects due to existing auth
   }
@@ -136,7 +136,7 @@ export async function loginAsDefault(page: Page) {
   // the HttpOnly token cookie is already in the browser context from step 2,
   // and AuthInitializer will authenticate successfully.
   try {
-    await page.goto("/issues");
+    await page.goto("/issues", { waitUntil: "domcontentloaded" });
   } catch {
     // ERR_ABORTED is expected if already on /issues due to redirect
   }

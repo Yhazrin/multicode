@@ -29,7 +29,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Task completed successfully.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
 
     // Click Tasks tab
@@ -46,7 +46,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Task completed successfully.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
 
     // Click Tasks tab
@@ -72,7 +72,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Done.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await expect(page.locator("text=Task Queue")).toBeVisible({
@@ -101,7 +101,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Build succeeded with 0 errors.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -120,7 +120,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       error: "Connection timeout after 30s",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -139,7 +139,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Done.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -158,7 +158,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       status: "completed",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -183,7 +183,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       result: "Nav test result.",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -217,7 +217,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
       status: "completed",
     });
 
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
     await page.locator('[aria-label="View report"]').first().click();
@@ -233,7 +233,7 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
 
   test("task queue shows empty state when no tasks", async ({ page }) => {
     // No tasks created — just navigate
-    await page.goto(`/agents/${agentId}`);
+    await page.goto(`/agents/${agentId}`, { waitUntil: "domcontentloaded" });
     await page.waitForURL(`**/agents/${agentId}`);
     await page.locator('[role="tab"]:has-text("Tasks")').click();
 
