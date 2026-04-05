@@ -8,15 +8,17 @@ import (
 // Priority constants for the 9-layer system prompt assembly.
 // Lower = higher priority, assembled top-to-bottom.
 const (
-	PriorityBaseSystem     = 10
-	PriorityMulticodeRole  = 20
-	PriorityWorkspacePolicy = 30
-	PriorityAgentProfile   = 40
-	PriorityTaskObjective  = 50
-	PrioritySkills         = 60
-	PriorityTodo           = 70
-	PriorityCheckpoint     = 80
-	PriorityToolPolicy     = 90
+	PriorityCompactionSafety = 5
+	PriorityBaseSystem       = 10
+	PriorityStartupSequence  = 15
+	PriorityMulticodeRole    = 20
+	PriorityWorkspacePolicy  = 30
+	PriorityAgentProfile     = 40
+	PriorityTaskObjective    = 50
+	PrioritySkills           = 60
+	PriorityTodo             = 70
+	PriorityCheckpoint       = 80
+	PriorityToolPolicy       = 90
 )
 
 // LayerContext carries all data needed to assemble the system prompt.
@@ -69,7 +71,9 @@ type TodoInfo struct {
 // DefaultLayers returns the 9 standard layer definitions for prompt assembly.
 func DefaultLayers() []LayerDef {
 	return []LayerDef{
+		{Name: "CompactionSafety", Priority: PriorityCompactionSafety, Assemble: assembleCompactionSafety},
 		{Name: "BaseSystem", Priority: PriorityBaseSystem, Assemble: assembleBaseSystem},
+		{Name: "StartupSequence", Priority: PriorityStartupSequence, Assemble: assembleStartupSequence},
 		{Name: "MulticodeRole", Priority: PriorityMulticodeRole, Assemble: assembleMulticodeRole},
 		{Name: "WorkspacePolicy", Priority: PriorityWorkspacePolicy, Assemble: assembleWorkspacePolicy},
 		{Name: "AgentProfile", Priority: PriorityAgentProfile, Assemble: assembleAgentProfile},
@@ -220,6 +224,14 @@ func assembleToolPolicy(ctx context.Context) (string, error) {
 		}
 	}
 	return joinNonEmpty(lines, "\n"), nil
+}
+
+func assembleCompactionSafety(_ context.Context) (string, error) {
+	return "Important: If this conversation was interrupted by context compaction, restore context from the last checkpoint. Do not rely on conversation history before the compaction point — it may be incomplete or unavailable. The checkpoint is the only reliable recovery source.", nil
+}
+
+func assembleStartupSequence(_ context.Context) (string, error) {
+	return "## Startup Sequence\n\nWhen you begin work, follow these steps:\n\n1. **Acknowledge** — Confirm your environment, working directory, and the current task.\n2. **Check Memory** — Read MEMORY.md and any relevant context files before starting.\n3. **Process** — Execute the task methodically, working through each requirement.\n4. **Complete All Work** — Ensure all subtasks and dependencies are finished before marking done.\n5. **Report** — Summarize what was accomplished, any decisions made, and next steps.", nil
 }
 
 func joinNonEmpty(parts []string, sep string) string {

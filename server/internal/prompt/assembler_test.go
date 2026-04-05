@@ -72,7 +72,9 @@ func TestAssemblePrompt_FullContext(t *testing.T) {
 
 	// Verify all sections are present in order
 	checks := []string{
+		"checkpoint", // compaction safety (Priority 5, highest)
 		"Multicode",
+		"Startup Sequence",
 		"Senior Developer",
 		"Workspace Policy",
 		"Agent Instructions",
@@ -112,11 +114,45 @@ func TestAssemblePrompt_MinimalContext(t *testing.T) {
 	if !strings.Contains(got, "Multicode") {
 		t.Error("minimal context should still include app name")
 	}
+	// Compaction safety and startup sequence are always present
+	if !strings.Contains(got, "checkpoint") {
+		t.Error("compaction safety should always be present")
+	}
+	if !strings.Contains(got, "Startup Sequence") {
+		t.Error("startup sequence should always be present")
+	}
 	// Should NOT have empty sections
 	if strings.Contains(got, "Workspace Policy") {
 		t.Error("empty workspace rules should not produce section")
 	}
 	if strings.Contains(got, "Current Task") {
 		t.Error("empty task should not produce section")
+	}
+}
+
+func TestAssembleCompactionSafety(t *testing.T) {
+	content, err := assembleCompactionSafety(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !strings.Contains(content, "compaction") {
+		t.Error("should mention compaction")
+	}
+	if !strings.Contains(content, "checkpoint") {
+		t.Error("should mention checkpoint as recovery source")
+	}
+}
+
+func TestAssembleStartupSequence(t *testing.T) {
+	content, err := assembleStartupSequence(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	steps := []string{"Acknowledge", "Check Memory", "Process", "Complete All Work", "Report"}
+	for _, step := range steps {
+		if !strings.Contains(content, step) {
+			t.Errorf("startup sequence missing step: %q", step)
+		}
 	}
 }
