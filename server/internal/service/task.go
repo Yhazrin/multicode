@@ -211,6 +211,9 @@ func (s *TaskService) ClaimTask(ctx context.Context, agentID pgtype.UUID) (*db.A
 	// Broadcast task:dispatch
 	s.broadcastTaskDispatch(ctx, task)
 
+	// Broadcast agent:started
+	s.broadcastAgentEvent(ctx, protocol.EventAgentStarted, task)
+
 	return &task, nil
 }
 
@@ -343,6 +346,7 @@ func (s *TaskService) CompleteTask(ctx context.Context, taskID pgtype.UUID, resu
 
 	// Broadcast
 	s.broadcastTaskEvent(ctx, protocol.EventTaskCompleted, completed)
+	s.broadcastAgentEvent(ctx, protocol.EventAgentCompleted, completed)
 
 	return &completed, nil
 }
@@ -376,6 +380,7 @@ func (s *TaskService) FailTask(ctx context.Context, taskID pgtype.UUID, errMsg s
 
 	// Broadcast
 	s.broadcastTaskEvent(ctx, protocol.EventTaskFailed, task)
+	s.broadcastAgentEvent(ctx, protocol.EventAgentFailed, task)
 
 	return &task, nil
 }
@@ -561,6 +566,29 @@ func (s *TaskService) broadcastTaskEvent(ctx context.Context, eventType string, 
 			"agent_id": util.UUIDToString(task.AgentID),
 			"issue_id": util.UUIDToString(task.IssueID),
 			"status":   task.Status,
+		},
+	})
+}
+
+// broadcastAgentEvent publishes an agent lifecycle event (agent:started, agent:completed, agent:failed).
+// These complement the task:* events and allow frontends to react at the agent level.
+func (s *TaskService) broadcastAgentEvent(ctx context.Context, eventType string, task db.AgentTaskQueue) {
+	workspaceID := ""
+	if issue, err := s.Queries.GetIssue(ctx, task.IssueID); err == nil {
+		workspaceID = util.UUIDToString(issue.WorkspaceID)
+	}
+	if workspaceID == "" {
+		return
+	}
+	s.Bus.Publish(events.Event{
+		Type:        eventType,
+		WorkspaceID: workspaceID,
+		ActorType:   "system",
+		ActorID:     "",
+		Payload: map[string]any{
+			"task_id":  util.UUIDToString(task.ID),
+			"agent_id": util.UUIDToString(task.AgentID),
+			"issue_id": util.UUIDToString(task.IssueID),
 		},
 	})
 }

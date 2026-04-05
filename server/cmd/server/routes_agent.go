@@ -56,6 +56,9 @@ func registerAgentRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) 
 	// Ready tasks (all dependencies satisfied)
 	r.Get("/api/tasks/ready", h.GetReadyTasks)
 
+	// Retry a failed/in_review task
+	r.Post("/api/tasks/{taskId}/retry", h.RetryTask)
+
 	// Workspace memory recall
 	r.Post("/api/workspace/memory/recall", h.RecallWorkspaceMemory)
 

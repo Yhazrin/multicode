@@ -10,6 +10,7 @@ export interface CreateIssueRequest {
   assignee_type?: IssueAssigneeType;
   assignee_id?: string;
   parent_issue_id?: string;
+  repo_id?: string;
   due_date?: string;
 }
 
@@ -21,6 +22,7 @@ export interface UpdateIssueRequest {
   assignee_type?: IssueAssigneeType | null;
   assignee_id?: string | null;
   position?: number;
+  repo_id?: string | null;
   due_date?: string | null;
 }
 

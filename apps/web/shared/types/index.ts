@@ -43,7 +43,7 @@ export type {
   CreateTeamRequest,
   UpdateTeamRequest,
 } from "./team";
-export type { Workspace, WorkspaceRepo, Member, MemberRole, User, MemberWithUser } from "./workspace";
+export type { Workspace, WorkspaceRepo, CreateWorkspaceRepoRequest, UpdateWorkspaceRepoRequest, Member, MemberRole, User, MemberWithUser } from "./workspace";
 export type { InboxItem, InboxSeverity, InboxItemType } from "./inbox";
 export type { Comment, CommentType, CommentAuthorType, Reaction } from "./comment";
 export type { TimelineEntry } from "./activity";

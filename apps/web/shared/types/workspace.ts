@@ -1,8 +1,34 @@
 export type MemberRole = "owner" | "admin" | "member";
 
 export interface WorkspaceRepo {
+  id: string;
+  workspace_id: string;
+  name: string;
   url: string;
+  default_branch: string;
   description: string;
+  is_default: boolean;
+  config: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateWorkspaceRepoRequest {
+  name: string;
+  url: string;
+  default_branch?: string;
+  description?: string;
+  is_default?: boolean;
+  config?: Record<string, unknown>;
+}
+
+export interface UpdateWorkspaceRepoRequest {
+  name?: string;
+  url?: string;
+  default_branch?: string;
+  description?: string;
+  is_default?: boolean;
+  config?: Record<string, unknown>;
 }
 
 export interface Workspace {
