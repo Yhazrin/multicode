@@ -11,6 +11,7 @@ import {
   Download,
 } from "lucide-react";
 import type { Skill, CreateSkillRequest, UpdateSkillRequest } from "@/shared/types";
+import { timeAgo } from "@/shared/utils";
 import {
   Dialog,
   DialogContent,
@@ -58,6 +59,7 @@ function CreateSkillDialog({
   const [importUrl, setImportUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [importError, setImportError] = useState("");
+  const [createError, setCreateError] = useState("");
 
   const detectedSource = (() => {
     const url = importUrl.trim().toLowerCase();
@@ -69,10 +71,12 @@ function CreateSkillDialog({
   const handleCreate = async () => {
     if (!name.trim()) return;
     setLoading(true);
+    setCreateError("");
     try {
       await onCreate({ name: name.trim(), description: description.trim() });
       onClose();
-    } catch {
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : "Failed to create skill");
       setLoading(false);
     }
   };
@@ -120,7 +124,7 @@ function CreateSkillDialog({
                 autoFocus
                 type="text"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
+                onChange={(e) => { setName(e.target.value); setCreateError(""); }}
                 placeholder="e.g. Code Review, Bug Triage"
                 className="mt-1"
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -137,6 +141,13 @@ function CreateSkillDialog({
                 className="mt-1"
               />
             </div>
+
+            {createError && (
+              <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                {createError}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="import" className="space-y-4 mt-4 min-h-[180px]">
@@ -440,21 +451,28 @@ function SkillDetail({
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
             <Sparkles className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           </div>
-          <div className="grid grid-cols-2 gap-3 flex-1 min-w-0">
-            <Input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-8 text-sm font-medium"
-              placeholder="Skill name"
-            />
-            <Input
-              type="text"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="h-8 text-sm"
-              placeholder="Description"
-            />
+          <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+            <div className="grid grid-cols-2 gap-3">
+              <Input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="h-8 text-sm font-medium"
+                placeholder="Skill name"
+              />
+              <Input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="h-8 text-sm"
+                placeholder="Description"
+              />
+            </div>
+            {skill.updated_at && (
+              <span className="text-[10px] text-muted-foreground pl-0.5">
+                Updated {timeAgo(skill.updated_at)}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 ml-3">

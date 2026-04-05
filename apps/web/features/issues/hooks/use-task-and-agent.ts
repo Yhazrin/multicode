@@ -5,9 +5,11 @@ import type { AgentTask } from "@/shared/types";
 export function useTaskAndAgent(issueId: string) {
   const [activeTask, setActiveTask] = useState<AgentTask | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     api
       .getActiveTaskForIssue(issueId)
       .then(({ task }) => {
@@ -15,7 +17,11 @@ export function useTaskAndAgent(issueId: string) {
           setActiveTask(task);
         }
       })
-      .catch(() => {})
+      .catch((e: unknown) => {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load task");
+        }
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
@@ -29,5 +35,6 @@ export function useTaskAndAgent(issueId: string) {
     taskId: activeTask?.id,
     agentId: activeTask?.agent_id,
     loading,
+    error,
   };
 }

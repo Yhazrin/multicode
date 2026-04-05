@@ -2,11 +2,15 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { AgentRuntime } from "@/shared/types";
 import { runtimesApi } from "@/shared/api";
+import { useWorkspaceStore } from "@/features/workspace";
 import { formatLastSeen } from "../utils";
+import { timeAgo } from "@/shared/utils";
 import { RuntimeModeIcon, StatusBadge, InfoField, ApprovalStatusBadge } from "./shared";
 import { PingSection } from "./ping-section";
 import { UpdateSection } from "./update-section";
 import { UsageSection } from "./usage-section";
+import { AuditLogSection } from "./audit-log-section";
+import { JoinTokenSection } from "./join-token-section";
 import { Button } from "@/components/ui/button";
 import { Pause, Play, Ban, RotateCcw } from "lucide-react";
 
@@ -30,6 +34,7 @@ function getTags(metadata: Record<string, unknown>): string[] {
 
 export function RuntimeDetail({ runtime, onUpdate }: { runtime: AgentRuntime; onUpdate?: (updated: AgentRuntime) => void }) {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const workspace = useWorkspaceStore((s) => s.workspace);
   const cliVersion =
     runtime.runtime_mode === "local" ? getCliVersion(runtime.metadata) : null;
   const tags = getTags(runtime.metadata);
@@ -155,6 +160,15 @@ export function RuntimeDetail({ runtime, onUpdate }: { runtime: AgentRuntime; on
           {runtime.trust_level && (
             <InfoField label="Trust Level" value={runtime.trust_level} />
           )}
+          {runtime.last_claimed_at && (
+            <InfoField label="Last Claimed" value={timeAgo(runtime.last_claimed_at)} />
+          )}
+          {runtime.max_concurrent_tasks_override !== null && (
+            <InfoField label="Max Tasks Override" value={String(runtime.max_concurrent_tasks_override)} />
+          )}
+          {runtime.drain_mode && (
+            <InfoField label="Drain Mode" value="Active" />
+          )}
         </div>
 
         {/* Tags */}
@@ -228,6 +242,24 @@ export function RuntimeDetail({ runtime, onUpdate }: { runtime: AgentRuntime; on
           </h3>
           <UsageSection runtimeId={runtime.id} />
         </div>
+
+        {/* Audit Log */}
+        <div>
+          <h3 className="text-xs font-medium text-muted-foreground mb-3">
+            Audit Log
+          </h3>
+          <AuditLogSection runtimeId={runtime.id} />
+        </div>
+
+        {/* Join Tokens */}
+        {workspace && (
+          <div>
+            <h3 className="text-xs font-medium text-muted-foreground mb-3">
+              Join Tokens
+            </h3>
+            <JoinTokenSection workspaceId={workspace.id} />
+          </div>
+        )}
 
         {/* Metadata */}
         {runtime.metadata && Object.keys(runtime.metadata).length > 0 && (

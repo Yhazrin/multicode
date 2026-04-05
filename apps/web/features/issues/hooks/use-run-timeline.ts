@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { runsApi } from "@/shared/api";
 import { useWSEvent } from "@/features/realtime";
+import { toast } from "sonner";
 import type { Run, RunStep, RunTodo } from "@/shared/types";
 import type {
   RunCreatedPayload,
@@ -43,6 +44,7 @@ export interface RunTimelineData {
   stepsByRun: Map<string, RunStep[]>;
   todosByRun: Map<string, RunTodo[]>;
   loading: boolean;
+  error: string | null;
 }
 
 export function useRunTimeline(issueId: string): RunTimelineData {
@@ -50,11 +52,13 @@ export function useRunTimeline(issueId: string): RunTimelineData {
   const [stepsByRun, setStepsByRun] = useState<Map<string, RunStep[]>>(new Map());
   const [todosByRun, setTodosByRun] = useState<Map<string, RunTodo[]>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const loadedRuns = useRef(new Set<string>());
 
   // Initial load: fetch all runs for this issue, then load steps/todos for each
   useEffect(() => {
     let cancelled = false;
+    setError(null);
 
     async function load() {
       try {
@@ -66,13 +70,13 @@ export function useRunTimeline(issueId: string): RunTimelineData {
         // Load steps and todos for each run in parallel
         const stepEntries = await Promise.all(
           issueRuns.map(async (run) => {
-            const steps = await runsApi.getRunSteps(run.id).catch(() => []);
+            const steps = await runsApi.getRunSteps(run.id);
             return [run.id, steps] as const;
           }),
         );
         const todoEntries = await Promise.all(
           issueRuns.map(async (run) => {
-            const todos = await runsApi.getRunTodos(run.id).catch(() => []);
+            const todos = await runsApi.getRunTodos(run.id);
             return [run.id, todos] as const;
           }),
         );
@@ -82,6 +86,10 @@ export function useRunTimeline(issueId: string): RunTimelineData {
         setStepsByRun(new Map(stepEntries));
         setTodosByRun(new Map(todoEntries));
         for (const run of issueRuns) loadedRuns.current.add(run.id);
+      } catch (e: unknown) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : "Failed to load run timeline");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -104,7 +112,10 @@ export function useRunTimeline(issueId: string): RunTimelineData {
         return [...prev, run];
       });
       loadedRuns.current.add(run.id);
-    }).catch(() => {});
+    }).catch((e) => {
+      console.error(e);
+      toast.error("Failed to load new run data");
+    });
   }, [issueId]));
 
   // Run started — update phase/status
@@ -236,5 +247,5 @@ export function useRunTimeline(issueId: string): RunTimelineData {
     });
   }, []));
 
-  return { runs, stepsByRun, todosByRun, loading };
+  return { runs, stepsByRun, todosByRun, loading, error };
 }

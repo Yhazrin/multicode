@@ -636,7 +636,7 @@ type TaskContextPreviewResponse struct {
 // PreviewTaskContext shows what context would be assembled for a task execution,
 // including issue details, comments, attachments, skills, and runtime info.
 func (h *Handler) PreviewTaskContext(w http.ResponseWriter, r *http.Request) {
-	taskID := chi.URLParam(r, "id")
+	taskID := chi.URLParam(r, "taskId")
 
 	// Load task.
 	task, err := h.Queries.GetAgentTask(r.Context(), parseUUID(taskID))

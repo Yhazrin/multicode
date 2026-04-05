@@ -126,7 +126,10 @@ export function MyIssuesPage() {
         toast.error("Failed to move issue");
         api.listIssues({ limit: 200 }).then((res) => {
           useIssueStore.getState().setIssues(res.issues);
-        }).catch(console.error);
+        }).catch((e) => {
+            console.error(e);
+            toast.error("Failed to restore issue list");
+          });
       });
     },
     [],

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, AlertCircle } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -23,13 +23,18 @@ const hourlyChartConfig = {
 export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {
   const [data, setData] = useState<RuntimeHourlyActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     api
       .getRuntimeTaskActivity(runtimeId)
       .then(setData)
-      .catch(() => setData([]))
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load activity data");
+        setData([]);
+      })
       .finally(() => setLoading(false));
   }, [runtimeId]);
 
@@ -50,6 +55,11 @@ export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {
       {loading ? (
         <div className="flex h-[140px] items-center justify-center text-xs text-muted-foreground">
           Loading...
+        </div>
+      ) : error ? (
+        <div className="flex h-[140px] flex-col items-center justify-center">
+          <AlertCircle className="h-5 w-5 text-destructive/60" aria-hidden="true" />
+          <p className="mt-2 text-xs text-destructive">{error}</p>
         </div>
       ) : !hasData ? (
         <div className="flex h-[140px] flex-col items-center justify-center">

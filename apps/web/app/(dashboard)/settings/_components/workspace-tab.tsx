@@ -33,6 +33,7 @@ export function WorkspaceTab() {
   const [name, setName] = useState(workspace?.name ?? "");
   const [description, setDescription] = useState(workspace?.description ?? "");
   const [context, setContext] = useState(workspace?.context ?? "");
+  const [issuePrefix, setIssuePrefix] = useState(workspace?.issue_prefix ?? "");
   const [saving, setSaving] = useState(false);
   const [actionId, setActionId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{
@@ -50,6 +51,7 @@ export function WorkspaceTab() {
     setName(workspace?.name ?? "");
     setDescription(workspace?.description ?? "");
     setContext(workspace?.context ?? "");
+    setIssuePrefix(workspace?.issue_prefix ?? "");
   }, [workspace]);
 
   const isDirty = useMemo(() => {
@@ -57,9 +59,10 @@ export function WorkspaceTab() {
     return (
       name !== (workspace.name ?? "") ||
       description !== (workspace.description ?? "") ||
-      context !== (workspace.context ?? "")
+      context !== (workspace.context ?? "") ||
+      issuePrefix !== (workspace.issue_prefix ?? "")
     );
-  }, [name, description, context, workspace]);
+  }, [name, description, context, issuePrefix, workspace]);
 
   useEffect(() => {
     if (!isDirty) return;
@@ -76,6 +79,7 @@ export function WorkspaceTab() {
         name,
         description,
         context,
+        issue_prefix: issuePrefix,
       });
       updateWorkspace(updated);
       toast.success("Workspace settings saved");
@@ -174,6 +178,21 @@ export function WorkspaceTab() {
               <div className="mt-1 rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
                 {workspace.slug}
               </div>
+            </div>
+            <div>
+              <Label htmlFor="workspace-prefix" className="text-xs text-muted-foreground">Issue prefix</Label>
+              <Input
+                id="workspace-prefix"
+                type="text"
+                value={issuePrefix}
+                onChange={(e) => setIssuePrefix(e.target.value)}
+                disabled={!canManageWorkspace}
+                className="mt-1 max-w-[120px]"
+                placeholder="e.g. ACME"
+              />
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Short prefix shown before issue numbers (e.g. ACME-42).
+              </p>
             </div>
             <div className="flex items-center justify-end gap-2 pt-1">
               <Button

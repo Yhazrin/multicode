@@ -55,7 +55,10 @@ export function BatchActionToolbar() {
       toast.error("Failed to update issues");
       api.listIssues({ limit: 200 }).then((res) => {
         useIssueStore.getState().setIssues(res.issues);
-      }).catch(console.error);
+      }).catch((e) => {
+        console.error(e);
+        toast.error("Failed to restore issue list");
+      });
     } finally {
       setLoading(false);
     }
@@ -74,7 +77,10 @@ export function BatchActionToolbar() {
       toast.error("Failed to delete issues");
       api.listIssues({ limit: 200 }).then((res) => {
         useIssueStore.getState().setIssues(res.issues);
-      }).catch(console.error);
+      }).catch((e) => {
+        console.error(e);
+        toast.error("Failed to restore issue list");
+      });
     } finally {
       setLoading(false);
       setDeleteOpen(false);

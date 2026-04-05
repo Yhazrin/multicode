@@ -212,17 +212,36 @@ function CheckpointsTab({ checkpoints }: { checkpoints: TaskCheckpoint[] }) {
   );
 }
 
-function ReviewTab({ report }: { report: TaskReport }) {
+function ReviewTab({ report, events }: { report: TaskReport; events: TaskTimelineEvent[] }) {
+  const reviewEvents = events.filter((e) => e.event_type === "review");
+  const latestReview = reviewEvents.length > 0 ? reviewEvents[reviewEvents.length - 1] : null;
+  const reviewMeta = latestReview?.meta as { score?: number; reviewer_type?: string } | undefined;
+
   return (
     <div className="space-y-4 text-sm">
       <div className="flex items-center gap-2">
         <Eye className="h-4 w-4 text-muted-foreground" />
         <span className="text-muted-foreground">Review status:</span>
-        <Badge variant={report.review_status === "approved" ? "default" : "outline"}>
+        <Badge variant={report.review_status === "approved" ? "default" : report.review_status === "rejected" ? "destructive" : "outline"}>
           {report.review_status}
         </Badge>
+        {reviewMeta?.reviewer_type && (
+          <span className="text-xs text-muted-foreground">by {reviewMeta.reviewer_type}</span>
+        )}
       </div>
-      {report.review_status === "approved" && (
+      {reviewMeta?.score !== undefined && (
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Score:</span>
+          <span className="font-mono text-xs">{reviewMeta.score}/100</span>
+        </div>
+      )}
+      {latestReview?.detail && (
+        <div className="rounded border bg-muted/30 p-3">
+          <p className="text-xs font-medium text-muted-foreground mb-1">Feedback</p>
+          <p className="text-xs">{latestReview.detail}</p>
+        </div>
+      )}
+      {report.review_status === "approved" && !latestReview?.detail && (
         <p className="text-muted-foreground">
           This task was automatically approved and completed.
         </p>
@@ -267,7 +286,7 @@ function OutputTab({ report }: { report: TaskReport }) {
           {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
         </Button>
       </div>
-      <pre className="max-h-[60vh] overflow-auto rounded bg-muted/50 p-4 text-xs whitespace-pre-wrap break-all">
+      <pre className="max-h-[60vh] overflow-auto rounded bg-muted/50 p-4 text-xs whitespace-pre-wrap break-words">
         {content}
       </pre>
     </div>
@@ -587,10 +606,13 @@ export function TaskRunDetail({ taskId }: TaskRunDetailProps) {
           <CheckpointsTab checkpoints={checkpoints} />
         </TabsContent>
         <TabsContent value="review" className="mt-4">
-          <ReviewTab report={report} />
+          <ReviewTab report={report} events={timeline} />
         </TabsContent>
         <TabsContent value="output" className="mt-4">
           <OutputTab report={report} />
+        </TabsContent>
+        <TabsContent value="context" className="mt-4">
+          <ContextPreviewTab taskId={taskId} />
         </TabsContent>
       </Tabs>
     </div>

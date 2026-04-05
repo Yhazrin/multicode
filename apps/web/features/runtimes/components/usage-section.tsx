@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { RuntimeUsage } from "@/shared/types";
 import { api } from "@/shared/api";
@@ -26,14 +26,19 @@ type TimeRange = (typeof TIME_RANGES)[number]["days"];
 export function UsageSection({ runtimeId }: { runtimeId: string }) {
   const [usage, setUsage] = useState<RuntimeUsage[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState<TimeRange>(30);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     api
       .getRuntimeUsage(runtimeId, { days: 90 }) // always fetch 90d, filter client-side
       .then(setUsage)
-      .catch(() => setUsage([]))
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load usage data");
+        setUsage([]);
+      })
       .finally(() => setLoading(false));
   }, [runtimeId]);
 
@@ -54,6 +59,15 @@ export function UsageSection({ runtimeId }: { runtimeId: string }) {
           <Skeleton className="h-64 rounded-lg" />
           <Skeleton className="h-64 rounded-lg" />
         </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center rounded-lg border border-dashed py-6">
+        <AlertCircle className="h-5 w-5 text-destructive/60" aria-hidden="true" />
+        <p className="mt-2 text-xs text-destructive">{error}</p>
       </div>
     );
   }

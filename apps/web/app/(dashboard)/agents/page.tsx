@@ -1217,14 +1217,19 @@ function TriggersTab({
 function TasksTab({ agent }: { agent: Agent }) {
   const [tasks, setTasks] = useState<AgentTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const issues = useIssueStore((s) => s.issues);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     api
       .listAgentTasks(agent.id)
       .then(setTasks)
-      .catch(() => setTasks([]))
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load tasks");
+        setTasks([]);
+      })
       .finally(() => setLoading(false));
   }, [agent.id]);
 
@@ -1241,6 +1246,15 @@ function TasksTab({ agent }: { agent: Agent }) {
             <Skeleton className="h-4 w-16" />
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
+        <AlertCircle className="h-8 w-8 text-destructive/60" aria-hidden="true" />
+        <p className="mt-3 text-sm text-destructive">{error}</p>
       </div>
     );
   }

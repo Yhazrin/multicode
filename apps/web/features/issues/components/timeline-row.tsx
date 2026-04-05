@@ -104,17 +104,49 @@ const ThinkingRow = memo(function ThinkingRow({ item }: { item: TimelineItem }) 
 });
 
 const TextRow = memo(function TextRow({ item }: { item: TimelineItem }) {
+  const [open, setOpen] = useState(false);
   const text = item.content ?? "";
   if (!text.trim()) return null;
+
   const lines = text.trim().split("\n").filter(Boolean);
-  const last = lines[lines.length - 1] ?? "";
-  if (!last) return null;
+  const isMultiLine = lines.length > 1;
+  const preview = isMultiLine
+    ? lines[lines.length - 1]
+    : text.length > 120
+      ? text.slice(0, 120) + "..."
+      : text;
+
+  if (!preview) return null;
+
+  if (!isMultiLine && text.length <= 120) {
+    return (
+      <div className="flex items-start gap-1.5 px-1 -mx-1 py-0.5 text-xs">
+        <span className="h-3 w-3 shrink-0" />
+        <span className="text-muted-foreground/60 truncate">{text}</span>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex items-start gap-1.5 px-1 -mx-1 py-0.5 text-xs">
-      <span className="h-3 w-3 shrink-0" />
-      <span className="text-muted-foreground/60 truncate">{last}</span>
-    </div>
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <CollapsibleTrigger className="flex w-full items-start gap-1.5 rounded px-1 -mx-1 py-0.5 text-xs hover:bg-accent/30 transition-colors">
+        <ChevronRight
+          className={cn(
+            "h-3 w-3 shrink-0 text-muted-foreground transition-transform mt-0.5",
+            open && "rotate-90",
+          )}
+          aria-hidden="true"
+        />
+        <span className="text-muted-foreground/60 truncate">
+          {isMultiLine ? `${lines.length} lines — ${preview}` : preview}
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <pre className="ml-[18px] mt-0.5 max-h-40 overflow-auto rounded bg-muted/50 p-2 text-[11px] text-muted-foreground whitespace-pre-wrap break-words">
+          {text}
+        </pre>
+      </CollapsibleContent>
+    </Collapsible>
   );
 });
 

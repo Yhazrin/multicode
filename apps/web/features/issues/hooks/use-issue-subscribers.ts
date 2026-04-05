@@ -31,7 +31,10 @@ export function useIssueSubscribers(issueId: string, userId?: string) {
   // Reconnect recovery
   useWSReconnect(
     useCallback(() => {
-      api.listIssueSubscribers(issueId).then(setSubscribers).catch(console.error);
+      api.listIssueSubscribers(issueId).then(setSubscribers).catch((e) => {
+        console.error(e);
+        toast.error("Failed to refresh subscribers after reconnect");
+      });
     }, [issueId]),
   );
 

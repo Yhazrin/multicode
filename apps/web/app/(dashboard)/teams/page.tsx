@@ -15,6 +15,7 @@ import {
   UserPlus,
   UserMinus,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import type {
   Team,
@@ -45,6 +46,7 @@ import { useWorkspaceStore } from "@/features/workspace";
 import { ActorAvatar } from "@/components/common/actor-avatar";
 import { PRESET_TEAMS, type PresetTeam } from "@/shared/data/preset-teams";
 import { PRESET_AGENTS } from "@/shared/data/preset-agents";
+import { timeAgo } from "@/shared/utils";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -477,6 +479,9 @@ function TeamDetail({
           )}
           <p className="text-xs text-muted-foreground mt-0.5">
             {team.members?.length ?? 0} members
+            {team.updated_at && (
+              <span className="ml-1.5">· Updated {timeAgo(team.updated_at)}</span>
+            )}
           </p>
         </div>
         <div className="flex items-center gap-1">
@@ -555,7 +560,14 @@ function TeamDetail({
                 return (
                   <div key={agent.id} className="flex items-center gap-2 px-3 py-2">
                     <ActorAvatar actorType="agent" actorId={agent.id} size={24} />
-                    <span className="flex-1 truncate text-sm">{agent.name}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate text-sm">{agent.name}</span>
+                      {member?.joined_at && (
+                        <span className="block text-[10px] text-muted-foreground">
+                          Joined {timeAgo(member.joined_at)}
+                        </span>
+                      )}
+                    </div>
                     {isLead && (
                       <span className="rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 text-[10px] font-medium">
                         <Crown className="h-3 w-3 inline mr-0.5" />
@@ -606,6 +618,7 @@ export default function TeamsPage() {
   const refreshAgents = useWorkspaceStore((s) => s.refreshAgents);
   const [teams, setTeams] = useState<Team[]>([]);
   const [loadingTeams, setLoadingTeams] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string>("");
   const [showArchived, setShowArchived] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -617,8 +630,9 @@ export default function TeamsPage() {
     try {
       const data = await api.listTeams();
       setTeams(data);
-    } catch {
-      // ignore
+      setError(null);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load teams");
     } finally {
       setLoadingTeams(false);
     }
@@ -736,6 +750,18 @@ export default function TeamsPage() {
         </div>
         <div className="flex-1 flex items-center justify-center">
           <Skeleton className="h-10 w-10 rounded-lg" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-col items-center gap-2 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive/60" aria-hidden="true" />
+          <p className="text-sm font-medium text-destructive">Failed to load teams</p>
+          <p className="text-xs text-destructive/70">{error}</p>
         </div>
       </div>
     );

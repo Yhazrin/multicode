@@ -106,7 +106,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
 
   // Custom hooks — encapsulate timeline, reactions, subscribers
   const {
-    timeline, loading: timelineLoading, submitting, submitComment, submitReply,
+    timeline, loading: timelineLoading, error: timelineError, submitting, submitComment, submitReply,
     editComment, deleteComment, toggleReaction: handleToggleReaction,
   } = useIssueTimeline(id, user?.id);
 
@@ -454,6 +454,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
               issueId={id}
               timeline={timeline}
               loading={timelineLoading}
+              error={timelineError}
               currentUserId={user?.id}
               getActorName={getActorName}
               submitReply={submitReply}

@@ -20,7 +20,7 @@ import {
   BookCheck,
   ListChecks,
 } from "lucide-react";
-import type { InboxItem, InboxItemType, IssueStatus, IssuePriority } from "@/shared/types";
+import type { InboxItem, InboxItemType, InboxSeverity, IssueStatus, IssuePriority } from "@/shared/types";
 import { Button } from "@/components/ui/button";
 import {
   ResizablePanelGroup,
@@ -42,6 +42,12 @@ import { timeAgo } from "@/shared/utils";
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+const severityConfig: Record<InboxSeverity, { label: string; className: string }> = {
+  action_required: { label: "Action required", className: "bg-red-500" },
+  attention: { label: "Attention", className: "bg-amber-500" },
+  info: { label: "", className: "" },
+};
 
 const typeLabels: Record<InboxItemType, string> = {
   issue_assigned: "Assigned",
@@ -172,6 +178,12 @@ function InboxListItem({
             {!item.read && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
             )}
+            {item.severity !== "info" && (
+              <span
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${severityConfig[item.severity].className}`}
+                title={severityConfig[item.severity].label}
+              />
+            )}
             <span
               className={`truncate text-sm ${!item.read ? "font-medium" : "text-muted-foreground"}`}
             >
@@ -231,6 +243,7 @@ export default function InboxPage() {
 
   const items = useInboxStore(useShallow((s) => s.dedupedItems));
   const loading = useInboxStore((s) => s.loading);
+  const error = useInboxStore((s) => s.error);
 
   const { defaultLayout, onLayoutChanged } = useDefaultLayout({
     id: "multicode_inbox_layout",
@@ -405,14 +418,34 @@ export default function InboxPage() {
 
         <div ref={parentRef} className="flex-1 min-h-0 overflow-y-auto">
         {items.length === 0 ? (
-          <Empty className="border-0 py-16">
-            <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <Inbox aria-hidden="true" />
-              </EmptyMedia>
-              <EmptyTitle>No notifications</EmptyTitle>
-            </EmptyHeader>
-          </Empty>
+          error ? (
+            <Empty className="border-0 py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Inbox aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>Failed to load inbox</EmptyTitle>
+                <p className="text-sm text-destructive mt-1">{error}</p>
+              </EmptyHeader>
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-4"
+                onClick={() => useInboxStore.getState().fetch()}
+              >
+                Retry
+              </Button>
+            </Empty>
+          ) : (
+            <Empty className="border-0 py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Inbox aria-hidden="true" />
+                </EmptyMedia>
+                <EmptyTitle>No notifications</EmptyTitle>
+              </EmptyHeader>
+            </Empty>
+          )
         ) : (
           <div
             style={{ height: `${virtualizer.getTotalSize()}px`, width: "100%", position: "relative" }}

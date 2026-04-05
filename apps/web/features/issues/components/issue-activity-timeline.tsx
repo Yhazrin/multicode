@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Calendar } from "lucide-react";
+import { Calendar, AlertCircle, MessageSquare } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Tooltip,
@@ -131,6 +131,7 @@ export interface IssueActivityTimelineProps {
   issueId: string;
   timeline: TimelineEntry[];
   loading: boolean;
+  error?: string | null;
   currentUserId: string | undefined;
   getActorName: (type: string, id: string) => string;
   submitReply: (parentId: string, content: string, attachmentIds?: string[]) => Promise<void>;
@@ -149,6 +150,7 @@ export function IssueActivityTimeline({
   issueId,
   timeline,
   loading,
+  error,
   currentUserId,
   getActorName,
   submitReply,
@@ -172,6 +174,28 @@ export function IssueActivityTimeline({
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
+        <AlertCircle className="h-5 w-5 text-destructive" aria-hidden="true" />
+        <span>Failed to load activity</span>
+        <span className="text-xs text-destructive">{error}</span>
+      </div>
+    );
+  }
+
+  if (groups.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-8 text-sm text-muted-foreground">
+        <MessageSquare className="h-5 w-5" aria-hidden="true" />
+        <span>No activity yet</span>
+        <div className="mt-4 w-full">
+          <CommentInput issueId={issueId} onSubmit={submitComment} />
+        </div>
       </div>
     );
   }

@@ -61,6 +61,7 @@ export interface UseLiveTaskResult {
   items: TimelineItem[];
   progress: { summary: string; step: number; total: number } | null;
   cancelling: boolean;
+  error: string | null;
   handleCancel: () => Promise<void>;
   seenSeqsRef: React.RefObject<Set<string>>;
 }
@@ -70,11 +71,13 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
   const [items, setItems] = useState<TimelineItem[]>([]);
   const [progress, setProgress] = useState<{ summary: string; step: number; total: number } | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const seenSeqs = useRef(new Set<string>());
 
   // Check for active task on mount
   useEffect(() => {
     let cancelled = false;
+    setError(null);
     api.getActiveTaskForIssue(issueId).then(({ task }) => {
       if (!cancelled) {
         setActiveTask(task);
@@ -85,10 +88,18 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
               setItems(timeline);
               for (const m of msgs) seenSeqs.current.add(`${m.task_id}:${m.seq}`);
             }
-          }).catch(console.error);
+          }).catch((e: unknown) => {
+            if (!cancelled) {
+              setError(e instanceof Error ? e.message : "Failed to load task messages");
+            }
+          });
         }
       }
-    }).catch(console.error);
+    }).catch((e: unknown) => {
+      if (!cancelled) {
+        setError(e instanceof Error ? e.message : "Failed to load active task");
+      }
+    });
 
     return () => { cancelled = true; };
   }, [issueId]);
@@ -183,7 +194,10 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
           setProgress(null);
           seenSeqs.current.clear();
         }
-      }).catch(console.error);
+      }).catch((e) => {
+        console.error(e);
+        toast.error("Failed to load dispatched task");
+      });
     }, [issueId, activeTask]),
   );
 
@@ -208,5 +222,5 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
     }
   }, [activeTask, issueId, cancelling]);
 
-  return { activeTask, items, progress, cancelling, handleCancel, seenSeqsRef: seenSeqs };
+  return { activeTask, items, progress, cancelling, error, handleCancel, seenSeqsRef: seenSeqs };
 }

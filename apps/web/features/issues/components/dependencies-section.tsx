@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { GitBranch, Plus, X, Link2 } from "lucide-react";
+import { GitBranch, Plus, X, Link2, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,6 +18,7 @@ interface DependenciesSectionProps {
   taskId: string;
   dependencies: TaskDependency[];
   depsLoading: boolean;
+  depsError: string | null;
   depStatuses: Record<string, string>;
   onDependencyAdded: (dep: TaskDependency) => void;
   onDependencyRemoved: (dependsOnId: string) => void;
@@ -27,6 +28,7 @@ export function DependenciesSection({
   taskId,
   dependencies,
   depsLoading,
+  depsError,
   depStatuses,
   onDependencyAdded,
   onDependencyRemoved,
@@ -78,6 +80,12 @@ export function DependenciesSection({
       {depsLoading ? (
         <div className="space-y-2">
           <Skeleton className="h-6 w-full" />
+        </div>
+      ) : depsError ? (
+        <div className="flex flex-col items-center gap-1.5 py-3 text-xs text-muted-foreground">
+          <AlertCircle className="h-4 w-4 text-destructive" aria-hidden="true" />
+          <span>Failed to load dependencies</span>
+          <span className="text-[10px] text-destructive">{depsError}</span>
         </div>
       ) : dependencies.length === 0 && !showAddDep ? (
         <p className="text-xs text-muted-foreground py-1">No dependencies.</p>

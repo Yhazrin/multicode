@@ -87,7 +87,11 @@ export const useWorkspaceStore = create<WorkspaceStore>((set, get) => ({
         toast.error("Failed to load agents");
         return [] as Agent[];
       }),
-      api.listSkills().catch(() => [] as Skill[]),
+      api.listSkills().catch((e) => {
+        logger.error("failed to load skills", e);
+        toast.error("Failed to load skills");
+        return [] as Skill[];
+      }),
       useIssueStore.getState().fetch().catch((e) => console.error("Failed to fetch issues:", e)),
       useInboxStore.getState().fetch().catch((e) => console.error("Failed to fetch inbox:", e)),
     ]);

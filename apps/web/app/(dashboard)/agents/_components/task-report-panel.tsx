@@ -12,6 +12,8 @@ import {
   Flag,
   GitBranch,
   ChevronRight,
+  Copy,
+  Check,
 } from "lucide-react";
 import type { AgentTask, TaskReport, TaskTimelineEvent } from "@/shared/types";
 import { tasksApi } from "@/shared/api/tasks";
@@ -149,13 +151,18 @@ function SummaryTab({ report }: { report: TaskReport }) {
 function TimelineTab({ taskId }: { taskId: string }) {
   const [events, setEvents] = useState<TaskTimelineEvent[] | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
+    setError(null);
     tasksApi
       .getTimeline(taskId)
       .then(setEvents)
-      .catch(() => setEvents([]))
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Failed to load timeline");
+        setEvents([]);
+      })
       .finally(() => setLoading(false));
   }, [taskId]);
 
@@ -171,6 +178,15 @@ function TimelineTab({ taskId }: { taskId: string }) {
             </div>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center">
+        <AlertCircle className="h-8 w-8 text-destructive/60" />
+        <p className="mt-3 text-sm text-destructive">{error}</p>
       </div>
     );
   }
@@ -210,6 +226,43 @@ function TimelineTab({ taskId }: { taskId: string }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+function OutputTab({ report }: { report: TaskReport }) {
+  const [copied, setCopied] = useState(false);
+
+  if (!report.result && !report.error) {
+    return <p className="text-sm text-muted-foreground py-8 text-center">No output recorded.</p>;
+  }
+
+  const content = report.result
+    ? typeof report.result === "string"
+      ? report.result
+      : JSON.stringify(report.result, null, 2)
+    : report.error ?? "";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(content).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          {report.result ? "Result" : "Error output"}
+        </span>
+        <Button variant="ghost" size="icon-sm" onClick={handleCopy} aria-label="Copy output">
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+        </Button>
+      </div>
+      <pre className="max-h-[60vh] overflow-auto rounded bg-muted/50 p-4 text-xs whitespace-pre-wrap break-words">
+        {content}
+      </pre>
     </div>
   );
 }
@@ -293,12 +346,16 @@ export function TaskReportPanel({
           <TabsList variant="line" className="mb-4">
             <TabsTrigger value="summary" className="text-xs">Summary</TabsTrigger>
             <TabsTrigger value="timeline" className="text-xs">Timeline</TabsTrigger>
+            <TabsTrigger value="output" className="text-xs">Output</TabsTrigger>
           </TabsList>
           <TabsContent value="summary">
             <SummaryTab report={report} />
           </TabsContent>
           <TabsContent value="timeline">
             <TimelineTab taskId={task.id} />
+          </TabsContent>
+          <TabsContent value="output">
+            <OutputTab report={report} />
           </TabsContent>
         </Tabs>
       </div>

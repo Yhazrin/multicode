@@ -9,6 +9,7 @@ interface RuntimeState {
   runtimes: AgentRuntime[];
   selectedId: string;
   fetching: boolean;
+  error: string | null;
 }
 
 interface RuntimeActions {
@@ -28,6 +29,7 @@ export const useRuntimeStore = create<RuntimeStore>((set, get) => ({
   runtimes: [],
   selectedId: "",
   fetching: true,
+  error: null,
 
   // Actions
   fetchRuntimes: async () => {
@@ -39,19 +41,23 @@ export const useRuntimeStore = create<RuntimeStore>((set, get) => ({
       set({
         runtimes: data,
         fetching: false,
+        error: null,
         // Auto-select first if nothing selected
         selectedId: selectedId && data.some((r) => r.id === selectedId)
           ? selectedId
           : data[0]?.id ?? "",
       });
-    } catch {
-      set({ fetching: false });
+    } catch (e: unknown) {
+      set({
+        fetching: false,
+        error: e instanceof Error ? e.message : "Failed to load runtimes",
+      });
     }
   },
 
   setSelectedId: (id) => set({ selectedId: id }),
 
-  reset: () => set({ runtimes: [], selectedId: "", fetching: true }),
+  reset: () => set({ runtimes: [], selectedId: "", fetching: true, error: null }),
 
   patchRuntime: (id, updates) => {
     set((state) => ({

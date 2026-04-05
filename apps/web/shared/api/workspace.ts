@@ -105,6 +105,7 @@ export const workspaceApi = {
       name?: string;
       description?: string;
       context?: string;
+      issue_prefix?: string;
       settings?: Record<string, unknown>;
       repos?: WorkspaceRepo[];
     },

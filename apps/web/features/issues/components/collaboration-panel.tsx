@@ -1,6 +1,6 @@
 "use client";
 
-import { Bot } from "lucide-react";
+import { AlertCircle, Bot } from "lucide-react";
 import { useTaskAndAgent } from "../hooks/use-task-and-agent";
 import { useDependencyStatuses } from "../hooks/use-dependency-statuses";
 import { useCollaborationData } from "../hooks/use-collaboration-data";
@@ -16,19 +16,23 @@ interface CollaborationPanelProps {
 }
 
 export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
-  const { taskId, agentId } = useTaskAndAgent(issueId);
+  const { taskId, agentId, error } = useTaskAndAgent(issueId);
   const {
     messages,
     setMessages,
     messagesLoading,
+    messagesError,
     dependencies,
     setDependencies,
     depsLoading,
+    depsError,
     checkpoints,
     cpsLoading,
+    cpsError,
     memories,
     setMemories,
     memLoading,
+    memError,
     checkpointsLoaded,
     setCheckpointsLoaded,
     memoriesLoaded,
@@ -41,6 +45,18 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
 
   // Show empty state if no task context
   if (!taskId && !agentId) {
+    if (error) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center">
+          <AlertCircle className="h-8 w-8 text-destructive/60 mb-3" aria-hidden="true" />
+          <p className="text-sm font-medium text-destructive">
+            Failed to load collaboration data
+          </p>
+          <p className="text-xs text-destructive/70 mt-1">{error}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <Bot className="h-8 w-8 text-muted-foreground/40 mb-3" aria-hidden="true" />
@@ -62,6 +78,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           taskId={taskId}
           messages={messages}
           messagesLoading={messagesLoading}
+          messagesError={messagesError}
           onMessageSent={(msg) => setMessages((prev) => [...prev, msg])}
         />
       )}
@@ -71,6 +88,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           taskId={taskId}
           dependencies={dependencies}
           depsLoading={depsLoading}
+          depsError={depsError}
           depStatuses={depStatuses}
           onDependencyAdded={(dep) => setDependencies((prev) => [...prev, dep])}
           onDependencyRemoved={(dependsOnId) =>
@@ -84,6 +102,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           taskId={taskId}
           checkpoints={checkpoints}
           cpsLoading={cpsLoading}
+          cpsError={cpsError}
           checkpointsLoaded={checkpointsLoaded}
           onLoadCheckpoints={loadCheckpoints}
           onSetCheckpointsLoaded={setCheckpointsLoaded}
@@ -99,6 +118,7 @@ export function CollaborationPanel({ issueId }: CollaborationPanelProps) {
           agentId={agentId}
           memories={memories}
           memLoading={memLoading}
+          memError={memError}
           memoriesLoaded={memoriesLoaded}
           onLoadMemories={loadMemories}
           onSetMemoriesLoaded={setMemoriesLoaded}
