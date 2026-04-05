@@ -68,7 +68,7 @@ type TodoInfo struct {
 	Status      string
 }
 
-// DefaultLayers returns the 9 standard layer definitions for prompt assembly.
+// DefaultLayers returns the 11 standard layer definitions for prompt assembly.
 func DefaultLayers() []LayerDef {
 	return []LayerDef{
 		{Name: "CompactionSafety", Priority: PriorityCompactionSafety, Assemble: assembleCompactionSafety},

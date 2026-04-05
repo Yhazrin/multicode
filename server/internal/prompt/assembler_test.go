@@ -72,7 +72,7 @@ func TestAssemblePrompt_FullContext(t *testing.T) {
 
 	// Verify all sections are present in order
 	checks := []string{
-		"checkpoint", // compaction safety (Priority 5, highest)
+		"only reliable recovery", // compaction safety (Priority 5, highest)
 		"Multicode",
 		"Startup Sequence",
 		"Senior Developer",
@@ -115,7 +115,7 @@ func TestAssemblePrompt_MinimalContext(t *testing.T) {
 		t.Error("minimal context should still include app name")
 	}
 	// Compaction safety and startup sequence are always present
-	if !strings.Contains(got, "checkpoint") {
+	if !strings.Contains(got, "only reliable recovery") {
 		t.Error("compaction safety should always be present")
 	}
 	if !strings.Contains(got, "Startup Sequence") {
