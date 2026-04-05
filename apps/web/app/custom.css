@@ -31,6 +31,59 @@
   color: var(--sidebar-accent-foreground);
 }
 
+/* =============================================================================
+ * Apple-inspired glass morphism utilities
+ * ============================================================================= */
+
+/* Glass panel — full frosted glass for sidebars, nav bars */
+.glass-panel {
+  background: oklch(1 0 0 / 0.72);
+  border: 1px solid oklch(0 0 0 / 0.06);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass-panel {
+    backdrop-filter: saturate(180%) blur(20px);
+    -webkit-backdrop-filter: saturate(180%) blur(20px);
+  }
+}
+
+.dark .glass-panel {
+  background: oklch(0.21 0.006 285.885 / 0.72);
+  border-color: oklch(1 0 0 / 0.08);
+}
+
+/* Glass subtle — lighter blur for cards, dropdowns */
+.glass-subtle {
+  background: oklch(1 0 0 / 0.55);
+  border: 1px solid oklch(0 0 0 / 0.06);
+}
+
+@supports (backdrop-filter: blur(1px)) {
+  .glass-subtle {
+    backdrop-filter: saturate(150%) blur(12px);
+    -webkit-backdrop-filter: saturate(150%) blur(12px);
+  }
+}
+
+.dark .glass-subtle {
+  background: oklch(0.21 0.006 285.885 / 0.55);
+  border-color: oklch(1 0 0 / 0.08);
+}
+
+/* Apple-style diffused card shadow — use on hover/interaction */
+.shadow-apple {
+  box-shadow: var(--shadow-card);
+}
+
+.shadow-apple-hover:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.shadow-elevated {
+  box-shadow: var(--shadow-elevated);
+}
+
 /* Sonner toast: align icon to first line of text, not vertically centered */
 [data-sonner-toast] {
   align-items: flex-start !important;
