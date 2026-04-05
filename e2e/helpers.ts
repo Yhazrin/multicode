@@ -19,8 +19,8 @@ function uniqueCredentials() {
 
 /**
  * Log in as the default E2E user and ensure the workspace exists first.
- * Sets the HttpOnly auth cookie in the browser by calling verify-code via
- * Playwright's API request context, then sets localStorage and navigates.
+ * Sets the auth cookie via same-origin fetch through the Next.js proxy,
+ * then sets localStorage and navigates to /issues.
  */
 export async function loginAsDefault(page: Page) {
   const { email, slug } = uniqueCredentials();
@@ -44,14 +44,24 @@ export async function loginAsDefault(page: Page) {
     }
   }
 
-  // Step 2: Verify using the master code (888888) via Playwright's request context.
-  // This properly handles Set-Cookie from the server response, setting the HttpOnly
-  // cookie in the browser context (unlike page.evaluate fetch which cannot set
-  // HttpOnly cookies).
-  const verifyRes = await page.request.post(`${API_BASE}/auth/verify-code`, {
-    data: { email, code: "888888" },
-  });
-  const verifyResult = await verifyRes.json();
+  // Step 2: Verify using the master code (888888) via the Next.js proxy.
+  // We navigate to /login first so page.evaluate has a same-origin context,
+  // then use fetch("/auth/verify-code") (relative URL) which goes through
+  // Next.js rewrites → API server. The Set-Cookie response header is set
+  // on localhost:3000 (same origin as the frontend page).
+  // NOTE: page.request.post to an absolute URL (http://localhost:8080/...)
+  // would set the cookie on the API server domain, which the browser won't
+  // send on subsequent page loads to localhost:3000.
+  await page.goto("/login");
+  const verifyResult = await page.evaluate(async ({ email }) => {
+    const res = await fetch("/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code: "888888" }),
+      credentials: "include",
+    });
+    return res.json();
+  }, { email });
   const token = verifyResult.token;
 
   if (!token) {
@@ -93,7 +103,7 @@ export async function loginAsDefault(page: Page) {
   }
   if (!workspace) throw new Error(`Failed to ensure workspace ${slug}`);
 
-  // Set workspace ID in localStorage so AuthInitializer picks it up
+  // Set workspace ID in localStorage — we're on /login so localStorage is accessible
   await page.evaluate((wsId) => {
     localStorage.setItem("multicode_workspace_id", wsId);
   }, workspace.id);
