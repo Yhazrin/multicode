@@ -17,9 +17,7 @@ test.describe("Settings", () => {
     await page.waitForURL("**/settings");
 
     // Change workspace name
-    const nameInput = page
-      .locator('input[type="text"]')
-      .first();
+    const nameInput = page.locator('input#workspace-name');
     await nameInput.clear();
     const newName = "Renamed WS " + Date.now();
     await nameInput.fill(newName);

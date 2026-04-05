@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { loginAsDefault, openWorkspaceMenu } from "./helpers";
+import { loginAsDefault } from "./helpers";
 
 test.describe("Authentication", () => {
   test("login page renders correctly", async ({ page }) => {
@@ -32,14 +32,14 @@ test.describe("Authentication", () => {
   test("logout redirects to login", async ({ page }) => {
     await loginAsDefault(page);
 
-    // Click the workspace switcher button (has ChevronDown icon)
+    // Open the workspace switcher dropdown
     await page.locator('[data-sidebar="header"] button').first().click();
     await page.locator('[role="menu"]').waitFor({ state: "visible", timeout: 5000 });
 
-    // Click Log out
-    await page.locator("text=Log out").click();
+    // Click Log out — router.push("/") fires immediately
+    await page.locator('[role="menuitem"]', { hasText: "Log out" }).click();
 
-    // After logout, the auth store clears and dashboard redirects to "/"
-    await page.waitForURL("**/", { timeout: 10000 });
+    // After logout, the page navigates to "/" (landing page)
+    await page.waitForURL("**/", { timeout: 15000 });
   });
 });

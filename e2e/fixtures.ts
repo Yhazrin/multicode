@@ -260,6 +260,10 @@ export class TestApiClient {
     this.createdTaskIds = [];
   }
 
+  setToken(token: string) {
+    this.token = token;
+  }
+
   getToken() {
     return this.token;
   }

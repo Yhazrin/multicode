@@ -17,32 +17,36 @@ test.describe("Issues", () => {
   test("issues page loads with board view", async ({ page }) => {
     await expect(page.locator("text=Issues").first()).toBeVisible();
 
-    // Board columns should be visible
-    await expect(page.locator("text=Backlog")).toBeVisible();
-    await expect(page.locator("text=Todo")).toBeVisible();
-    await expect(page.locator("text=In Progress")).toBeVisible();
+    // Board columns use div[role="region"] with aria-label containing column name
+    await expect(page.locator('div[role="region"]').filter({ hasText: /^Backlog/ }).first()).toBeVisible();
+    await expect(page.locator('div[role="region"]').filter({ hasText: /^Todo/ }).first()).toBeVisible();
+    await expect(page.locator('div[role="region"]').filter({ hasText: /^In Progress/ }).first()).toBeVisible();
   });
 
   test("can switch between board and list view", async ({ page }) => {
     await expect(page.locator("text=Issues").first()).toBeVisible();
 
-    // Switch to list view — view toggle is a dropdown menu
+    // Switch to list view — open dropdown then click List option
     await page.locator('button[aria-label="Board view"]').click();
-    await page.locator("text=List").click();
+    await page.locator('[role="menuitem"]', { hasText: "List" }).click();
     await expect(page.locator("text=Issues").first()).toBeVisible();
 
     // Switch back to board view
     await page.locator('button[aria-label="List view"]').click();
-    await page.locator("text=Board").click();
-    await expect(page.locator("text=Backlog")).toBeVisible();
+    await page.locator('[role="menuitem"]', { hasText: "Board" }).click();
+    await expect(page.locator('div[role="region"]').filter({ hasText: /^Backlog/ }).first()).toBeVisible();
   });
 
   test("can create a new issue", async ({ page }) => {
-    await page.click("text=New Issue");
+    // New Issue button is icon-only with aria-label
+    await page.locator('[aria-label="New issue"]').click();
 
     const title = "E2E Created " + Date.now();
-    await page.fill('input[placeholder="Issue title..."]', title);
-    await page.click("text=Create");
+    // Title uses Tiptap contenteditable, not <input>
+    const titleEditor = page.getByRole("textbox", { name: "Issue title" });
+    await titleEditor.click();
+    await page.keyboard.type(title);
+    await page.locator("button", { hasText: "Create Issue" }).click();
 
     // New issue should appear on the page
     await expect(page.locator(`text=${title}`).first()).toBeVisible({
@@ -74,17 +78,16 @@ test.describe("Issues", () => {
   });
 
   test("can cancel issue creation", async ({ page }) => {
-    await page.click("text=New Issue");
+    await page.locator('[aria-label="New issue"]').click();
 
-    await expect(
-      page.locator('input[placeholder="Issue title..."]'),
-    ).toBeVisible();
+    // Title editor should be visible in the modal
+    const titleEditor = page.getByRole("textbox", { name: "Issue title" });
+    await expect(titleEditor).toBeVisible();
 
-    await page.click("text=Cancel");
+    // Close the modal via the X button (no "Cancel" button exists)
+    await page.locator('[aria-label="Close"]').click();
 
-    await expect(
-      page.locator('input[placeholder="Issue title..."]'),
-    ).not.toBeVisible();
-    await expect(page.locator("text=New Issue")).toBeVisible();
+    await expect(titleEditor).not.toBeVisible();
+    await expect(page.locator('[aria-label="New issue"]')).toBeVisible();
   });
 });
