@@ -34,7 +34,7 @@ test.describe("Authentication", () => {
 
     // Click the workspace switcher button (has ChevronDown icon)
     await page.locator('[data-sidebar="header"] button').first().click();
-    await page.locator('[class*="popover"]').waitFor({ state: "visible" });
+    await page.locator('[role="menu"]').waitFor({ state: "visible", timeout: 5000 });
 
     // Click Log out
     await page.locator("text=Log out").click();

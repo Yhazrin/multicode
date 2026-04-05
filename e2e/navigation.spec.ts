@@ -7,18 +7,18 @@ test.describe("Navigation", () => {
   });
 
   test("sidebar navigation works", async ({ page }) => {
-    // Click Inbox
-    await page.locator("nav a", { hasText: "Inbox" }).click();
+    // Click Inbox — sidebar uses data-slot="sidebar", not native <nav>
+    await page.locator('[data-slot="sidebar"] a', { hasText: "Inbox" }).click();
     await page.waitForURL("**/inbox");
     await expect(page).toHaveURL(/\/inbox/);
 
     // Click Agents
-    await page.locator("nav a", { hasText: "Agents" }).click();
+    await page.locator('[data-slot="sidebar"] a', { hasText: "Agents" }).click();
     await page.waitForURL("**/agents");
     await expect(page).toHaveURL(/\/agents/);
 
     // Click Issues
-    await page.locator("nav a", { hasText: "Issues" }).click();
+    await page.locator('[data-slot="sidebar"] a', { hasText: "Issues" }).click();
     await page.waitForURL("**/issues");
     await expect(page).toHaveURL(/\/issues/);
   });
@@ -34,7 +34,7 @@ test.describe("Navigation", () => {
   });
 
   test("agents page shows agent list", async ({ page }) => {
-    await page.locator("nav a", { hasText: "Agents" }).click();
+    await page.locator('[data-slot="sidebar"] a', { hasText: "Agents" }).click();
     await page.waitForURL("**/agents");
 
     // Should show "Agents" heading

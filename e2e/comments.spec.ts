@@ -25,15 +25,16 @@ test.describe("Comments", () => {
     // Wait for issue detail to load
     await expect(page.locator("text=Properties")).toBeVisible();
 
-    // Type a comment
+    // Type a comment — uses Tiptap contenteditable, not <input>
     const commentText = "E2E comment " + Date.now();
     const commentInput = page.locator(
-      'input[placeholder="Leave a comment..."]',
+      '[data-placeholder="Leave a comment..."]',
     );
-    await commentInput.fill(commentText);
+    await commentInput.click();
+    await page.keyboard.type(commentText);
 
     // Submit the comment
-    await page.locator('form button[type="submit"]').last().click();
+    await page.locator('button[aria-label="Submit comment"]').click();
 
     // Comment should appear in the activity section
     await expect(page.locator(`text=${commentText}`)).toBeVisible({
@@ -50,7 +51,7 @@ test.describe("Comments", () => {
     await expect(page.locator("text=Properties")).toBeVisible();
 
     // Submit button should be disabled when input is empty
-    const submitBtn = page.locator('form button[type="submit"]').last();
+    const submitBtn = page.locator('button[aria-label="Submit comment"]');
     await expect(submitBtn).toBeDisabled();
   });
 });

@@ -26,12 +26,14 @@ test.describe("Issues", () => {
   test("can switch between board and list view", async ({ page }) => {
     await expect(page.locator("text=Issues").first()).toBeVisible();
 
-    // Switch to list view
-    await page.click("text=List");
+    // Switch to list view — view toggle is a dropdown menu
+    await page.locator('button[aria-label="Board view"]').click();
+    await page.locator("text=List").click();
     await expect(page.locator("text=Issues").first()).toBeVisible();
 
     // Switch back to board view
-    await page.click("text=Board");
+    await page.locator('button[aria-label="List view"]').click();
+    await page.locator("text=Board").click();
     await expect(page.locator("text=Backlog")).toBeVisible();
   });
 
