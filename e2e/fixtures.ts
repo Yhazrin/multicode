@@ -25,16 +25,24 @@ export class TestApiClient {
   private createdTaskIds: string[] = [];
 
   async login(email: string, name: string) {
-    // Step 1: Send verification code
-    const sendRes = await fetch(`${API_BASE}/auth/send-code`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email }),
-    });
-    if (!sendRes.ok) {
-      // Rate limited — code already sent recently, read it from DB
-      if (sendRes.status !== 429) {
-        throw new Error(`send-code failed: ${sendRes.status}`);
+    // Step 1: Send verification code (retry on 429 rate limit)
+    // The server has a 10s rate limit per email; parallel test workers
+    // sharing the same email can hit this, so retry after the window.
+    let sendOk = false;
+    for (let attempt = 0; attempt < 3 && !sendOk; attempt++) {
+      const sendRes = await fetch(`${API_BASE}/auth/send-code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (sendRes.ok) {
+        sendOk = true;
+      } else if (sendRes.status === 429) {
+        console.warn(`[fixtures] send-code rate-limited for ${email}, attempt ${attempt + 1}/3`);
+        await new Promise((r) => setTimeout(r, 11000));
+      } else {
+        const body = await sendRes.text();
+        throw new Error(`send-code failed: ${sendRes.status} ${body}`);
       }
     }
 

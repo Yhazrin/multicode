@@ -111,6 +111,11 @@ jobs:
         run: pnpm exec playwright test
         shell: bash
 
+      - name: Dump backend logs
+        if: failure()
+        run: cat /tmp/backend.log 2>/dev/null || echo "No backend log found"
+        shell: bash
+
       - name: Upload Playwright report
         if: always()
         uses: actions/upload-artifact@v4
