@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS mcp_servers (
     id              UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-    workspace_id    UUID        NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
+    workspace_id    UUID        NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
     name            TEXT        NOT NULL,
     description     TEXT        NOT NULL DEFAULT '',
     transport       TEXT        NOT NULL DEFAULT 'stdio',
