@@ -101,8 +101,10 @@ const (
 	EventRunCancelled     = "run:cancelled"
 	EventRunStepStarted   = "run:step_started"
 	EventRunStepCompleted = "run:step_completed"
-	EventRunTodoCreated   = "run:todo_created"
-	EventRunTodoUpdated   = "run:todo_updated"
+	EventRunTodoCreated    = "run:todo_created"
+	EventRunTodoUpdated    = "run:todo_updated"
+	EventRunHandoffCreated = "run:handoff_created"
+	EventRunArtifactCreated = "run:artifact_created"
 
 	// Team events
 	EventTeamCreated       = "team:created"

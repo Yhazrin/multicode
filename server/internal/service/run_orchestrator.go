@@ -81,7 +81,22 @@ func (o *RunOrchestrator) CreateRun(ctx context.Context, req CreateRunRequest) (
 		return db.Run{}, fmt.Errorf("create run: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunCreated, run)
+	wsID := util.UUIDToString(run.WorkspaceID)
+	payload := map[string]any{
+		"run_id": util.UUIDToString(run.ID),
+		"phase":  run.Phase,
+		"status": run.Status,
+	}
+	if run.AgentID.Valid {
+		payload["agent_id"] = util.UUIDToString(run.AgentID)
+	}
+	if run.IssueID.Valid {
+		payload["issue_id"] = util.UUIDToString(run.IssueID)
+	}
+	if run.TaskID.Valid {
+		payload["task_id"] = util.UUIDToString(run.TaskID)
+	}
+	o.broadcast(wsID, protocol.EventRunCreated, payload)
 	slog.Info("run created",
 		"run_id", util.UUIDToString(run.ID),
 		"issue_id", req.IssueID,
@@ -98,7 +113,10 @@ func (o *RunOrchestrator) StartRun(ctx context.Context, runID string) (db.Run, e
 		return db.Run{}, fmt.Errorf("start run: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunStarted, run)
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunStarted, map[string]any{
+		"run_id":     runID,
+		"started_at": run.StartedAt.Time.Format(time.RFC3339Nano),
+	})
 	slog.Info("run started", "run_id", runID)
 
 	return run, nil
@@ -106,6 +124,13 @@ func (o *RunOrchestrator) StartRun(ctx context.Context, runID string) (db.Run, e
 
 // AdvancePhase moves the run to a new phase and broadcasts run:phase_changed.
 func (o *RunOrchestrator) AdvancePhase(ctx context.Context, runID string, newPhase string) (db.Run, error) {
+	// Read current phase before update for the broadcast payload.
+	current, readErr := o.Queries.GetRun(ctx, util.ParseUUID(runID))
+	if readErr != nil {
+		return db.Run{}, fmt.Errorf("get run for phase: %w", readErr)
+	}
+	oldPhase := current.Phase
+
 	run, err := o.Queries.UpdateRunPhase(ctx, db.UpdateRunPhaseParams{
 		ID:    util.ParseUUID(runID),
 		Phase: newPhase,
@@ -114,21 +139,26 @@ func (o *RunOrchestrator) AdvancePhase(ctx context.Context, runID string, newPha
 		return db.Run{}, fmt.Errorf("advance phase: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunPhaseChanged, run, map[string]any{
-		"phase": newPhase,
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunPhaseChanged, map[string]any{
+		"run_id":     runID,
+		"old_phase":  oldPhase,
+		"new_phase":  newPhase,
 	})
 	slog.Info("run phase changed",
 		"run_id", runID,
-		"phase", newPhase,
+		"old_phase", oldPhase,
+		"new_phase", newPhase,
 	)
 
 	return run, nil
 }
 
-// RecordStep records a tool invocation step within a run.
+// RecordStep records a step within a run.
+// stepType: "thinking", "text", "tool_use", "tool_result", "error".
+// callID: correlates tool_use ↔ tool_result pairs (empty for thinking/text/error).
 // If toolOutput is empty, the step is started (in-progress). If toolOutput is
 // provided, the step is completed immediately.
-func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, toolName string, toolInput []byte, toolOutput string, isError bool) (db.RunStep, error) {
+func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, stepType string, toolName string, callID string, toolInput []byte, toolOutput string, isError bool) (db.RunStep, error) {
 	seq, err := o.Queries.GetNextStepSeq(ctx, util.ParseUUID(runID))
 	if err != nil {
 		return db.RunStep{}, fmt.Errorf("get next step seq: %w", err)
@@ -139,10 +169,17 @@ func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, toolName
 		outputVal = util.StrToText(toolOutput)
 	}
 
+	var callIDVal pgtype.Text
+	if callID != "" {
+		callIDVal = util.StrToText(callID)
+	}
+
 	step, err := o.Queries.CreateRunStep(ctx, db.CreateRunStepParams{
 		RunID:      util.ParseUUID(runID),
 		Seq:        seq,
+		StepType:   stepType,
 		ToolName:   toolName,
+		CallID:     callIDVal,
 		ToolInput:  toolInput,
 		ToolOutput: outputVal,
 		IsError:    isError,
@@ -157,13 +194,26 @@ func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, toolName
 		eventType = protocol.EventRunStepCompleted
 	}
 
-	o.broadcast(eventType, db.Run{ID: util.ParseUUID(runID), WorkspaceID: util.ParseUUID("")}, map[string]any{
-		"step_id":   util.UUIDToString(step.ID),
+	// Look up workspace ID for event routing.
+	run, runErr := o.Queries.GetRun(ctx, util.ParseUUID(runID))
+	if runErr != nil {
+		slog.Warn("record step: failed to get run for broadcast", "run_id", runID, "error", runErr)
+		return step, nil
+	}
+
+	payload := map[string]any{
 		"run_id":    runID,
+		"step_id":   util.UUIDToString(step.ID),
 		"seq":       seq,
-		"tool_name": toolName,
-		"is_error":  isError,
-	})
+		"step_type": stepType,
+	}
+	if toolName != "" {
+		payload["tool_name"] = toolName
+	}
+	if callID != "" {
+		payload["call_id"] = callID
+	}
+	o.broadcast(util.UUIDToString(run.WorkspaceID), eventType, payload)
 
 	return step, nil
 }
@@ -179,12 +229,26 @@ func (o *RunOrchestrator) CompleteStep(ctx context.Context, stepID string, toolO
 		return db.RunStep{}, fmt.Errorf("complete step: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunStepCompleted, db.Run{ID: step.RunID}, map[string]any{
-		"step_id":   stepID,
+	// Look up workspace ID for event routing.
+	run, runErr := o.Queries.GetRun(ctx, step.RunID)
+	if runErr != nil {
+		slog.Warn("complete step: failed to get run for broadcast", "run_id", util.UUIDToString(step.RunID), "error", runErr)
+		return step, nil
+	}
+
+	payload := map[string]any{
 		"run_id":    util.UUIDToString(step.RunID),
-		"tool_name": step.ToolName,
+		"step_id":   stepID,
+		"step_type": step.StepType,
 		"is_error":  isError,
-	})
+	}
+	if step.ToolName != "" {
+		payload["tool_name"] = step.ToolName
+	}
+	if step.CallID.Valid {
+		payload["call_id"] = step.CallID.String
+	}
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunStepCompleted, payload)
 
 	return step, nil
 }
@@ -207,7 +271,14 @@ func (o *RunOrchestrator) CreateTodo(ctx context.Context, runID string, title st
 		return db.RunTodo{}, fmt.Errorf("create run todo: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunTodoCreated, db.Run{ID: util.ParseUUID(runID)}, map[string]any{
+	// Look up workspace ID for event routing.
+	run, runErr := o.Queries.GetRun(ctx, util.ParseUUID(runID))
+	if runErr != nil {
+		slog.Warn("create todo: failed to get run for broadcast", "run_id", runID, "error", runErr)
+		return todo, nil
+	}
+
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoCreated, map[string]any{
 		"todo_id": util.UUIDToString(todo.ID),
 		"run_id":  runID,
 		"seq":     seq,
@@ -239,7 +310,14 @@ func (o *RunOrchestrator) UpdateTodo(ctx context.Context, todoID string, status 
 		return db.RunTodo{}, fmt.Errorf("update run todo: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunTodoUpdated, db.Run{ID: todo.RunID}, map[string]any{
+	// Look up workspace ID for event routing.
+	run, runErr := o.Queries.GetRun(ctx, todo.RunID)
+	if runErr != nil {
+		slog.Warn("update todo: failed to get run for broadcast", "run_id", util.UUIDToString(todo.RunID), "error", runErr)
+		return todo, nil
+	}
+
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoUpdated, map[string]any{
 		"todo_id": todoID,
 		"run_id":  util.UUIDToString(todo.RunID),
 		"status":  status,
@@ -256,20 +334,35 @@ func (o *RunOrchestrator) CompleteRun(ctx context.Context, runID string) (db.Run
 		return db.Run{}, fmt.Errorf("complete run: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunCompleted, run)
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunCompleted, map[string]any{
+		"run_id":        runID,
+		"completed_at":  run.CompletedAt.Time.Format(time.RFC3339),
+		"input_tokens":  run.InputTokens,
+		"output_tokens": run.OutputTokens,
+		"cost_usd":      run.EstimatedCostUsd,
+	})
 	slog.Info("run completed", "run_id", runID)
 
 	return run, nil
 }
 
 // FailRun marks a run as failed and broadcasts run:failed.
-func (o *RunOrchestrator) FailRun(ctx context.Context, runID string) (db.Run, error) {
+func (o *RunOrchestrator) FailRun(ctx context.Context, runID string, errorMsgs ...string) (db.Run, error) {
 	run, err := o.Queries.FailRun(ctx, util.ParseUUID(runID))
 	if err != nil {
 		return db.Run{}, fmt.Errorf("fail run: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunFailed, run)
+	errMsg := ""
+	if len(errorMsgs) > 0 {
+		errMsg = errorMsgs[0]
+	}
+
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunFailed, map[string]any{
+		"run_id":       runID,
+		"error":        errMsg,
+		"completed_at": run.CompletedAt.Time.Format(time.RFC3339),
+	})
 	slog.Info("run failed", "run_id", runID)
 
 	return run, nil
@@ -282,7 +375,10 @@ func (o *RunOrchestrator) CancelRun(ctx context.Context, runID string) (db.Run, 
 		return db.Run{}, fmt.Errorf("cancel run: %w", err)
 	}
 
-	o.broadcast(protocol.EventRunCancelled, run)
+	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunCancelled, map[string]any{
+		"run_id":       runID,
+		"completed_at": run.CompletedAt.Time.Format(time.RFC3339),
+	})
 	slog.Info("run cancelled", "run_id", runID)
 
 	return run, nil
@@ -328,6 +424,25 @@ func (o *RunOrchestrator) CreateHandoff(ctx context.Context, sourceRunID string,
 		"target_run_id", targetRunID,
 	)
 
+	// Broadcast handoff event.
+	if run, runErr := o.Queries.GetRun(ctx, util.ParseUUID(sourceRunID)); runErr == nil {
+		payload := map[string]any{
+			"run_id":       sourceRunID,
+			"handoff_id":   util.UUIDToString(handoff.ID),
+			"handoff_type": handoffType,
+		}
+		if targetRunID != "" {
+			payload["target_run_id"] = targetRunID
+		}
+		if targetTeamID != "" {
+			payload["target_team_id"] = targetTeamID
+		}
+		if targetAgentID != "" {
+			payload["target_agent_id"] = targetAgentID
+		}
+		o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunHandoffCreated, payload)
+	}
+
 	return handoff, nil
 }
 
@@ -368,6 +483,20 @@ func (o *RunOrchestrator) CreateArtifact(ctx context.Context, runID string, step
 	})
 	if err != nil {
 		return db.RunArtifact{}, fmt.Errorf("create artifact: %w", err)
+	}
+
+	// Broadcast artifact created event.
+	if run, runErr := o.Queries.GetRun(ctx, util.ParseUUID(runID)); runErr == nil {
+		payload := map[string]any{
+			"run_id":        runID,
+			"artifact_id":   util.UUIDToString(artifact.ID),
+			"artifact_type": artifactType,
+			"name":          name,
+		}
+		if stepID != "" {
+			payload["step_id"] = stepID
+		}
+		o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunArtifactCreated, payload)
 	}
 
 	return artifact, nil
@@ -480,7 +609,7 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 	})
 	if err != nil {
 		log.Error("agent execute failed", "error", err)
-		o.FailRun(ctx, runID)
+		o.FailRun(ctx, runID, fmt.Sprintf("agent execute: %s", err))
 		return &ExecuteRunResult{
 			RunID:    runID,
 			Status:   "failed",
@@ -508,8 +637,8 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 
 	// StepCoalescer reduces run_steps DB writes by merging consecutive
 	// same-type thinking/text events before calling RecordStep.
-	stepCoalescer := NewStepCoalescer(350*time.Millisecond, func(toolName, content string) {
-		_, stepErr := o.RecordStep(ctx, runID, toolName, nil, content, false)
+	stepCoalescer := NewStepCoalescer(350*time.Millisecond, func(stepType, toolName, callID, content string) {
+		_, stepErr := o.RecordStep(ctx, runID, stepType, toolName, callID, nil, content, false)
 		if stepErr != nil {
 			log.Warn("record coalesced step failed", "error", stepErr)
 		}
@@ -630,7 +759,7 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 		}, nil
 	case "timeout":
 		errMsg := fmt.Sprintf("agent timed out after %s", elapsed)
-		o.FailRun(ctx, runID)
+		o.FailRun(ctx, runID, errMsg)
 		return &ExecuteRunResult{
 			RunID:    runID,
 			Status:   "failed",
@@ -643,7 +772,7 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 		if errMsg == "" {
 			errMsg = fmt.Sprintf("agent %s", result.Status)
 		}
-		o.FailRun(ctx, runID)
+		o.FailRun(ctx, runID, errMsg)
 		return &ExecuteRunResult{
 			RunID:    runID,
 			Status:   "failed",
@@ -654,32 +783,12 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 	}
 }
 
-// broadcast sends a run event through the event bus with the run's workspace ID.
-func (o *RunOrchestrator) broadcast(eventType string, run db.Run, extra ...map[string]any) {
-	payload := map[string]any{
-		"run_id": util.UUIDToString(run.ID),
-		"phase":  run.Phase,
-		"status": run.Status,
-	}
-	if run.AgentID.Valid {
-		payload["agent_id"] = util.UUIDToString(run.AgentID)
-	}
-	if run.IssueID.Valid {
-		payload["issue_id"] = util.UUIDToString(run.IssueID)
-	}
-	if run.TaskID.Valid {
-		payload["task_id"] = util.UUIDToString(run.TaskID)
-	}
-
-	for _, ex := range extra {
-		for k, v := range ex {
-			payload[k] = v
-		}
-	}
-
+// broadcast sends a run event through the event bus to the specified workspace.
+// Each call site constructs the exact per-event payload matching schema §4.
+func (o *RunOrchestrator) broadcast(workspaceID string, eventType string, payload map[string]any) {
 	o.Bus.PublishAsync(events.Event{
 		Type:        eventType,
-		WorkspaceID: util.UUIDToString(run.WorkspaceID),
+		WorkspaceID: workspaceID,
 		ActorType:   "system",
 		ActorID:     "",
 		Payload:     payload,

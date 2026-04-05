@@ -180,7 +180,7 @@ type StepCoalescer struct {
 	mu       sync.Mutex
 	window   time.Duration
 	MaxChars int
-	writeFn  func(toolName string, content string)
+	writeFn  func(stepType, toolName, callID, content string)
 
 	// fold buffer
 	pendingType string
@@ -194,7 +194,7 @@ type StepCoalescer struct {
 
 // NewStepCoalescer creates a StepCoalescer with the given sliding window and
 // write callback. MaxChars defaults to 2000.
-func NewStepCoalescer(window time.Duration, writeFn func(string, string)) *StepCoalescer {
+func NewStepCoalescer(window time.Duration, writeFn func(string, string, string, string)) *StepCoalescer {
 	return &StepCoalescer{
 		window:   window,
 		MaxChars: 2000,
@@ -253,7 +253,7 @@ func (sc *StepCoalescer) FlushToolUse(callID, name string, inputJSON []byte) {
 
 	sc.flushLocked()
 	if sc.writeFn != nil {
-		sc.writeFn(name, string(inputJSON))
+		sc.writeFn("tool_use", name, callID, string(inputJSON))
 	}
 }
 
@@ -268,7 +268,7 @@ func (sc *StepCoalescer) FlushToolResult(callID, name, output string) {
 
 	sc.flushLocked()
 	if sc.writeFn != nil {
-		sc.writeFn(name, output)
+		sc.writeFn("tool_result", name, callID, output)
 	}
 }
 
@@ -300,12 +300,12 @@ func (sc *StepCoalescer) flushLocked() {
 		merged = merged[:sc.MaxChars]
 	}
 
-	toolName := sc.pendingType
+	stepType := sc.pendingType
 	sc.pending = nil
 	sc.pendingType = ""
 
 	if sc.writeFn != nil {
-		sc.writeFn(toolName, merged)
+		sc.writeFn(stepType, "", "", merged)
 	}
 }
 

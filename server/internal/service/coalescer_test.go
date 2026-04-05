@@ -237,7 +237,9 @@ func searchStr(s, sub string) bool {
 // --- StepCoalescer tests ---
 
 type stepWrite struct {
+	StepType string
 	ToolName string
+	CallID   string
 	Content  string
 }
 
@@ -245,9 +247,9 @@ func TestStepCoalescer_SameTypeMerge(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(50*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(50*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
@@ -263,8 +265,8 @@ func TestStepCoalescer_SameTypeMerge(t *testing.T) {
 	if len(writes) != 1 {
 		t.Fatalf("expected 1 merged write, got %d", len(writes))
 	}
-	if writes[0].ToolName != "thinking" {
-		t.Errorf("expected tool 'thinking', got %q", writes[0].ToolName)
+	if writes[0].StepType != "thinking" {
+		t.Errorf("expected step type 'thinking', got %q", writes[0].StepType)
 	}
 	if writes[0].Content != "first thought\nsecond thought\nthird thought" {
 		t.Errorf("expected merged content, got %q", writes[0].Content)
@@ -275,9 +277,9 @@ func TestStepCoalescer_TypeSwitchFlushes(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(200*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(200*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
@@ -289,9 +291,9 @@ func TestStepCoalescer_TypeSwitchFlushes(t *testing.T) {
 		mu.Unlock()
 		t.Fatalf("expected 1 write after type switch, got %d", len(writes))
 	}
-	if writes[0].ToolName != "thinking" {
+	if writes[0].StepType != "thinking" {
 		mu.Unlock()
-		t.Errorf("expected flushed 'thinking', got %q", writes[0].ToolName)
+		t.Errorf("expected flushed step type 'thinking', got %q", writes[0].StepType)
 	}
 	mu.Unlock()
 
@@ -303,8 +305,8 @@ func TestStepCoalescer_TypeSwitchFlushes(t *testing.T) {
 	if len(writes) != 2 {
 		t.Fatalf("expected 2 total writes, got %d", len(writes))
 	}
-	if writes[1].ToolName != "text" || writes[1].Content != "some text" {
-		t.Errorf("expected text write, got %s %q", writes[1].ToolName, writes[1].Content)
+	if writes[1].StepType != "text" || writes[1].Content != "some text" {
+		t.Errorf("expected text write, got %s %q", writes[1].StepType, writes[1].Content)
 	}
 }
 
@@ -312,9 +314,9 @@ func TestStepCoalescer_ToolFlushesImmediate(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(500*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(500*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
@@ -327,8 +329,8 @@ func TestStepCoalescer_ToolFlushesImmediate(t *testing.T) {
 	if len(writes) != 2 {
 		t.Fatalf("expected 2 writes (flushed thinking + tool), got %d", len(writes))
 	}
-	if writes[0].ToolName != "thinking" {
-		t.Errorf("expected first write 'thinking', got %q", writes[0].ToolName)
+	if writes[0].StepType != "thinking" {
+		t.Errorf("expected first write step type 'thinking', got %q", writes[0].StepType)
 	}
 	if writes[1].ToolName != "read_file" {
 		t.Errorf("expected second write 'read_file', got %q", writes[1].ToolName)
@@ -339,9 +341,9 @@ func TestStepCoalescer_ToolResultFlushesImmediate(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(500*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(500*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
@@ -354,8 +356,8 @@ func TestStepCoalescer_ToolResultFlushesImmediate(t *testing.T) {
 	if len(writes) != 2 {
 		t.Fatalf("expected 2 writes, got %d", len(writes))
 	}
-	if writes[0].ToolName != "text" {
-		t.Errorf("expected first 'text', got %q", writes[0].ToolName)
+	if writes[0].StepType != "text" {
+		t.Errorf("expected first step type 'text', got %q", writes[0].StepType)
 	}
 	if writes[1].ToolName != "read_file" || writes[1].Content != "file contents" {
 		t.Errorf("expected tool_result write, got %+v", writes[1])
@@ -366,9 +368,9 @@ func TestStepCoalescer_WindowReset(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(100*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(100*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
@@ -394,9 +396,9 @@ func TestStepCoalescer_Truncation(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(50*time.Millisecond, func(name, content string) {
+	sc := NewStepCoalescer(50*time.Millisecond, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 	sc.MaxChars = 10
@@ -420,9 +422,9 @@ func TestStepCoalescer_CloseFlushes(t *testing.T) {
 	var mu sync.Mutex
 	var writes []stepWrite
 
-	sc := NewStepCoalescer(10*time.Second, func(name, content string) {
+	sc := NewStepCoalescer(10*time.Second, func(stepType, toolName, callID, content string) {
 		mu.Lock()
-		writes = append(writes, stepWrite{name, content})
+		writes = append(writes, stepWrite{stepType, toolName, callID, content})
 		mu.Unlock()
 	})
 
