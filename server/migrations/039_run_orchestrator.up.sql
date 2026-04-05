@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS runs (
     task_id UUID REFERENCES agent_task_queue(id) ON DELETE SET NULL,
     agent_id UUID NOT NULL REFERENCES agent(id) ON DELETE CASCADE,
     parent_run_id UUID REFERENCES runs(id) ON DELETE SET NULL,
-    team_id UUID REFERENCES team(id) ON DELETE SET NULL,
+    team_id UUID,
 
     -- Lifecycle
     phase TEXT NOT NULL DEFAULT 'pending',   -- pending | planning | executing | reviewing | completed | failed | cancelled
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS run_handoffs (
     target_run_id UUID REFERENCES runs(id) ON DELETE SET NULL,
 
     handoff_type TEXT NOT NULL DEFAULT 'delegate', -- delegate | escalate | chain
-    target_team_id UUID REFERENCES team(id) ON DELETE SET NULL,
+    target_team_id UUID,
     target_agent_id UUID REFERENCES agent(id) ON DELETE SET NULL,
     reason TEXT NOT NULL DEFAULT '',
     context_packet JSONB,
@@ -152,8 +152,4 @@ CREATE INDEX IF NOT EXISTS idx_outbox_next_attempt
     ON outbox_messages(next_attempt_at)
     WHERE dead_lettered_at IS NULL AND processed_at IS NULL;
 
--- 8. Upgrade team for Run Orchestrator scheduling
-ALTER TABLE team ADD COLUMN IF NOT EXISTS queue_policy JSONB DEFAULT '{"strategy":"round_robin","max_queue":100}';
-ALTER TABLE team ADD COLUMN IF NOT EXISTS capability_tags TEXT[] DEFAULT '{}';
-ALTER TABLE team ADD COLUMN IF NOT EXISTS max_run_duration INTERVAL DEFAULT '2 hours';
-ALTER TABLE team ADD COLUMN IF NOT EXISTS max_concurrent INT DEFAULT 3;
+-- 8. Team columns deferred to team migration (team table created later)

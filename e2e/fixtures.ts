@@ -46,40 +46,24 @@ export class TestApiClient {
       }
     }
 
-    // Step 2: Read code from database
-    const client = new pg.Client(DATABASE_URL);
-    await client.connect();
-    try {
-      const result = await client.query(
-        "SELECT code FROM verification_code WHERE email = $1 AND used = FALSE AND expires_at > now() ORDER BY created_at DESC LIMIT 1",
-        [email]
-      );
-      if (result.rows.length === 0) {
-        throw new Error(`No verification code found for ${email}`);
-      }
-      const code = result.rows[0].code;
+    // Step 2: Verify using master code (888888) — avoids DB read timing issues
+    const verifyRes = await fetch(`${API_BASE}/auth/verify-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code: "888888" }),
+    });
+    const data = await verifyRes.json();
+    this.token = data.token;
 
-      // Step 3: Verify code to get JWT
-      const verifyRes = await fetch(`${API_BASE}/auth/verify-code`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
+    // Update user name if needed
+    if (name && data.user?.name !== name) {
+      await this.authedFetch("/api/me", {
+        method: "PATCH",
+        body: JSON.stringify({ name }),
       });
-      const data = await verifyRes.json();
-      this.token = data.token;
-
-      // Update user name if needed
-      if (name && data.user?.name !== name) {
-        await this.authedFetch("/api/me", {
-          method: "PATCH",
-          body: JSON.stringify({ name }),
-        });
-      }
-
-      return data;
-    } finally {
-      await client.end();
     }
+
+    return data;
   }
 
   async getWorkspaces(): Promise<TestWorkspace[]> {

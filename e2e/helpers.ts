@@ -25,64 +25,56 @@ function uniqueCredentials() {
 export async function loginAsDefault(page: Page) {
   const { email, slug } = uniqueCredentials();
 
-  // Step 1: Send verification code (server-side)
-  const sendRes = await fetch(`${API_BASE}/auth/send-code`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
-  });
-  if (!sendRes.ok) {
-    throw new Error(`send-code failed: ${sendRes.status} ${await sendRes.text()}`);
+  // Step 1: Send verification code (server-side, retry on 429 rate limit)
+  let sendOk = false;
+  for (let attempt = 0; attempt < 3 && !sendOk; attempt++) {
+    const sendRes = await fetch(`${API_BASE}/auth/send-code`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (sendRes.ok) {
+      sendOk = true;
+    } else if (sendRes.status === 429) {
+      console.warn(`[helpers] send-code rate-limited for ${email}, attempt ${attempt + 1}/3`);
+      await new Promise((r) => setTimeout(r, 11000));
+    } else {
+      const body = await sendRes.text();
+      throw new Error(`send-code failed: ${sendRes.status} ${body}`);
+    }
   }
 
-  // Step 2: Read code from DB
-  const pg = await import("pg");
-  const DATABASE_URL = process.env.DATABASE_URL ?? "postgres://multicode:multicode@localhost:5432/multicode?sslmode=disable";
-  const client = new pg.Client(DATABASE_URL);
-  await client.connect();
-  let token: string;
-  try {
-    const result = await client.query(
-      "SELECT code FROM verification_code WHERE email = $1 AND used = FALSE AND expires_at > now() ORDER BY created_at DESC LIMIT 1",
-      [email]
-    );
-    if (result.rows.length === 0) {
-      throw new Error(`No verification code found for ${email}`);
-    }
-    const code = result.rows[0].code;
+  // Step 2: Call verify-code from the browser using the master code (888888).
+  // This avoids DB timing issues and sets the HttpOnly cookie via browser context.
+  await page.goto("/login");
+  const verifyResult = await page.evaluate(async ({ email }) => {
+    const res = await fetch("/auth/verify-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, code: "888888" }),
+      credentials: "include",
+    });
+    return res.json();
+  }, { email });
+  const token = verifyResult.token;
 
-    // Step 3: Call verify-code from the browser so the Set-Cookie header
-    // is processed by the browser (HttpOnly cookie named "token").
-    // Use a relative URL so the request goes through the Next.js dev proxy
-    // (same origin), avoiding SameSite=Lax cookie rejection on cross-origin POSTs.
-    await page.goto("/login");
-    const verifyResult = await page.evaluate(async ({ email, code }) => {
-      const res = await fetch("/auth/verify-code", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, code }),
-        credentials: "include",
-      });
-      return res.json();
-    }, { email, code });
-    token = verifyResult.token;
-
-    // Update user name if needed
-    if (verifyResult.user?.name !== DEFAULT_E2E_NAME) {
-      await fetch(`${API_BASE}/api/me`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name: DEFAULT_E2E_NAME }),
-      });
-    }
-  } finally {
-    await client.end();
+  if (!token) {
+    throw new Error(`verify-code returned no token: ${JSON.stringify(verifyResult)}`);
   }
 
-  // Step 4: Ensure workspace exists using the JWT token
+  // Update user name if needed
+  if (verifyResult.user?.name !== DEFAULT_E2E_NAME) {
+    await fetch(`${API_BASE}/api/me`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name: DEFAULT_E2E_NAME }),
+    });
+  }
+
+  // Step 3: Ensure workspace exists using the JWT token
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`,

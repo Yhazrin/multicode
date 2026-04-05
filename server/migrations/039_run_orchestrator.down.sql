@@ -16,8 +16,4 @@ ALTER TABLE outbox_messages DROP COLUMN IF EXISTS dead_letter_reason;
 
 DROP INDEX IF EXISTS idx_outbox_next_attempt;
 
--- Revert team columns
-ALTER TABLE team DROP COLUMN IF EXISTS queue_policy;
-ALTER TABLE team DROP COLUMN IF EXISTS capability_tags;
-ALTER TABLE team DROP COLUMN IF EXISTS max_run_duration;
-ALTER TABLE team DROP COLUMN IF EXISTS max_concurrent;
+-- Team columns deferred to team migration
