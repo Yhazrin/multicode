@@ -6,9 +6,9 @@ test.describe("Comments", () => {
   let api: TestApiClient;
 
   test.beforeEach(async ({ page }) => {
-    api = await createTestApi();
+    const { token, workspaceId } = await loginAsDefault(page);
+    api = createTestApi(token, workspaceId);
     await api.createIssue("E2E Comment Test " + Date.now());
-    await loginAsDefault(page);
   });
 
   test.afterEach(async () => {

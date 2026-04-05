@@ -7,8 +7,8 @@ test.describe("Prompt Preview (P0-1)", () => {
   let agentId: string;
 
   test.beforeEach(async ({ page }) => {
-    api = await createTestApi();
-    await loginAsDefault(page);
+    const { token, workspaceId } = await loginAsDefault(page);
+    api = createTestApi(token, workspaceId);
 
     const agent = await api.createAgent("E2E Prompt Agent", {
       instructions: "You are a helpful test agent for E2E testing.",

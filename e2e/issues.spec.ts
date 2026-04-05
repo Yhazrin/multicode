@@ -6,8 +6,8 @@ test.describe("Issues", () => {
   let api: TestApiClient;
 
   test.beforeEach(async ({ page }) => {
-    api = await createTestApi();
-    await loginAsDefault(page);
+    const { token, workspaceId } = await loginAsDefault(page);
+    api = createTestApi(token, workspaceId);
   });
 
   test.afterEach(async () => {

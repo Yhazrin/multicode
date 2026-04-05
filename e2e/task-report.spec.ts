@@ -8,8 +8,8 @@ test.describe("Task Report — inline panel via agent detail (P0-2)", () => {
   let issueId: string;
 
   test.beforeEach(async ({ page }) => {
-    api = await createTestApi();
-    await loginAsDefault(page);
+    const { token, workspaceId } = await loginAsDefault(page);
+    api = createTestApi(token, workspaceId);
 
     const agent = await api.createAgent("E2E Task Agent");
     agentId = agent.id;

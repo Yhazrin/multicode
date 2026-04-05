@@ -7,8 +7,8 @@ test.describe("Runtime Policy (P0-3)", () => {
   let agentId: string;
 
   test.beforeEach(async ({ page }) => {
-    api = await createTestApi();
-    await loginAsDefault(page);
+    const { token, workspaceId } = await loginAsDefault(page);
+    api = createTestApi(token, workspaceId);
 
     const agent = await api.createAgent("E2E Policy Agent");
     agentId = agent.id;

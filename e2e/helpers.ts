@@ -111,17 +111,19 @@ export async function loginAsDefault(page: Page) {
   // Now navigate — the cookie is set, AuthInitializer will authenticate
   await page.goto("/issues");
   await page.waitForURL("**/issues", { timeout: 15000 });
+
+  return { token, workspaceId: workspace.id };
 }
 
 /**
- * Create a TestApiClient logged in as the default E2E user.
+ * Create a TestApiClient reusing credentials from loginAsDefault.
+ * This ensures the API client and browser session share the same workspace.
  * Call api.cleanup() in afterEach to remove test data created during the test.
  */
-export async function createTestApi(): Promise<TestApiClient> {
+export function createTestApi(token: string, workspaceId: string): TestApiClient {
   const api = new TestApiClient();
-  const { email, slug } = uniqueCredentials();
-  await api.login(email, DEFAULT_E2E_NAME);
-  await api.ensureWorkspace("E2E Workspace", slug);
+  api.setToken(token);
+  api.setWorkspaceId(workspaceId);
   return api;
 }
 
