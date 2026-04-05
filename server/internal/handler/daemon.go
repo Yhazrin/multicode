@@ -13,6 +13,7 @@ import (
 	pgvector_go "github.com/pgvector/pgvector-go"
 
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
+	"github.com/multica-ai/multicode/server/internal/service"
 	"github.com/multica-ai/multicode/server/pkg/protocol"
 	"github.com/multica-ai/multicode/server/pkg/redact"
 )
@@ -392,6 +393,15 @@ func (h *Handler) StartTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Bridge to RunOrchestrator: transition pending → executing.
+	if h.RunOrchestrator != nil {
+		if run, err := h.Queries.GetRunByTask(r.Context(), parseUUID(taskID)); err == nil {
+			if _, err := h.RunOrchestrator.StartRun(r.Context(), uuidToString(run.ID)); err != nil {
+				slog.Error("failed to start run for task", "task_id", taskID, "error", err)
+			}
+		}
+	}
+
 	slog.Info("task started", "task_id", taskID, "agent_id", uuidToString(task.AgentID))
 	writeJSON(w, http.StatusOK, taskToResponse(*task))
 }
@@ -452,10 +462,19 @@ func (h *Handler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Bridge to RunOrchestrator: mark the associated run as completed.
+	if h.RunOrchestrator != nil {
+		if run, err := h.Queries.GetRunByTask(r.Context(), parseUUID(taskID)); err == nil {
+			if _, err := h.RunOrchestrator.CompleteRun(r.Context(), uuidToString(run.ID)); err != nil {
+				slog.Error("failed to complete run for task", "task_id", taskID, "error", err)
+			}
+		}
+	}
+
 	slog.Info("task completed", "task_id", taskID, "agent_id", uuidToString(task.AgentID))
+
 	writeJSON(w, http.StatusOK, taskToResponse(*task))
 }
-
 // GetTaskStatus returns the current status of a task.
 // Used by the daemon to check whether a task was cancelled mid-execution.
 func (h *Handler) GetTaskStatus(w http.ResponseWriter, r *http.Request) {
@@ -490,6 +509,15 @@ func (h *Handler) FailTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Bridge to RunOrchestrator: mark the associated run as failed.
+	if h.RunOrchestrator != nil {
+		if run, err := h.Queries.GetRunByTask(r.Context(), parseUUID(taskID)); err == nil {
+			if _, err := h.RunOrchestrator.FailRun(r.Context(), uuidToString(run.ID), req.Error); err != nil {
+				slog.Error("failed to fail run for task", "task_id", taskID, "error", err)
+			}
+		}
+	}
+
 	slog.Info("task failed", "task_id", taskID, "agent_id", uuidToString(task.AgentID), "task_error", req.Error)
 	writeJSON(w, http.StatusOK, taskToResponse(*task))
 }
@@ -501,6 +529,7 @@ func (h *Handler) FailTask(w http.ResponseWriter, r *http.Request) {
 type TaskMessageRequest struct {
 	Seq     int            `json:"seq"`
 	Type    string         `json:"type"`
+	CallID  string         `json:"call_id,omitempty"`
 	Tool    string         `json:"tool,omitempty"`
 	Content string         `json:"content,omitempty"`
 	Input   map[string]any `json:"input,omitempty"`
@@ -537,7 +566,31 @@ func (h *Handler) ReportTaskMessages(w http.ResponseWriter, r *http.Request) {
 		workspaceID = uuidToString(issue.WorkspaceID)
 	}
 
-	for _, msg := range req.Messages {
+	// Lazily find or create a Run for this task so we can record steps.
+	// Uses GetOrCreateRun with per-task locking to prevent duplicate runs.
+	runID := ""
+	if h.RunOrchestrator != nil {
+		agentIDStr := uuidToString(task.AgentID)
+		issueIDStr := uuidToString(task.IssueID)
+		run, runErr := h.RunOrchestrator.GetOrCreateRun(r.Context(), service.CreateRunRequest{
+			WorkspaceID: workspaceID,
+			IssueID:     issueIDStr,
+			AgentID:     agentIDStr,
+			TaskID:      taskID,
+		})
+		if runErr != nil {
+			slog.Error("failed to get or create run for task", "task_id", taskID, "error", runErr)
+		} else {
+			runID = uuidToString(run.ID)
+			// If the run is still pending (newly created), start it.
+			if run.Phase == "pending" {
+				if _, startErr := h.RunOrchestrator.StartRun(r.Context(), runID); startErr != nil {
+					slog.Error("failed to start run for task", "task_id", taskID, "run_id", runID, "error", startErr)
+				}
+			}
+		}
+	}
+for _, msg := range req.Messages {
 		// Redact sensitive information before persisting or broadcasting.
 		msg.Content = redact.Text(msg.Content)
 		msg.Output = redact.Text(msg.Output)
@@ -557,6 +610,19 @@ func (h *Handler) ReportTaskMessages(w http.ResponseWriter, r *http.Request) {
 			Output:  pgtype.Text{String: msg.Output, Valid: msg.Output != ""},
 		}); err != nil {
 			slog.Error("failed to create task message", "task_id", taskID, "error", err)
+		}
+
+		// Bridge to RunOrchestrator: record each message as a run step.
+		if runID != "" {
+			stepType := mapMessageTypeToStepType(msg.Type)
+			isError := msg.Type == "error"
+			toolOutput := msg.Output
+			if msg.Type == "text" || msg.Type == "thinking" {
+				toolOutput = msg.Content
+			}
+			if _, err := h.RunOrchestrator.RecordStep(r.Context(), runID, stepType, msg.Tool, msg.CallID, inputJSON, toolOutput, isError); err != nil {
+				slog.Error("failed to record run step", "run_id", runID, "task_id", taskID, "error", err)
+			}
 		}
 
 		if workspaceID != "" {
@@ -759,4 +825,22 @@ func (h *Handler) ListTasksByIssue(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// mapMessageTypeToStepType maps task message types to run step types.
+func mapMessageTypeToStepType(msgType string) string {
+	switch msgType {
+	case "thinking":
+		return "thinking"
+	case "text":
+		return "text"
+	case "tool_use":
+		return "tool_use"
+	case "tool_result":
+		return "tool_result"
+	case "error":
+		return "error"
+	default:
+		return msgType
+	}
 }

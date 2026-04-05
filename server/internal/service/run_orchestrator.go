@@ -28,17 +28,48 @@ const (
 	PhaseCancelled  = "cancelled"
 )
 
+// RunQuerier abstracts the database operations used by RunOrchestrator,
+// enabling test doubles (stubQueries) to be injected.
+type RunQuerier interface {
+	CreateRun(ctx context.Context, arg db.CreateRunParams) (db.Run, error)
+	StartRun(ctx context.Context, id pgtype.UUID) (db.Run, error)
+	GetRun(ctx context.Context, id pgtype.UUID) (db.Run, error)
+	UpdateRunPhase(ctx context.Context, arg db.UpdateRunPhaseParams) (db.Run, error)
+	CompleteRun(ctx context.Context, id pgtype.UUID) (db.Run, error)
+	FailRun(ctx context.Context, id pgtype.UUID) (db.Run, error)
+	CancelRun(ctx context.Context, id pgtype.UUID) (db.Run, error)
+	UpdateRunTokens(ctx context.Context, arg db.UpdateRunTokensParams) (db.Run, error)
+	GetNextStepSeq(ctx context.Context, id pgtype.UUID) (int32, error)
+	CreateRunStep(ctx context.Context, arg db.CreateRunStepParams) (db.RunStep, error)
+	CompleteRunStep(ctx context.Context, arg db.CompleteRunStepParams) (db.RunStep, error)
+	GetNextTodoSeq(ctx context.Context, id pgtype.UUID) (int32, error)
+	CreateRunTodo(ctx context.Context, arg db.CreateRunTodoParams) (db.RunTodo, error)
+	UpdateRunTodo(ctx context.Context, arg db.UpdateRunTodoParams) (db.RunTodo, error)
+	CreateRunHandoff(ctx context.Context, arg db.CreateRunHandoffParams) (db.RunHandoff, error)
+	CreateRunContinuation(ctx context.Context, arg db.CreateRunContinuationParams) (db.RunContinuation, error)
+	CreateRunArtifact(ctx context.Context, arg db.CreateRunArtifactParams) (db.RunArtifact, error)
+	ListRunsByWorkspace(ctx context.Context, arg db.ListRunsByWorkspaceParams) ([]db.Run, error)
+	ListRunsByIssue(ctx context.Context, id pgtype.UUID) ([]db.Run, error)
+	ListRunSteps(ctx context.Context, id pgtype.UUID) ([]db.RunStep, error)
+	ListRunTodos(ctx context.Context, id pgtype.UUID) ([]db.RunTodo, error)
+	ListRunArtifacts(ctx context.Context, id pgtype.UUID) ([]db.RunArtifact, error)
+}
+
 // RunOrchestrator manages the lifecycle of agent runs: creation, phase
 // transitions, step/todo recording, compaction, handoffs, and completion.
 type RunOrchestrator struct {
-	Queries   *db.Queries
+	Queries   RunQuerier
 	Compactor *Compactor
 	Hub       *realtime.Hub
 	Bus       *events.Bus
+
+	// taskLocks protects GetOrCreateRun from concurrent creation for the same task.
+	// Keys are task ID strings; values are *sync.Mutex.
+	taskLocks sync.Map
 }
 
 // NewRunOrchestrator creates a new RunOrchestrator.
-func NewRunOrchestrator(queries *db.Queries, compactor *Compactor, hub *realtime.Hub, bus *events.Bus) *RunOrchestrator {
+func NewRunOrchestrator(queries RunQuerier, compactor *Compactor, hub *realtime.Hub, bus *events.Bus) *RunOrchestrator {
 	return &RunOrchestrator{
 		Queries:   queries,
 		Compactor: compactor,
@@ -104,6 +135,35 @@ func (o *RunOrchestrator) CreateRun(ctx context.Context, req CreateRunRequest) (
 	)
 
 	return run, nil
+}
+
+// GetOrCreateRun returns the existing run for a task, or creates a new one atomically.
+// It uses per-task locking to prevent duplicate runs from concurrent callers.
+func (o *RunOrchestrator) GetOrCreateRun(ctx context.Context, req CreateRunRequest) (db.Run, error) {
+	if req.TaskID == "" {
+		return o.CreateRun(ctx, req)
+	}
+
+	// Per-task lock to prevent concurrent creation for the same task.
+	lock, _ := o.taskLocks.LoadOrStore(req.TaskID, &sync.Mutex{})
+	mu := lock.(*sync.Mutex)
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Fast path: check if a run already exists for this task.
+	// RunQuerier doesn't expose GetRunByTask, so we try via the concrete Queries
+	// field if available, or fall back to creating.
+	type taskRunQuerier interface {
+		GetRunByTask(ctx context.Context, taskID pgtype.UUID) (db.Run, error)
+	}
+	if qr, ok := o.Queries.(taskRunQuerier); ok {
+		if existing, err := qr.GetRunByTask(ctx, util.ParseUUID(req.TaskID)); err == nil {
+			return existing, nil
+		}
+	}
+
+	// No existing run — create one.
+	return o.CreateRun(ctx, req)
 }
 
 // StartRun transitions a run from pending to active/executing and broadcasts run:started.
@@ -366,6 +426,47 @@ func (o *RunOrchestrator) FailRun(ctx context.Context, runID string, errorMsgs .
 	slog.Info("run failed", "run_id", runID)
 
 	return run, nil
+}
+
+// RetryRun creates a new run based on an existing run, preserving execution
+// history via parent_run_id. The original run's system_prompt, model_name,
+// permission_mode, workspace, issue, agent, task, and team are carried over.
+// The new run starts in the pending phase.
+func (o *RunOrchestrator) RetryRun(ctx context.Context, originalRunID string) (db.Run, error) {
+	original, err := o.Queries.GetRun(ctx, util.ParseUUID(originalRunID))
+	if err != nil {
+		return db.Run{}, fmt.Errorf("get original run: %w", err)
+	}
+
+	newRun, err := o.CreateRun(ctx, CreateRunRequest{
+		WorkspaceID:    util.UUIDToString(original.WorkspaceID),
+		IssueID:        util.UUIDToString(original.IssueID),
+		AgentID:        util.UUIDToString(original.AgentID),
+		TaskID:         nullUUIDToString(original.TaskID),
+		ParentRunID:    originalRunID,
+		TeamID:         nullUUIDToString(original.TeamID),
+		SystemPrompt:   original.SystemPrompt,
+		ModelName:      original.ModelName,
+		PermissionMode: original.PermissionMode,
+	})
+	if err != nil {
+		return db.Run{}, fmt.Errorf("create retry run: %w", err)
+	}
+
+	slog.Info("run retried",
+		"original_run_id", originalRunID,
+		"new_run_id", util.UUIDToString(newRun.ID),
+	)
+
+	return newRun, nil
+}
+
+// nullUUIDToString converts a pgtype.UUID to string, returning "" if invalid.
+func nullUUIDToString(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	return util.UUIDToString(u)
 }
 
 // CancelRun marks a run as cancelled and broadcasts run:cancelled.
