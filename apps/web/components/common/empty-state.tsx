@@ -1,11 +1,14 @@
 import type React from "react";
 import type { LucideIcon } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import type { VariantProps } from "class-variance-authority";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface EmptyStateAction {
   label: string;
   onClick: () => void;
   icon?: LucideIcon;
+  variant?: VariantProps<typeof buttonVariants>["variant"];
 }
 
 interface EmptyStateProps {
@@ -14,6 +17,7 @@ interface EmptyStateProps {
   description?: string;
   actions?: EmptyStateAction[];
   children?: React.ReactNode;
+  className?: string;
 }
 
 export function EmptyState({
@@ -22,9 +26,15 @@ export function EmptyState({
   description,
   actions,
   children,
+  className,
 }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center gap-3 py-12 text-center",
+        className,
+      )}
+    >
       {Icon && (
         <div className="flex size-12 items-center justify-center rounded-full bg-muted">
           <Icon className="size-6 text-muted-foreground" aria-hidden="true" />
@@ -42,7 +52,7 @@ export function EmptyState({
           {actions.map((action) => (
             <Button
               key={action.label}
-              variant="secondary"
+              variant={action.variant ?? "secondary"}
               size="sm"
               onClick={action.onClick}
             >
