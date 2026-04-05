@@ -36,6 +36,7 @@ const SCHEME_ACCENTS: Record<ThemeScheme, { light: string; dark: string }> = {
   morandi: { light: "#b07898", dark: "#c88aaa" },
   ocean: { light: "#2888c8", dark: "#4aa8e8" },
   rose: { light: "#d04870", dark: "#e86888" },
+  jade: { light: "#2e8b57", dark: "#3cb371" },
 };
 
 function WindowMockup({
@@ -105,6 +106,7 @@ const schemeOptions: { value: ThemeScheme; label: string }[] = [
   { value: "morandi", label: "Morandi" },
   { value: "ocean", label: "Ocean" },
   { value: "rose", label: "Rose" },
+  { value: "jade", label: "Jade" },
 ];
 
 export function AppearanceTab() {

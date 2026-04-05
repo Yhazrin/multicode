@@ -2,10 +2,10 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-export type ThemeScheme = "zinc" | "morandi" | "ocean" | "rose";
+export type ThemeScheme = "zinc" | "morandi" | "ocean" | "rose" | "jade";
 
 const STORAGE_KEY = "multica-theme-scheme";
-const SCHEMES: ThemeScheme[] = ["zinc", "morandi", "ocean", "rose"];
+const SCHEMES: ThemeScheme[] = ["zinc", "morandi", "ocean", "rose", "jade"];
 
 function getSnapshot(): ThemeScheme {
   if (typeof window === "undefined") return "zinc";
