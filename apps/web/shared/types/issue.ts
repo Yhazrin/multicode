@@ -36,6 +36,7 @@ export interface Issue {
   parent_issue_id: string | null;
   position: number;
   due_date: string | null;
+  repo_id: string | null;
   reactions?: IssueReaction[];
   created_at: string;
   updated_at: string;
