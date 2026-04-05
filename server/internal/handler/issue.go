@@ -37,6 +37,7 @@ type IssueResponse struct {
 	DueDate            *string                 `json:"due_date"`
 	CreatedAt          string                  `json:"created_at"`
 	UpdatedAt          string                  `json:"updated_at"`
+	LatestTaskStatus   *string                 `json:"latest_task_status,omitempty"`
 	Reactions          []IssueReactionResponse `json:"reactions,omitempty"`
 	Attachments        []AttachmentResponse    `json:"attachments,omitempty"`
 }
@@ -120,7 +121,7 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		assigneeFilter = parseUUID(a)
 	}
 
-	issues, err := h.Queries.ListIssues(ctx, db.ListIssuesParams{
+	rows, err := h.Queries.ListIssuesWithTaskStatus(ctx, db.ListIssuesWithTaskStatusParams{
 		WorkspaceID: parseUUID(workspaceID),
 		Limit:       int32(limit),
 		Offset:      int32(offset),
@@ -134,9 +135,32 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	}
 
 	prefix := h.getIssuePrefix(ctx, parseUUID(workspaceID))
-	resp := make([]IssueResponse, len(issues))
-	for i, issue := range issues {
-		resp[i] = issueToResponse(issue, prefix)
+	resp := make([]IssueResponse, len(rows))
+	for i, row := range rows {
+		r := issueToResponse(db.Issue{
+			ID:            row.ID,
+			WorkspaceID:   row.WorkspaceID,
+			Title:         row.Title,
+			Description:   row.Description,
+			Status:        row.Status,
+			Priority:      row.Priority,
+			AssigneeType:  row.AssigneeType,
+			AssigneeID:    row.AssigneeID,
+			CreatorType:   row.CreatorType,
+			CreatorID:     row.CreatorID,
+			ParentIssueID: row.ParentIssueID,
+			Position:      row.Position,
+			DueDate:       row.DueDate,
+			CreatedAt:     row.CreatedAt,
+			UpdatedAt:     row.UpdatedAt,
+			Number:        row.Number,
+			RepoID:        row.RepoID,
+		}, prefix)
+		if row.LatestTaskStatus != "" {
+			s := row.LatestTaskStatus
+			r.LatestTaskStatus = &s
+		}
+		resp[i] = r
 	}
 
 	writeJSON(w, http.StatusOK, map[string]any{

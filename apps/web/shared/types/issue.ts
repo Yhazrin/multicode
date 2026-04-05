@@ -38,6 +38,7 @@ export interface Issue {
   due_date: string | null;
   repo_id: string | null;
   reactions?: IssueReaction[];
+  latest_task_status?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -369,6 +369,104 @@ func (q *Queries) ListIssuesByIDs(ctx context.Context, arg ListIssuesByIDsParams
 	return items, nil
 }
 
+const listIssuesWithTaskStatus = `-- name: ListIssuesWithTaskStatus :many
+SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.repo_id, COALESCE(lt.latest_task_status, '') AS latest_task_status
+FROM issue i
+LEFT JOIN LATERAL (
+    SELECT atq.status AS latest_task_status
+    FROM agent_task_queue atq
+    WHERE atq.issue_id = i.id
+    ORDER BY atq.created_at DESC
+    LIMIT 1
+) lt ON true
+WHERE i.workspace_id = $1
+  AND ($4::text IS NULL OR i.status = $4)
+  AND ($5::text IS NULL OR i.priority = $5)
+  AND ($6::uuid IS NULL OR i.assignee_id = $6)
+ORDER BY i.position ASC, i.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type ListIssuesWithTaskStatusParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
+	Status      pgtype.Text `json:"status"`
+	Priority    pgtype.Text `json:"priority"`
+	AssigneeID  pgtype.UUID `json:"assignee_id"`
+}
+
+type ListIssuesWithTaskStatusRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
+	Title              string             `json:"title"`
+	Description        pgtype.Text        `json:"description"`
+	Status             string             `json:"status"`
+	Priority           string             `json:"priority"`
+	AssigneeType       pgtype.Text        `json:"assignee_type"`
+	AssigneeID         pgtype.UUID        `json:"assignee_id"`
+	CreatorType        string             `json:"creator_type"`
+	CreatorID          pgtype.UUID        `json:"creator_id"`
+	ParentIssueID      pgtype.UUID        `json:"parent_issue_id"`
+	AcceptanceCriteria []byte             `json:"acceptance_criteria"`
+	ContextRefs        []byte             `json:"context_refs"`
+	Position           float64            `json:"position"`
+	DueDate            pgtype.Timestamptz `json:"due_date"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Number             int32              `json:"number"`
+	RepoID             pgtype.UUID        `json:"repo_id"`
+	LatestTaskStatus   string             `json:"latest_task_status"`
+}
+
+func (q *Queries) ListIssuesWithTaskStatus(ctx context.Context, arg ListIssuesWithTaskStatusParams) ([]ListIssuesWithTaskStatusRow, error) {
+	rows, err := q.db.Query(ctx, listIssuesWithTaskStatus,
+		arg.WorkspaceID,
+		arg.Limit,
+		arg.Offset,
+		arg.Status,
+		arg.Priority,
+		arg.AssigneeID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListIssuesWithTaskStatusRow{}
+	for rows.Next() {
+		var i ListIssuesWithTaskStatusRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.AcceptanceCriteria,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+			&i.RepoID,
+			&i.LatestTaskStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateIssue = `-- name: UpdateIssue :one
 UPDATE issue SET
     title = COALESCE($2, title),
