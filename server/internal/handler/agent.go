@@ -118,6 +118,7 @@ type AgentTaskResponse struct {
 	RuntimeID      string         `json:"runtime_id"`
 	IssueID        string         `json:"issue_id"`
 	WorkspaceID    string         `json:"workspace_id"`
+	WorkspaceName  string         `json:"workspace_name,omitempty"`
 	Status         string         `json:"status"`
 	Priority       int32          `json:"priority"`
 	DispatchedAt   *string        `json:"dispatched_at"`
@@ -145,6 +146,7 @@ type TaskAgentData struct {
 	ID           string                   `json:"id"`
 	Name         string                   `json:"name"`
 	Instructions string                   `json:"instructions"`
+	Role         string                   `json:"role,omitempty"`
 	Skills       []service.AgentSkillData `json:"skills,omitempty"`
 }
 

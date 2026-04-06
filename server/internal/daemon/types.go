@@ -30,6 +30,7 @@ type Task struct {
 	RuntimeID        string                `json:"runtime_id"`
 	IssueID          string                `json:"issue_id"`
 	WorkspaceID      string                `json:"workspace_id"`
+	WorkspaceName    string                `json:"workspace_name,omitempty"`
 	Agent            *AgentData            `json:"agent,omitempty"`
 	Repos            []RepoData            `json:"repos,omitempty"`
 	PriorSessionID   string                `json:"prior_session_id,omitempty"`    // Claude session ID from a previous task on this issue

@@ -264,13 +264,16 @@ func (h *Handler) ClaimTaskByRuntime(w http.ResponseWriter, r *http.Request) {
 	// Include workspace ID and repos so the daemon can set up worktrees.
 	if issue, err := h.Queries.GetIssue(r.Context(), task.IssueID); err == nil {
 		resp.WorkspaceID = uuidToString(issue.WorkspaceID)
-		if ws, err := h.Queries.GetWorkspace(r.Context(), issue.WorkspaceID); err == nil && ws.Repos != nil {
-			var repos []RepoData
-			if json.Unmarshal(ws.Repos, &repos) == nil && len(repos) > 0 {
-				resp.Repos = repos
+		if ws, err := h.Queries.GetWorkspace(r.Context(), issue.WorkspaceID); err == nil {
+				resp.WorkspaceName = ws.Name
+				if ws.Repos != nil {
+					var repos []RepoData
+					if json.Unmarshal(ws.Repos, &repos) == nil && len(repos) > 0 {
+						resp.Repos = repos
+					}
+				}
 			}
 		}
-	}
 
 	// Look up the prior session for this (agent, issue) pair so the daemon
 	// can resume the Claude Code conversation context.

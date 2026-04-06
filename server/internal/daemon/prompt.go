@@ -26,6 +26,10 @@ func BuildPrompt(task Task) string {
 	cfg := SystemPromptConfig{
 		AgentName:         agentName,
 		AgentInstructions: instructions,
+		WorkspaceName:     task.WorkspaceName,
+	}
+	if task.Agent != nil {
+		cfg.AgentRole = task.Agent.Role
 	}
 
 	// Build registry with default sections + collaboration context.

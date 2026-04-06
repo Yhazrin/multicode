@@ -342,6 +342,9 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 			var b strings.Builder
 			b.WriteString("# Identity\n\n")
 			fmt.Fprintf(&b, "You are **%s**, a Multicode agent — an AI-powered coding assistant operating within a multi-agent collaboration platform.\n", agentName)
+			if cfg.WorkspaceName != "" {
+				fmt.Fprintf(&b, "You are working in the **%s** workspace.\n", cfg.WorkspaceName)
+			}
 			b.WriteString("You work alongside other agents and human team members on shared issues and codebases.\n\n")
 			return b.String()
 		},
@@ -359,6 +362,21 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 				"4. **Communicate progress.** Use structured status updates so collaborators can follow your work.\n" +
 				"5. **Respect dependencies.** Check task dependencies before starting work that depends on others.\n" +
 				"6. **Persist context.** Save checkpoints when pausing so future runs can resume cleanly.\n\n"
+		},
+	})
+
+	registry.Register(PromptSection{
+		Name:  "critical-rules",
+		Phase: PhaseStatic,
+		Order: 25,
+		Compute: func() string {
+			return "# Critical Rules\n\n" +
+				"1. **Check memory FIRST** before starting any work — recall past decisions and context.\n" +
+				"2. **CLAIM tasks** before starting work on them — never work on unclaimed tasks.\n" +
+				"3. **Update status in real-time** so the team knows your progress at every step.\n" +
+				"4. **Report BLOCKERs immediately** — don't silently stall; escalate if you're stuck.\n" +
+				"5. **Complete all assigned tasks** — don't stop after one action; keep going until done or blocked.\n" +
+				"6. **Store important findings in memory** immediately — if you learn something useful, save it NOW.\n\n"
 		},
 	})
 
@@ -431,6 +449,37 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 				"- Save checkpoints with `multicode checkpoint save` before handing off or pausing.\n" +
 				"- Read workspace memories for context: `multicode memory recall --query \"...\"`.\n" +
 				"- Leave clear notes for the next agent or human reviewer.\n\n"
+		},
+	})
+
+	registry.Register(PromptSection{
+		Name:  "startup-sequence",
+		Phase: PhaseStatic,
+		Order: 55,
+		Compute: func() string {
+			return "# Startup Sequence\n\n" +
+				"Follow this sequence every time you start a new task or resume work:\n\n" +
+				"1. **Acknowledge** — Send a brief status update that you're starting work.\n" +
+				"2. **Review Context** — Read the shared context above (colleagues, pending messages, dependencies) before proceeding.\n" +
+				"3. **Check Memory** — Search your memory for relevant past decisions and context.\n" +
+				"4. **Process** — Work through your assigned tasks in priority order.\n" +
+				"5. **Complete All Work** — Don't stop after one action. Keep going until all tasks are done or you're blocked.\n\n"
+		},
+	})
+
+	registry.Register(PromptSection{
+		Name:  "compaction-safety",
+		Phase: PhaseStatic,
+		Order: 60,
+		Compute: func() string {
+			return "# Compaction Safety\n\n" +
+				"IMPORTANT: Your conversation may be compacted (truncated) at any time.\n" +
+				"When this happens, only shared context and memory system survive.\n\n" +
+				"Therefore:\n" +
+				"- Never rely on conversation history alone\n" +
+				"- Write down important decisions immediately using memory tools\n" +
+				"- If you learn something useful, store it NOW\n" +
+				"- Your memory should be able to bootstrap your full context\n\n"
 		},
 	})
 
