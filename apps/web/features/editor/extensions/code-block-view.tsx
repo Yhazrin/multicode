@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { NodeViewWrapper, NodeViewContent } from "@tiptap/react";
 import type { NodeViewProps } from "@tiptap/react";
 import { Copy, Check } from "lucide-react";
+import { toast } from "sonner";
 
 function CodeBlockView({ node }: NodeViewProps) {
   const [copied, setCopied] = useState(false);
@@ -18,6 +19,7 @@ function CodeBlockView({ node }: NodeViewProps) {
     try {
       await navigator.clipboard.writeText(text);
     } catch {
+      toast.error("Failed to copy code");
       return;
     }
     setCopied(true);

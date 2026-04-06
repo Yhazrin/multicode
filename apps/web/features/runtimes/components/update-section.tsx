@@ -91,11 +91,16 @@ export function UpdateSection({
   const [output, setOutput] = useState("");
   const [updating, setUpdating] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const statusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const cleanup = useCallback(() => {
     if (pollRef.current) {
       clearInterval(pollRef.current);
       pollRef.current = null;
+    }
+    if (statusTimeoutRef.current) {
+      clearTimeout(statusTimeoutRef.current);
+      statusTimeoutRef.current = null;
     }
   }, []);
 
@@ -134,7 +139,7 @@ export function UpdateSection({
             cleanup();
             // Auto-clear status after a few seconds so the UI
             // refreshes to show the new version from the re-fetched runtime data.
-            setTimeout(() => setStatus(null), 5000);
+            statusTimeoutRef.current = setTimeout(() => setStatus(null), 5000);
           } else if (
             result.status === "failed" ||
             result.status === "timeout"
