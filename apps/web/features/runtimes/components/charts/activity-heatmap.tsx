@@ -75,10 +75,12 @@ export function ActivityHeatmap({ usage }: { usage: RuntimeUsage[] }) {
     const months: { label: string; week: number }[] = [];
     let lastMonth = -1;
     for (const c of cellsWithLevel) {
-      const month = new Date(c.date + "T00:00:00").getMonth();
+      const d = new Date(c.date + "T00:00:00");
+      if (isNaN(d.getTime())) continue;
+      const month = d.getMonth();
       if (month !== lastMonth && c.dayOfWeek === 0) {
         months.push({
-          label: new Date(c.date + "T00:00:00").toLocaleString("en", {
+          label: d.toLocaleString("en", {
             month: "short",
           }),
           week: c.week,

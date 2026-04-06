@@ -84,6 +84,8 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
   const seenSeqs = useRef(new Set<string>());
   const activeTaskRef = useRef(activeTask);
   activeTaskRef.current = activeTask;
+  const unmountedRef = useRef(false);
+  useEffect(() => () => { unmountedRef.current = true; }, []);
 
   // Check for active task on mount
   useEffect(() => {
@@ -218,6 +220,7 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
     useCallback(() => {
       if (activeTaskRef.current) return;
       api.getActiveTaskForIssue(issueId).then(({ task }) => {
+        if (unmountedRef.current) return;
         if (task) {
           setActiveTask(task);
           setItems([]);
@@ -226,6 +229,7 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
           seenSeqs.current.clear();
         }
       }).catch((e) => {
+        if (unmountedRef.current) return;
         console.error(e);
         toast.error("Failed to load dispatched task");
       });

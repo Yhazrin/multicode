@@ -1,6 +1,7 @@
 import { Extension, type Editor } from "@tiptap/core";
 import type { Node as ProseMirrorNode } from "@tiptap/pm/model";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+import { toast } from "sonner";
 import type { UploadResult } from "@/shared/hooks/use-file-upload";
 
 function removeImageBySrc(editor: Editor, src: string) {
@@ -59,6 +60,7 @@ export async function uploadAndInsertFile(
       }
     } catch {
       removeImageBySrc(editor, blobUrl);
+      toast.error("Failed to upload file");
     } finally {
       URL.revokeObjectURL(blobUrl);
     }
@@ -100,14 +102,14 @@ export function createFileUploadExtension(
               const files = event.clipboardData?.files;
               if (!files?.length) return false;
               if (!onUploadFileRef.current) return false;
-              handleFiles(files).catch(() => {});
+              handleFiles(files).catch((e) => { console.error(e); toast.error("Failed to upload file"); });
               return true;
             },
             handleDrop(_view, event) {
               const files = (event as DragEvent).dataTransfer?.files;
               if (!files?.length) return false;
               if (!onUploadFileRef.current) return false;
-              handleFiles(files).catch(() => {});
+              handleFiles(files).catch((e) => { console.error(e); toast.error("Failed to upload file"); });
               return true;
             },
           },
