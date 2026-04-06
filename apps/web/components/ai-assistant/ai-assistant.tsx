@@ -29,6 +29,9 @@ export function AIAssistant() {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -54,7 +57,7 @@ export function AIAssistant() {
     setIsLoading(true);
 
     // TODO: Replace with real AI API call
-    setTimeout(() => {
+    timerRef.current = setTimeout(() => {
       const response =
         "This is a placeholder response. The AI assistant is not yet connected to a backend service.";
       setMessages((prev) => [
