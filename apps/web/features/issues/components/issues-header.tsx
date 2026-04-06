@@ -64,7 +64,7 @@ import type { Issue } from "@/shared/types";
 // ---------------------------------------------------------------------------
 
 const FILTER_ITEM_CLASS =
-  "group/fitem pr-1.5! [&>[data-slot=dropdown-menu-checkbox-item-indicator]]:hidden";
+  "group/fitem pr-1.5 [&>[data-slot=dropdown-menu-checkbox-item-indicator]]:hidden";
 
 function HoverCheck({ checked }: { checked: boolean }) {
   return (
