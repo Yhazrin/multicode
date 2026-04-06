@@ -104,13 +104,13 @@ func (h *Handler) ListRuntimeJoinTokens(w http.ResponseWriter, r *http.Request) 
 	}
 	defer rows.Close()
 
-	var tokens []struct {
+	tokens := []struct {
 		ID          string `json:"id"`
 		TokenPrefix string `json:"token_prefix"`
 		ExpiresAt   string `json:"expires_at"`
 		UsedAt      string `json:"used_at"`
 		CreatedAt   string `json:"created_at"`
-	}
+	}{}
 	for rows.Next() {
 		var t struct {
 			ID          pgtype.UUID
@@ -227,10 +227,11 @@ func (h *Handler) RegisterRuntimeWithJoinToken(w http.ResponseWriter, r *http.Re
 	if req.Metadata != nil {
 		metadata, err = json.Marshal(req.Metadata)
 		if err != nil {
-			metadata, _ = json.Marshal(map[string]any{})
+			slog.Warn("marshal runtime metadata failed, using empty map", "error", err)
+			metadata = []byte("{}")
 		}
 	} else {
-		metadata, _ = json.Marshal(map[string]any{})
+		metadata = []byte("{}")
 	}
 
 	var runtime db.AgentRuntime
@@ -570,7 +571,7 @@ func (h *Handler) GetRuntimeAuditLogs(w http.ResponseWriter, r *http.Request) {
 	}
 	defer rows.Close()
 
-	var logs []struct {
+	logs := []struct {
 		ID          string `json:"id"`
 		WorkspaceID string `json:"workspace_id"`
 		RuntimeID   string `json:"runtime_id"`
@@ -578,7 +579,7 @@ func (h *Handler) GetRuntimeAuditLogs(w http.ResponseWriter, r *http.Request) {
 		Action      string `json:"action"`
 		Details     string `json:"details"`
 		CreatedAt   string `json:"created_at"`
-	}
+	}{}
 	for rows.Next() {
 		var log struct {
 			ID          pgtype.UUID

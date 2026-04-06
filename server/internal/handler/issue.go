@@ -363,7 +363,7 @@ type UpdateIssueRequest struct {
 	AssigneeType       *string  `json:"assignee_type"`
 	AssigneeID         *string  `json:"assignee_id"`
 	Position           *float64 `json:"position"`
-	RepoID			*string	`json:"repo_id"`
+	RepoID             *string  `json:"repo_id"`
 	DueDate            *string  `json:"due_date"`
 }
 
@@ -985,7 +985,9 @@ func splitIdentifier(id string) *identifierParts {
 func (h *Handler) getIssuePrefix(ctx context.Context, workspaceID pgtype.UUID) string {
 	key := uuidToString(workspaceID)
 	if cached, ok := h.prefixCache.Load(key); ok {
-		return cached.(string)
+		if s, ok := cached.(string); ok {
+			return s
+		}
 	}
 	ws, err := h.Queries.GetWorkspace(ctx, workspaceID)
 	if err != nil {
