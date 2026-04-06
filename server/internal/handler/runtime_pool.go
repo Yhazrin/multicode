@@ -621,7 +621,7 @@ func generateRandomToken(length int) string {
 		// Fall back to a less secure pseudo-random source only if crypto/rand fails.
 		// This should virtually never happen.
 		for i := range b {
-			b[i] = charset[time.Now().UnixNano()%byte(len(charset))]
+			b[i] = charset[int(time.Now().UnixNano())%len(charset)]
 		}
 		return string(b)
 	}
