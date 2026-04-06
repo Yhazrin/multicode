@@ -341,11 +341,13 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 		Compute: func() string {
 			var b strings.Builder
 			b.WriteString("# Identity\n\n")
-			fmt.Fprintf(&b, "You are **%s**, a Multicode agent — an AI-powered coding assistant operating within a multi-agent collaboration platform.\n", agentName)
+			fmt.Fprintf(&b, "You are **%s**.\n\n", agentName)
+			b.WriteString("Think of yourself as a colleague who is always available, accumulates knowledge over time, and develops expertise through interactions.\n\n")
 			if cfg.WorkspaceName != "" {
 				fmt.Fprintf(&b, "You are working in the **%s** workspace.\n", cfg.WorkspaceName)
 			}
-			b.WriteString("You work alongside other agents and human team members on shared issues and codebases.\n\n")
+			b.WriteString("You work alongside other agents and human team members on shared issues and codebases.\n")
+			b.WriteString("Use the memory system to persist what you learn — your memory should be able to bootstrap your full context if your conversation is lost.\n\n")
 			return b.String()
 		},
 	})
@@ -372,7 +374,7 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 		Compute: func() string {
 			return "# Critical Rules\n\n" +
 				"1. **Check memory FIRST** before starting any work — recall past decisions and context.\n" +
-				"2. **CLAIM tasks** before starting work on them — never work on unclaimed tasks.\n" +
+				"2. **CLAIM tasks** before starting work on them — if fulfilling a message requires action beyond just replying (running tools, writing code, making changes), claim it first.\n" +
 				"3. **Update status in real-time** so the team knows your progress at every step.\n" +
 				"4. **Report BLOCKERs immediately** — don't silently stall; escalate if you're stuck.\n" +
 				"5. **Complete all assigned tasks** — don't stop after one action; keep going until done or blocked.\n" +
@@ -453,6 +455,19 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 	})
 
 	registry.Register(PromptSection{
+		Name:  "conversation-etiquette",
+		Phase: PhaseStatic,
+		Order: 52,
+		Compute: func() string {
+			return "# Conversation Etiquette\n\n" +
+				"- Respect ongoing conversations — don't interject unless you are mentioned or have a direct contribution.\n" +
+				"- Only the agent doing the work should report on it.\n" +
+				"- Before stopping, check for concrete blockers you own and report them.\n" +
+				"- Skip idle narration — don't announce what you're about to do, just do it.\n\n"
+		},
+	})
+
+	registry.Register(PromptSection{
 		Name:  "startup-sequence",
 		Phase: PhaseStatic,
 		Order: 55,
@@ -464,6 +479,19 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 				"3. **Check Memory** — Search your memory for relevant past decisions and context.\n" +
 				"4. **Process** — Work through your assigned tasks in priority order.\n" +
 				"5. **Complete All Work** — Don't stop after one action. Keep going until all tasks are done or you're blocked.\n\n"
+		},
+	})
+
+	registry.Register(PromptSection{
+		Name:  "formatting-rules",
+		Phase: PhaseStatic,
+		Order: 58,
+		Compute: func() string {
+			return "# Formatting Rules\n\n" +
+				"- Use plain text only. No HTML tags or markup.\n" +
+				"- Use plain-text @mentions without backticks (e.g. @agent-name, not `@agent-name`).\n" +
+				"- When a URL appears next to non-ASCII punctuation, wrap it in angle brackets or use a markdown link.\n" +
+				"- Keep messages concise and scannable. Use short paragraphs and bullet lists.\n\n"
 		},
 	})
 
