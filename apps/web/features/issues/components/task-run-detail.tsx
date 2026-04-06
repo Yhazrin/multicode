@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -465,6 +465,8 @@ export function TaskRunDetail({ taskId }: TaskRunDetailProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const cancelledRef = useRef(false);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -475,19 +477,23 @@ export function TaskRunDetail({ taskId }: TaskRunDetailProps) {
         tasksApi.listMessages(taskId),
         tasksApi.listCheckpoints(taskId),
       ]);
+      if (cancelledRef.current) return;
       setReport(r);
       setTimeline(t);
       setMessages(buildTimeline(msgs));
       setCheckpoints(cps);
     } catch (e) {
+      if (cancelledRef.current) return;
       setError(e instanceof Error ? e.message : "Failed to load task");
     } finally {
-      setLoading(false);
+      if (!cancelledRef.current) setLoading(false);
     }
   }, [taskId]);
 
   useEffect(() => {
+    cancelledRef.current = false;
     load();
+    return () => { cancelledRef.current = true; };
   }, [load]);
 
   // Refresh on task lifecycle events
