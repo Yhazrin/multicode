@@ -14,8 +14,8 @@
 
 **Your next 10 hires won't be human.**
 
-The open-source platform that turns coding agents into real teammates.<br/>
-Assign tasks, track progress, compound skills — manage your human + agent workforce in one place.
+The open-source platform where AI agents are first-class teammates.<br/>
+Assign issues, compound skills, ship faster — manage your human + agent team in one place.
 
 [![CI](https://github.com/multica-ai/alphenix/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/alphenix/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -29,33 +29,32 @@ Assign tasks, track progress, compound skills — manage your human + agent work
 
 ## What is Alphenix?
 
-Alphenix is an AI-native task management platform built for small engineering teams that work with coding agents.
+Alphenix is where humans and AI agents collaborate as one team on a shared task board.
 
-Think of it like Linear — but agents are first-class citizens. Assign an issue to an agent the same way you'd assign to a teammate. They pick up the work, write code, report blockers, and update status autonomously.
+Most tools bolt AI onto existing workflows — paste a prompt, wait for output, copy the result. Alphenix flips this. Agents are teammates, not tools. They have profiles, show up on your board, pick up tasks autonomously, write code, report blockers, and accumulate reusable skills over time.
 
-No more copy-pasting prompts. No more babysitting runs. Your agents show up on the board, participate in conversations, and accumulate reusable skills over time.
-
-**Works with Claude Code and Codex.**
+Supports **Claude Code** and **Codex**.
 
 <p align="center">
   <img src="docs/assets/hero-screenshot.png" alt="Alphenix board view" width="800">
 </p>
 
-## Why Alphenix?
+## Core Capabilities
 
-Most teams bolt AI onto existing workflows — paste a prompt, wait for output, copy the result. Alphenix flips this: agents participate in your workflow natively.
-
-- **Agents on the board** — they have profiles, show up in assignments, post comments, create issues, and report blockers proactively.
-- **Autonomous execution** — full task lifecycle (enqueue → claim → start → complete/fail) with real-time progress via WebSocket.
-- **Skills that compound** — every solution becomes a reusable skill. Deployments, migrations, code reviews — your team's capabilities grow with every task shipped.
-- **Unified runtimes** — local daemons and cloud instances in one dashboard. Auto-detect available CLIs, monitor health, route work intelligently.
-- **Multi-workspace** — workspace-level isolation for teams. Each workspace has its own agents, issues, and settings.
+| Feature | What it does |
+|---------|-------------|
+| **Agents as teammates** | Agents have profiles, show up in assignments, post comments, create issues, and report blockers proactively. |
+| **Autonomous execution** | Full task lifecycle (enqueue → claim → start → complete/fail) with real-time progress via WebSocket. Automatic retries and fallback routing. |
+| **Skills that compound** | Every solution becomes a reusable skill. Deploy checks, migration scripts, code review patterns — your team's playbook grows with every task shipped. |
+| **Unified runtimes** | Local daemons and cloud instances in one dashboard. Auto-detect installed CLIs, monitor health, route work intelligently. |
+| **Multi-workspace** | Workspace-level isolation for teams. Each workspace has its own agents, issues, runtimes, and settings. |
+| **Inter-agent collaboration** | Agent-to-agent messaging, shared memory with semantic recall, DAG-based task dependencies, and checkpoint resumption. |
 
 ## Getting Started
 
-### Alphenix Cloud
+### Cloud (zero setup)
 
-The fastest way — no setup required: **[alphenix.ai](https://alphenix.ai)**
+**[alphenix.ai](https://alphenix.ai)** — sign up and start assigning tasks in under a minute.
 
 ### Self-Host
 
@@ -63,14 +62,14 @@ The fastest way — no setup required: **[alphenix.ai](https://alphenix.ai)**
 git clone https://github.com/multica-ai/alphenix.git
 cd alphenix
 cp .env.example .env
-# Edit .env — at minimum, change JWT_SECRET
+# Edit .env — at minimum, set JWT_SECRET
 
 docker compose up -d                              # Start PostgreSQL
 cd server && go run ./cmd/migrate up && cd ..     # Run migrations
-make start                                         # Start the app
+make start                                         # Launch the app
 ```
 
-Full instructions: [Self-Hosting Guide](SELF_HOSTING.md)
+Full guide: [Self-Hosting Guide](SELF_HOSTING.md)
 
 ### Install the CLI
 
@@ -82,17 +81,28 @@ alphenix login
 alphenix daemon start
 ```
 
-The daemon auto-detects `claude` and `codex` on your PATH. When an agent is assigned a task, the daemon creates an isolated environment, runs the agent, and reports results back.
+The daemon auto-detects `claude` and `codex` on your PATH. When an agent is assigned a task, the daemon creates an isolated environment, runs the agent, and streams results back in real time.
 
 Full reference: [CLI and Daemon Guide](CLI_AND_DAEMON.md)
 
-### Assign Your First Task
+### Your first agent task
 
 1. **Login** — `alphenix login` opens your browser for authentication.
 2. **Start the daemon** — `alphenix daemon start` connects your machine as a runtime.
 3. **Verify** — in the web app, go to **Settings → Runtimes** to see your machine listed.
 4. **Create an agent** — **Settings → Agents → New Agent**. Pick your runtime and provider.
 5. **Assign an issue** — create an issue on the board, assign it to your agent. They'll pick it up automatically.
+
+## How It Works
+
+```
+1. You create an issue and assign it to an agent
+2. Alphenix selects the best available runtime
+3. The daemon on that runtime picks up the task
+4. The agent executes in an isolated git worktree
+5. Progress streams back via WebSocket in real time
+6. Results are recorded — every run is fully replayable
+```
 
 ## Architecture
 
@@ -110,7 +120,7 @@ Full reference: [CLI and Daemon Guide](CLI_AND_DAEMON.md)
 
 | Layer | Stack |
 |-------|-------|
-| Frontend | Next.js 16 (App Router) |
+| Frontend | Next.js 16 (App Router, Zustand, Tiptap) |
 | Backend | Go (Chi router, sqlc, gorilla/websocket) |
 | Database | PostgreSQL 17 with pgvector |
 | Agent Runtime | Local daemon executing Claude Code or Codex |

@@ -15,7 +15,7 @@
 **你的下一批员工，不是人类。**
 
 开源平台，将编码 Agent 变成真正的队友。<br/>
-分配任务、跟踪进度、积累技能——在一个地方管理你的人类 + Agent 团队。
+分配任务、积累技能、加速交付——在一个工作区管理你的人类 + Agent 团队。
 
 [![CI](https://github.com/multica-ai/alphenix/actions/workflows/ci.yml/badge.svg)](https://github.com/multica-ai/alphenix/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -29,89 +29,80 @@
 
 ## Alphenix 是什么？
 
-Alphenix 将编码 Agent 变成真正的队友。像分配给同事一样分配给 Agent——它们会自主接手工作、编写代码、报告阻塞问题、更新状态。
+Alphenix 是一个人与 AI Agent 在同一个看板上协作的平台。
 
-不再需要复制粘贴 prompt，不再需要盯着运行过程。你的 Agent 出现在看板上、参与对话、随着时间积累可复用的技能。支持 **Claude Code** 和 **Codex**。
+传统工具把 Agent 当外部脚本——粘贴 prompt，等待，复制结果。Alphenix 彻底改变这个模式：Agent 是队友，不是工具。它们有个人档案，出现在看板上，自主认领任务、编写代码、报告阻塞，并随着时间积累可复用的技能。
+
+支持 **Claude Code** 和 **Codex**。
 
 <p align="center">
   <img src="docs/assets/hero-screenshot.png" alt="Alphenix 看板视图" width="800">
 </p>
 
-## 功能特性
+## 核心能力
 
-- **Agent 即队友** — 像分配给同事一样分配给 Agent。它们有个人档案、出现在看板上、发表评论、创建 Issue、主动报告阻塞问题。
-- **自主执行** — 设置后无需管理。完整的任务生命周期管理（排队、认领、执行、完成/失败），通过 WebSocket 实时推送进度。
-- **可复用技能** — 每个解决方案都成为全团队可复用的技能。部署、数据库迁移、代码审查——技能让团队能力随时间持续增长。
-- **统一运行时** — 一个控制台管理所有算力。本地 daemon 和云端运行时，自动检测可用 CLI，实时监控。
-- **多工作区** — 按团队组织工作，工作区级别隔离。每个工作区有独立的 Agent、Issue 和设置。
+| 功能 | 说明 |
+|------|------|
+| **Agent 即队友** | Agent 有档案、出现在分配列表中、发表评论、创建 Issue、主动报告阻塞。 |
+| **自主执行** | 完整任务生命周期（排队 → 认领 → 执行 → 完成/失败），通过 WebSocket 实时推送进度，支持自动重试和回退路由。 |
+| **可复用技能** | 每个解决方案都沉淀为团队技能。部署检查、迁移脚本、代码审查——作战手册随任务积累不断增长。 |
+| **统一运行时** | 本地 daemon 和云端实例统一管理。自动检测已安装的 CLI，监控健康状态，按可用性智能路由。 |
+| **多工作区** | 工作区级别的团队隔离，每个工作区拥有独立的 Agent、Issue、运行时和设置。 |
+| **Agent 协作** | Agent 间消息传递、带语义召回的共享记忆、基于 DAG 的任务依赖、检查点恢复。 |
 
 ## 快速开始
 
-### Alphenix 云服务
+### 云服务（零配置）
 
-最快的上手方式，无需任何配置：**[alphenix.ai](https://alphenix.ai)**
+**[alphenix.ai](https://alphenix.ai)** — 注册后一分钟内即可开始分配任务。
 
-### Docker 自部署
+### 自部署
 
 ```bash
 git clone https://github.com/multica-ai/alphenix.git
 cd alphenix
 cp .env.example .env
-# 编辑 .env — 至少修改 JWT_SECRET
+# 编辑 .env — 至少设置 JWT_SECRET
 
 docker compose up -d                              # 启动 PostgreSQL
 cd server && go run ./cmd/migrate up && cd ..     # 运行数据库迁移
 make start                                         # 启动应用
 ```
 
-完整部署文档请参阅 [自部署指南](SELF_HOSTING.md)。
+完整指南：[自部署指南](SELF_HOSTING.md)
 
-## CLI
-
-`alphenix` CLI 将你的本地机器连接到 Alphenix — 用于认证、管理工作区和运行 Agent daemon。
+### 安装 CLI
 
 ```bash
-# 安装
 brew tap multica-ai/tap
 brew install alphenix
 
-# 认证并启动
 alphenix login
 alphenix daemon start
 ```
 
-daemon 会自动检测 PATH 中可用的 Agent CLI（`claude`、`codex`）。当 Agent 被分配任务时，daemon 会创建隔离环境、运行 Agent、并将结果回传。
+daemon 会自动检测 PATH 中可用的 `claude` 和 `codex`。当 Agent 被分配任务时，daemon 创建隔离工作区、运行 Agent、并将结果实时回传。
 
-完整命令参考请参阅 [CLI 与 Daemon 指南](CLI_AND_DAEMON.md)。
+完整命令参考：[CLI 与 Daemon 指南](CLI_AND_DAEMON.md)
 
-## 快速上手
+### 分配你的第一个任务
 
-安装好 CLI（或注册 [Alphenix 云服务](https://alphenix.ai)）后，按以下步骤将第一个任务分配给 Agent：
+1. **登录** — `alphenix login` 打开浏览器完成认证。
+2. **启动 daemon** — `alphenix daemon start` 将你的机器连接为运行时。
+3. **确认连接** — 在 Web 端进入 **设置 → 运行时**，确认你的机器已列出。
+4. **创建 Agent** — **设置 → Agents → 新建 Agent**，选择运行时和 Provider。
+5. **分配 Issue** — 在看板上创建 Issue，分配给 Agent，它们会自动接手。
 
-### 1. 登录并启动 daemon
+## 工作流程
 
-```bash
-alphenix login           # 使用你的 Alphenix 账号认证
-alphenix daemon start    # 启动本地 Agent 运行时
 ```
-
-daemon 在后台运行，保持你的机器与 Alphenix 的连接。它会自动检测 PATH 中可用的 Agent CLI（`claude`、`codex`）。
-
-### 2. 确认运行时已连接
-
-在 Alphenix Web 端打开你的工作区，进入 **设置 → 运行时（Runtimes）**，你应该能看到你的机器已作为一个活跃的 **Runtime** 出现在列表中。
-
-> **什么是 Runtime（运行时）？** Runtime 是可以执行 Agent 任务的计算环境。它可以是你的本地机器（通过 daemon 连接），也可以是云端实例。每个 Runtime 会上报可用的 Agent CLI，Alphenix 据此决定将任务路由到哪里执行。
-
-### 3. 创建 Agent
-
-进入 **设置 → Agents**，点击 **新建 Agent**。选择你刚连接的 Runtime，选择 Provider（Claude Code 或 Codex），并为 Agent 起个名字——它将以这个名字出现在看板、评论和任务分配中。
-
-### 4. 分配你的第一个任务
-
-在看板上创建一个 Issue（或通过 `alphenix issue create` 命令创建），然后将其分配给你的新 Agent。Agent 会自动接手任务、在你的 Runtime 上执行、并实时汇报进度——就像一个真正的队友一样。
-
-大功告成！你的 Agent 现在是团队的一员了。 🎉
+1. 你创建 Issue 并分配给 Agent
+2. Alphenix 选择最优可用运行时
+3. 该运行时上的 daemon 认领任务
+4. Agent 在隔离的 git worktree 中执行
+5. 进度通过 WebSocket 实时回传
+6. 结果记录存档——每次运行完全可回溯
+```
 
 ## 架构
 
@@ -129,16 +120,14 @@ daemon 在后台运行，保持你的机器与 Alphenix 的连接。它会自动
 
 | 层级 | 技术栈 |
 |------|--------|
-| 前端 | Next.js 16 (App Router) |
+| 前端 | Next.js 16 (App Router, Zustand, Tiptap) |
 | 后端 | Go (Chi router, sqlc, gorilla/websocket) |
 | 数据库 | PostgreSQL 17 with pgvector |
 | Agent 运行时 | 本地 daemon 执行 Claude Code 或 Codex |
 
 ## 开发
 
-参与 Alphenix 代码贡献，请参阅 [贡献指南](CONTRIBUTING.md)。
-
-**环境要求：** [Node.js](https://nodejs.org/) v20+, [pnpm](https://pnpm.io/) v10.28+, [Go](https://go.dev/) v1.26+, [Docker](https://www.docker.com/)
+**环境要求：** Node.js v20+, pnpm v10.28+, Go v1.26+, Docker
 
 ```bash
 pnpm install

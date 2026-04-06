@@ -38,6 +38,9 @@ jobs:
           # Run go vet as a lightweight linter equivalent
           go vet ./...
 
+      - name: Verify migration directories in sync
+        run: make check-migrations
+
   frontend:
     runs-on: ubuntu-latest
     steps:

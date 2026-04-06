@@ -40,12 +40,12 @@ changelog:
 brews:
   - name: alphenix
     repository:
-      owner: alphenix
+      owner: multica-ai
       name: homebrew-tap
       branch: main
       token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
     directory: Formula
-    homepage: "https://github.com/alphenix/alphenix"
+    homepage: "https://github.com/multica-ai/alphenix"
     description: "Alphenix CLI — local agent runtime and management tool for the Alphenix platform"
     license: "Apache-2.0"
     install: |

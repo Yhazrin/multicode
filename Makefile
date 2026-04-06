@@ -1,4 +1,4 @@
-.PHONY: dev daemon cli alphenix build build-mcp-server build-all build-docker test test-coverage migrate-up migrate-down sqlc seed clean setup start stop check check-prereqs worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree db-up db-down
+.PHONY: dev daemon cli alphenix build build-mcp-server build-all build-docker test test-coverage migrate-up migrate-down sqlc check-migrations seed clean setup start stop check check-prereqs worktree-env setup-main start-main stop-main check-main setup-worktree start-worktree stop-worktree check-worktree db-up db-down
 
 MAIN_ENV_FILE ?= .env
 WORKTREE_ENV_FILE ?= .env.worktree
@@ -178,6 +178,18 @@ migrate-down:
 
 sqlc:
 	cd server && sqlc generate
+
+# Verify migration directories are in sync
+check-migrations:
+	@echo "Checking migration sync..."
+	@diff_output=$$(diff <(ls server/migrations/) <(ls server/pkg/migrations/migrations/)); \
+	if [ -n "$$diff_output" ]; then \
+		echo "MISMATCH between server/migrations/ and server/pkg/migrations/migrations/:"; \
+		echo "$$diff_output"; \
+		echo "Run: cp server/migrations/* server/pkg/migrations/migrations/"; \
+		exit 1; \
+	fi
+	@echo "✓ Migrations in sync."
 
 # Cleanup
 clean:
