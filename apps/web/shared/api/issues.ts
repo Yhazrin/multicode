@@ -87,8 +87,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
 export const issuesApi = {
   async listIssues(params?: ListIssuesParams): Promise<ListIssuesResponse> {
     const search = new URLSearchParams();
-    if (params?.limit) search.set("limit", String(params.limit));
-    if (params?.offset) search.set("offset", String(params.offset));
+    if (params?.limit !== undefined) search.set("limit", String(params.limit));
+    if (params?.offset !== undefined) search.set("offset", String(params.offset));
     if (params?.cursor) search.set("cursor", params.cursor);
     const wsId = params?.workspace_id ?? _workspaceId;
     if (wsId) search.set("workspace_id", wsId);
@@ -101,7 +101,7 @@ export const issuesApi = {
   async searchIssues(query: string, limit?: number): Promise<ListIssuesResponse> {
     const search = new URLSearchParams();
     search.set("q", query);
-    if (limit) search.set("limit", String(limit));
+    if (limit !== undefined) search.set("limit", String(limit));
     return apiFetch(`/api/issues/search?${search}`);
   },
 

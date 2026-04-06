@@ -25,7 +25,7 @@ export function useDependencyStatuses(dependencies: TaskDependency[]) {
         setDepStatuses((prev) => ({ ...prev, ...updates }));
       }
     });
-  }, [dependencies]);
+  }, [dependencies, depStatuses]);
 
   return depStatuses;
 }

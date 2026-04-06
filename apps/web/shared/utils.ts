@@ -12,7 +12,9 @@ export function timeAgo(dateStr: string): string {
 
 export function shortDate(date: string | null): string {
   if (!date) return "—";
-  return new Date(date).toLocaleDateString("en-US", {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
   });
