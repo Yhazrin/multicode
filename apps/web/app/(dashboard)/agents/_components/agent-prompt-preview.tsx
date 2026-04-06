@@ -19,21 +19,26 @@ export function PromptPreviewTab({ agent }: { agent: Agent }) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const loadPreview = useCallback(async () => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     try {
       const res = await agentsApi.previewPrompt(agent.id);
-      setSections(res.sections);
-      setFullPrompt(res.full_prompt);
+      if (!cancelled) {
+        setSections(res.sections);
+        setFullPrompt(res.full_prompt);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load prompt preview");
+      if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load prompt preview");
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
+    return () => { cancelled = true; };
   }, [agent.id]);
 
   useEffect(() => {
-    loadPreview();
+    const cleanup = loadPreview();
+    return () => { cleanup?.then((fn) => fn?.()); };
   }, [loadPreview]);
 
   const handleCopy = useCallback(async () => {

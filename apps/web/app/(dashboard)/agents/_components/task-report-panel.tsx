@@ -123,19 +123,19 @@ function SummaryTab({ report }: { report: TaskReport }) {
         {report.dispatched_at && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Dispatched</span>
-            <span>{new Date(report.dispatched_at).toLocaleString()}</span>
+            <span>{(() => { const d = new Date(report.dispatched_at); return isNaN(d.getTime()) ? "\u2014" : d.toLocaleString(); })()}</span>
           </div>
         )}
         {report.started_at && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Started</span>
-            <span>{new Date(report.started_at).toLocaleString()}</span>
+            <span>{(() => { const d = new Date(report.started_at); return isNaN(d.getTime()) ? "\u2014" : d.toLocaleString(); })()}</span>
           </div>
         )}
         {report.completed_at && (
           <div className="flex items-center justify-between text-xs">
             <span className="text-muted-foreground">Completed</span>
-            <span>{new Date(report.completed_at).toLocaleString()}</span>
+            <span>{(() => { const d = new Date(report.completed_at); return isNaN(d.getTime()) ? "\u2014" : d.toLocaleString(); })()}</span>
           </div>
         )}
       </div>
@@ -301,20 +301,23 @@ export function TaskReportPanel({
   const [error, setError] = useState<string | null>(null);
 
   const loadReport = useCallback(async () => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     try {
       const r = await tasksApi.getReport(task.id);
-      setReport(r);
+      if (!cancelled) setReport(r);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load report");
+      if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load report");
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
+    return () => { cancelled = true; };
   }, [task.id]);
 
   useEffect(() => {
-    loadReport();
+    const cleanup = loadReport();
+    return () => { cleanup?.then((fn) => fn?.()); };
   }, [loadReport]);
 
   if (loading) {
