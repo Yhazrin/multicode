@@ -11,19 +11,21 @@ export function McpPage() {
   const [loading, setLoading] = useState(true);
 
   const fetchServers = useCallback(async () => {
+    let cancelled = false;
     try {
       const data = await mcpApi.list();
-      setServers(data);
+      if (!cancelled) setServers(data);
     } catch {
-      // API not ready yet — show empty state
-      setServers([]);
+      if (!cancelled) setServers([]);
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
-    fetchServers();
+    const cleanup = fetchServers();
+    return () => { cleanup?.then((fn) => fn?.()); };
   }, [fetchServers]);
 
   const handleCreate = async (data: {
