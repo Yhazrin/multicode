@@ -223,8 +223,10 @@ func (h *Handler) RegisterRuntimeWithJoinToken(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	metadata, _ := json.Marshal(req.Metadata)
-	if req.Metadata == nil {
+	var metadata []byte
+	if req.Metadata != nil {
+		metadata, _ = json.Marshal(req.Metadata)
+	} else {
 		metadata, _ = json.Marshal(map[string]any{})
 	}
 
