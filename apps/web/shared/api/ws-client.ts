@@ -66,8 +66,8 @@ export class WSClient {
     for (const cb of this._connectionStateHandlers) {
       try {
         cb(state, prev);
-      } catch {
-        // ignore callback errors
+      } catch (e) {
+        this.logger.error("connection state change handler error", e);
       }
     }
   }
@@ -119,7 +119,8 @@ export class WSClient {
       });
       if (!res.ok) return null;
       return res.json() as Promise<{ ticket: string }>;
-    } catch {
+    } catch (e) {
+      this.logger.error("failed to fetch WS ticket", e);
       return null;
     }
   }
@@ -158,8 +159,8 @@ export class WSClient {
         for (const cb of this.onReconnectCallbacks) {
           try {
             cb();
-          } catch {
-            // ignore reconnect callback errors
+          } catch (e) {
+            this.logger.error("onReconnect callback error", e);
           }
         }
       }
@@ -179,7 +180,7 @@ export class WSClient {
         this.logger.error("auth expired, stopping reconnect");
         this._setState(ConnectionState.Unauthorized);
         for (const cb of this._unauthorizedHandlers) {
-          try { cb(); } catch { /* ignore */ }
+          try { cb(); } catch (e) { this.logger.error("unauthorized handler error", e); }
         }
         this._intentionalClose = true;
         this.ws?.close();
