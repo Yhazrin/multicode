@@ -7,6 +7,12 @@ export interface LoginResponse {
   user: User;
 }
 
+function handleUnauthorized() {
+  if (typeof window !== "undefined" && window.location.pathname !== "/") {
+    window.location.href = "/";
+  }
+}
+
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
@@ -17,6 +23,7 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
     credentials: "include",
   });
   if (!res.ok) {
+    if (res.status === 401) handleUnauthorized();
     const body = await res.text().catch(() => res.statusText);
     throw new Error(`API error: ${res.status} ${body}`);
   }
