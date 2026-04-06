@@ -790,7 +790,11 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 			coalescer.PushToolUse(msg.CallID, msg.Tool, msg.Input)
 
 			// Record step start (no output yet). StepCoalescer flushes any pending fold first.
-			inputJSON, _ := json.Marshal(msg.Input)
+			inputJSON, err := json.Marshal(msg.Input)
+			if err != nil {
+				slog.Warn("failed to marshal tool input", "tool", msg.Tool, "error", err)
+				inputJSON = []byte("{}")
+			}
 			stepCoalescer.FlushToolUse(msg.CallID, msg.Tool, inputJSON)
 
 			// Add tool_use to conversation for compaction.
