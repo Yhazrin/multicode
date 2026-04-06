@@ -20,7 +20,7 @@ export function DependencyBadges({ issueId }: DependencyBadgesProps) {
     let cancelled = false;
     api.listIssueDependencies(issueId)
       .then((deps) => { if (!cancelled) setDependencies(deps); })
-      .catch(() => {})
+      .catch((e) => { console.warn("Failed to load dependencies:", e); })
       .finally(() => { if (!cancelled) setLoaded(true); });
     return () => { cancelled = true; };
   }, [issueId]);

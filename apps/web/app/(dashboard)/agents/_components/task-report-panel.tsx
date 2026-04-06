@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   FileText,
   Clock,
@@ -45,6 +45,7 @@ function formatDuration(start?: string | null, end?: string | null): string {
   const startTime = new Date(start).getTime();
   if (isNaN(startTime)) return "—";
   const endTime = end ? new Date(end).getTime() : Date.now();
+  if (isNaN(endTime)) return "—";
   const ms = endTime - startTime;
   if (ms < 1000) return `${ms}ms`;
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`;
@@ -246,6 +247,8 @@ function TimelineTab({ taskId }: { taskId: string }) {
 
 function OutputTab({ report }: { report: TaskReport }) {
   const [copied, setCopied] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timerRef.current) clearTimeout(timerRef.current); }, []);
 
   if (!report.result && !report.error) {
     return (
@@ -266,7 +269,8 @@ function OutputTab({ report }: { report: TaskReport }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      if (timerRef.current) clearTimeout(timerRef.current);
+      timerRef.current = setTimeout(() => setCopied(false), 1500);
     }).catch(() => {
       toast.error("Failed to copy to clipboard");
     });

@@ -22,7 +22,7 @@ function WorkspaceAvatar({ name, size = "sm", className }: WorkspaceAvatarProps)
         className
       )}
     >
-      {name.charAt(0).toUpperCase()}
+      {(name || "?").charAt(0).toUpperCase()}
     </span>
   );
 }

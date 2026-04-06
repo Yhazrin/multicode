@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useDefaultLayout } from "react-resizable-panels";
 import {
   Users,
@@ -627,24 +627,28 @@ export default function TeamsPage() {
     id: "multica_teams_layout",
   });
 
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
+    let cancelled = false;
+    setLoadingTeams(true);
     try {
       const data = await api.listTeams();
-      setTeams(data);
-      setError(null);
+      if (!cancelled) setTeams(data);
+      if (!cancelled) setError(null);
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load teams");
+      if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load teams");
     } finally {
-      setLoadingTeams(false);
+      if (!cancelled) setLoadingTeams(false);
     }
-  };
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (workspace) {
-      fetchTeams();
+      const cleanup = fetchTeams();
       refreshAgents();
+      return () => { cleanup?.then((fn) => fn?.()); };
     }
-  }, [workspace]);
+  }, [workspace, fetchTeams, refreshAgents]);
 
   const filteredTeams = useMemo(
     () =>

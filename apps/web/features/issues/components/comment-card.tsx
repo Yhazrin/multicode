@@ -433,9 +433,9 @@ const CommentCard = memo(function CommentCard({
                   }
                 />
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    copyMarkdown(entry.content ?? "");
-                    toast.success("Copied");
+                  <DropdownMenuItem onClick={async () => {
+                    const ok = await copyMarkdown(entry.content ?? "");
+                    if (ok) { toast.success("Copied"); } else { toast.error("Failed to copy"); }
                   }}>
                     <Copy className="h-3.5 w-3.5" aria-hidden="true" />
                     Copy

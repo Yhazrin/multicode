@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Eye, Copy, Check, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Agent, PromptSection } from "@/shared/types";
@@ -17,6 +17,8 @@ export function PromptPreviewTab({ agent }: { agent: Agent }) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, []);
 
   const loadPreview = useCallback(async () => {
     let cancelled = false;
@@ -45,7 +47,8 @@ export function PromptPreviewTab({ agent }: { agent: Agent }) {
     try {
       await navigator.clipboard.writeText(fullPrompt);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copyTimerRef.current) clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000);
     } catch { toast.error("Failed to copy"); }
   }, [fullPrompt]);
 
@@ -171,7 +174,7 @@ export function PromptPreviewTab({ agent }: { agent: Agent }) {
                     className="mt-2 h-6 text-[10px]"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      try { await navigator.clipboard.writeText(section.content); } catch { toast.error("Failed to copy"); }
+                      try { await navigator.clipboard.writeText(section.content); toast.success("Copied"); } catch { toast.error("Failed to copy"); }
                     }}
                   >
                     <Copy className="mr-1 h-3 w-3" /> Copy section
