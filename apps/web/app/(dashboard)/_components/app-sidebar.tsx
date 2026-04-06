@@ -85,9 +85,14 @@ export function AppSidebar() {
 
   const logout = async () => {
     clearLoggedInCookie();
-    await authLogout();
-    useWorkspaceStore.getState().clearWorkspace();
-    router.push("/");
+    try {
+      await authLogout();
+    } catch (e) {
+      console.error("Logout failed:", e);
+    } finally {
+      useWorkspaceStore.getState().clearWorkspace();
+      router.push("/");
+    }
   };
 
   return (
@@ -206,7 +211,7 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         isActive={isActive}
                         render={<Link href={item.href} data-testid={`sidebar-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`} />}
-                        className="text-muted-foreground hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
+                        className="text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
                       >
                         <item.icon aria-hidden="true" />
                         <span>{item.label}</span>
@@ -234,7 +239,7 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         isActive={isActive}
                         render={<Link href={item.href} data-testid={`sidebar-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`} />}
-                        className="text-muted-foreground hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
+                        className="text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
                       >
                         <item.icon aria-hidden="true" />
                         <span>{item.label}</span>

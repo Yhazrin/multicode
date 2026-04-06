@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { toast } from "sonner";
 import { api } from "@/shared/api";
 import type { Attachment } from "@/shared/types";
@@ -20,6 +20,7 @@ export interface UploadContext {
 
 export function useFileUpload() {
   const [uploading, setUploading] = useState(false);
+  const uploadCount = useRef(0);
 
   const upload = useCallback(
     async (file: File, ctx?: UploadContext): Promise<UploadResult | null> => {
@@ -27,6 +28,7 @@ export function useFileUpload() {
         throw new Error("File exceeds 100 MB limit");
       }
 
+      uploadCount.current++;
       setUploading(true);
       try {
         const att: Attachment = await api.uploadFile(file, {
@@ -35,7 +37,8 @@ export function useFileUpload() {
         });
         return { id: att.id, filename: att.filename, link: att.url };
       } finally {
-        setUploading(false);
+        uploadCount.current--;
+        if (uploadCount.current === 0) setUploading(false);
       }
     },
     [],
