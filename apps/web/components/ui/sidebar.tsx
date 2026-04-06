@@ -78,13 +78,18 @@ function SidebarProvider({
   const [width, _setWidth] = React.useState(SIDEBAR_WIDTH_DEFAULT)
   const [isResizing, setIsResizing] = React.useState(false)
   React.useEffect(() => {
-    const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
-    if (stored) _setWidth(Number(stored))
+    try {
+      const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY)
+      if (stored) {
+        const parsed = Number(stored)
+        if (!isNaN(parsed)) _setWidth(parsed)
+      }
+    } catch {}
   }, [])
   const setWidth = React.useCallback((w: number) => {
     const clamped = Math.max(SIDEBAR_WIDTH_MIN, Math.min(SIDEBAR_WIDTH_MAX, w))
     _setWidth(clamped)
-    localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped))
+    try { localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped)); } catch {}
   }, [])
 
   // This is the internal state of the sidebar.
