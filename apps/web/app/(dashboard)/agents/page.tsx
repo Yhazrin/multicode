@@ -1269,7 +1269,7 @@ function TasksTab({ agent }: { agent: Agent }) {
     if (aIsActive && !bIsActive) return -1;
     if (!aIsActive && bIsActive) return 1;
     if (aIsActive && bIsActive) return aActive - bActive;
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    return (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0);
   });
 
   const issueMap = new Map(issues.map((i) => [i.id, i]));

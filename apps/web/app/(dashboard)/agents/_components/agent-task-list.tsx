@@ -76,7 +76,9 @@ export function TasksTab({ agent }: { agent: Agent }) {
     if (aIsActive && !bIsActive) return -1;
     if (!aIsActive && bIsActive) return 1;
     if (aIsActive && bIsActive) return aActive - bActive;
-    return (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0);
+    const bTime = new Date(b.created_at).getTime();
+    const aTime = new Date(a.created_at).getTime();
+    return (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime);
   });
 
   const issueMap = new Map(issues.map((i) => [i.id, i]));

@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import type { AgentTask, TaskReport, TaskTimelineEvent } from "@/shared/types";
 import { tasksApi } from "@/shared/api/tasks";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -266,7 +267,9 @@ function OutputTab({ report }: { report: TaskReport }) {
     navigator.clipboard.writeText(content).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    }).catch(() => {});
+    }).catch(() => {
+      toast.error("Failed to copy to clipboard");
+    });
   };
 
   return (
