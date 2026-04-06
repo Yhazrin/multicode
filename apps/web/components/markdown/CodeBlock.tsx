@@ -4,6 +4,7 @@ import { Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { cn } from '@/lib/utils'
+import { toast } from "sonner"
 
 export interface CodeBlockProps {
   code: string
@@ -127,13 +128,16 @@ export function CodeBlock({
     }
   }, [code, resolvedLang])
 
+  const copyTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null)
+  React.useEffect(() => () => { if (copyTimerRef.current) clearTimeout(copyTimerRef.current); }, [])
+
   const handleCopy = React.useCallback(async () => {
     try {
       await navigator.clipboard.writeText(code)
       setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch (err) {
-      console.error('Failed to copy code:', err)
+      copyTimerRef.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      toast.error("Failed to copy code")
     }
   }, [code])
 

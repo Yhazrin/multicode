@@ -304,21 +304,26 @@ function ContextPreviewTab({ taskId }: { taskId: string }) {
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
 
   const loadPreview = useCallback(async () => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     try {
       const res = await agentsApi.previewTaskContext(taskId);
-      setSections(res.sections);
-      setFinalPrompt(res.final_prompt);
+      if (!cancelled) {
+        setSections(res.sections);
+        setFinalPrompt(res.final_prompt);
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load context preview");
+      if (!cancelled) setError(e instanceof Error ? e.message : "Failed to load context preview");
     } finally {
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
+    return () => { cancelled = true; };
   }, [taskId]);
 
   useEffect(() => {
-    loadPreview();
+    const cleanup = loadPreview();
+    return () => { cleanup?.then((fn) => fn?.()); };
   }, [loadPreview]);
 
   const handleCopy = useCallback(async () => {
