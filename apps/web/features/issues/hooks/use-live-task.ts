@@ -82,6 +82,8 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
   const [error, setError] = useState<string | null>(null);
   const [lastError, setLastError] = useState<LastError | null>(null);
   const seenSeqs = useRef(new Set<string>());
+  const activeTaskRef = useRef(activeTask);
+  activeTaskRef.current = activeTask;
 
   // Check for active task on mount
   useEffect(() => {
@@ -214,7 +216,7 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
   useWSEvent(
     "task:dispatch",
     useCallback(() => {
-      if (activeTask) return;
+      if (activeTaskRef.current) return;
       api.getActiveTaskForIssue(issueId).then(({ task }) => {
         if (task) {
           setActiveTask(task);
@@ -227,7 +229,7 @@ export function useLiveTask(issueId: string): UseLiveTaskResult {
         console.error(e);
         toast.error("Failed to load dispatched task");
       });
-    }, [issueId, activeTask]),
+    }, [issueId]),
   );
 
   // Handle task progress updates

@@ -196,6 +196,7 @@ export function RuntimePolicyTab({
         });
         setPolicy(created);
       }
+      setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save policy");
     } finally {

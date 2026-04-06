@@ -83,6 +83,7 @@ export function useCollaborationData(
     try {
       const data = await api.listTaskCheckpoints(taskId);
       setCheckpoints(data);
+      setCheckpointsLoaded(true);
       setCpsError(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load checkpoints";
@@ -100,6 +101,7 @@ export function useCollaborationData(
     try {
       const data = await api.listAgentMemory(agentId);
       setMemories(data);
+      setMemoriesLoaded(true);
       setMemError(null);
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load memories";
