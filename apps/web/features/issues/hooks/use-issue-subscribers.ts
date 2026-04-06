@@ -16,16 +16,19 @@ export function useIssueSubscribers(issueId: string, userId?: string) {
 
   // Initial fetch
   useEffect(() => {
+    let cancelled = false;
     setSubscribers([]);
     setLoading(true);
     api
       .listIssueSubscribers(issueId)
-      .then((subs) => setSubscribers(subs))
+      .then((subs) => { if (!cancelled) setSubscribers(subs); })
       .catch((e) => {
+        if (cancelled) return;
         console.error(e);
         toast.error("Failed to load subscribers");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [issueId]);
 
   // Reconnect recovery

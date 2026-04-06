@@ -100,7 +100,9 @@ export function TokensTab() {
       await navigator.clipboard.writeText(newToken);
       setTokenCopied(true);
       setTimeout(() => setTokenCopied(false), 2000);
-    } catch {}
+    } catch {
+      toast.error("Failed to copy token");
+    }
   };
 
   return (

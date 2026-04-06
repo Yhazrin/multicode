@@ -100,7 +100,7 @@ function LoginPageContent() {
 
   const handleVerifyCode = useCallback(
     async (value: string) => {
-      if (value.length !== 6) return;
+      if (value.length !== 6 || submitting) return;
       setError("");
       setSubmitting(true);
       try {

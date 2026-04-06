@@ -19,16 +19,19 @@ export function useIssueReactions(issueId: string, userId?: string) {
 
   // Initial fetch
   useEffect(() => {
+    let cancelled = false;
     setReactions([]);
     setLoading(true);
     api
       .getIssue(issueId)
-      .then((iss) => setReactions(iss.reactions ?? []))
+      .then((iss) => { if (!cancelled) setReactions(iss.reactions ?? []); })
       .catch((e) => {
+        if (cancelled) return;
         console.error(e);
         toast.error("Failed to load reactions");
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [issueId]);
 
   // Reconnect recovery

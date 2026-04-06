@@ -181,7 +181,7 @@ function InboxListItem({
             {!item.read && (
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
             )}
-            {item.severity !== "info" && (
+            {item.severity !== "info" && severityConfig[item.severity] && (
               <span
                 className={`h-1.5 w-1.5 shrink-0 rounded-full ${severityConfig[item.severity].className}`}
                 title={severityConfig[item.severity].label}
@@ -301,8 +301,8 @@ export default function InboxPage() {
   const handleArchiveAll = async () => {
     try {
       useInboxStore.getState().archiveAll();
-      setSelectedKey("");
       await api.archiveAllInbox();
+      setSelectedKey("");
     } catch {
       toast.error("Failed to archive all");
       useInboxStore.getState().fetch();
@@ -324,8 +324,8 @@ export default function InboxPage() {
   const handleArchiveCompleted = async () => {
     try {
       await api.archiveCompletedInbox();
-      setSelectedKey("");
       await useInboxStore.getState().fetch();
+      setSelectedKey("");
     } catch {
       toast.error("Failed to archive completed");
     }

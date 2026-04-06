@@ -128,7 +128,7 @@ function CreateSkillDialog({
                 onChange={(e) => { setName(e.target.value); setCreateError(""); }}
                 placeholder="e.g. Code Review, Bug Triage"
                 className="mt-1"
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleCreate()}
               />
             </div>
             <div>
@@ -162,7 +162,7 @@ function CreateSkillDialog({
                 onChange={(e) => { setImportUrl(e.target.value); setImportError(""); }}
                 placeholder="Paste a skill URL..."
                 className="mt-1"
-                onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                onKeyDown={(e) => e.key === "Enter" && !loading && handleImport()}
               />
             </div>
 
@@ -383,14 +383,18 @@ function SkillDetail({
 
   // Fetch full skill (with files) on selection change
   useEffect(() => {
+    let ignore = false;
     setSelectedPath(SKILL_MD);
     setLoadingFiles(true);
     api.getSkill(skill.id).then((full) => {
+      if (ignore) return;
       useWorkspaceStore.getState().upsertSkill(full);
       setFiles((full.files ?? []).map((f) => ({ path: f.path, content: f.content })));
     }).catch((e) => {
+      if (ignore) return;
       toast.error(e instanceof Error ? e.message : "Failed to load skill files");
-    }).finally(() => setLoadingFiles(false));
+    }).finally(() => { if (!ignore) setLoadingFiles(false); });
+    return () => { ignore = true; };
   }, [skill.id]);
 
   // Build the virtual file map

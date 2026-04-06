@@ -71,7 +71,6 @@ export function McpPage() {
       toast.error(
         e instanceof Error ? e.message : "Failed to delete server"
       );
-      throw e;
     }
   };
 
