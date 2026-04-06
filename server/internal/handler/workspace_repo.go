@@ -53,7 +53,7 @@ func workspaceRepoToResponse(r db.WorkspaceRepo) WorkspaceRepoResponse {
 
 // ListWorkspaceRepos returns all repos in a workspace.
 func (h *Handler) ListWorkspaceRepos(w http.ResponseWriter, r *http.Request) {
-	workspaceID := workspaceIDFromURL(r, "workspaceID")
+	workspaceID := workspaceIDFromURL(r, "id")
 	_, ok := h.requireWorkspaceMember(w, r, workspaceID, "workspace not found")
 	if !ok {
 		return
@@ -102,7 +102,7 @@ type CreateWorkspaceRepoRequest struct {
 
 // CreateWorkspaceRepo creates a new repo in a workspace.
 func (h *Handler) CreateWorkspaceRepo(w http.ResponseWriter, r *http.Request) {
-	workspaceID := workspaceIDFromURL(r, "workspaceID")
+	workspaceID := workspaceIDFromURL(r, "id")
 	if _, ok := h.requireWorkspaceRole(w, r, workspaceID, "repo not found", "owner", "admin"); !ok {
 		return
 	}

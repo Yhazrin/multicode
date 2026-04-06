@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo } from "react";
-import { Bot } from "lucide-react";
+import { Bot, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useActorName } from "@/features/workspace";
 
@@ -34,6 +34,7 @@ const ActorAvatar = memo(function ActorAvatar({
   const name = resolveName(actorType, actorId);
   const initials = resolveInitials(actorType, actorId);
   const isAgent = actorType === "agent";
+  const isTeam = actorType === "team";
   const resolvedUrl = avatarUrl !== undefined ? avatarUrl : resolveAvatarUrl(actorType, actorId);
 
   const [imgError, setImgError] = useState(false);
@@ -63,6 +64,8 @@ const ActorAvatar = memo(function ActorAvatar({
         />
       ) : isAgent ? (
         <Bot style={{ width: size * 0.55, height: size * 0.55 }} />
+      ) : isTeam ? (
+        <Users style={{ width: size * 0.55, height: size * 0.55 }} />
       ) : (
         initials
       )}

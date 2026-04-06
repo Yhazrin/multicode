@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, memo } from "react";
+import { useState, useCallback, memo, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 
@@ -22,13 +22,20 @@ export const CollapsibleSection = memo(function CollapsibleSection({
   children,
 }: SectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const prevOpenRef = useRef(open);
+
+  // Call onOpen after state changes, not during setState updater,
+  // to avoid "Cannot update a component while rendering" React errors.
+  useEffect(() => {
+    if (open && !prevOpenRef.current && onOpen) {
+      onOpen();
+    }
+    prevOpenRef.current = open;
+  }, [open, onOpen]);
 
   const handleToggle = useCallback(() => {
-    setOpen((prev) => {
-      if (!prev && onOpen) onOpen();
-      return !prev;
-    });
-  }, [onOpen]);
+    setOpen((prev) => !prev);
+  }, []);
 
   return (
     <div className="rounded-lg border bg-card">

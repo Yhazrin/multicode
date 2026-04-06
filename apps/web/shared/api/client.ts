@@ -51,6 +51,10 @@ import type {
   SubmitReviewRequest,
   CreateWorkspaceRepoRequest,
   UpdateWorkspaceRepoRequest,
+  IssueDependency,
+  DecomposeResponse,
+  ConfirmDecomposeRequest,
+  ConfirmDecomposeResponse,
 } from "@/shared/types";
 import { type Logger, noopLogger } from "@/shared/logger";
 
@@ -804,6 +808,32 @@ export class ApiClient {
       method: "POST",
       body: JSON.stringify(data),
     });
+  }
+
+  // Issue Decomposition
+  async decomposeIssue(issueId: string): Promise<DecomposeResponse> {
+    return this.fetch(`/api/issues/${issueId}/decompose`, { method: "POST" });
+  }
+
+  async getDecomposeResult(issueId: string, runId: string): Promise<DecomposeResponse> {
+    return this.fetch(`/api/issues/${issueId}/decompose/${runId}`);
+  }
+
+  async confirmDecompose(issueId: string, data: ConfirmDecomposeRequest): Promise<ConfirmDecomposeResponse> {
+    return this.fetch(`/api/issues/${issueId}/decompose/confirm`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  // Issue Dependencies
+  async listIssueDependencies(issueId: string): Promise<IssueDependency[]> {
+    return this.fetch(`/api/issues/${issueId}/dependencies`);
+  }
+
+  // Sub-Issues
+  async listSubIssues(issueId: string): Promise<Issue[]> {
+    return this.fetch(`/api/issues/${issueId}/sub-issues`);
   }
 
   // Task Chaining

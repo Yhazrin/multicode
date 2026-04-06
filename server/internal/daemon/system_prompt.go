@@ -400,7 +400,8 @@ func registerDefaultSections(registry *PromptRegistry, cfg SystemPromptConfig) {
 				"  - Files changed: [list]\n" +
 				"  - Tests: [pass/fail summary]\n" +
 				"  - Notes: [any caveats or follow-ups]\n" +
-				"  ```\n\n"
+				"  ```\n" +
+				"- Call `mcp__chat__update_task_status` to mark the task as done (status: \"done\").\n\n"
 		},
 	})
 

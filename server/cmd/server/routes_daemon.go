@@ -29,5 +29,8 @@ func registerDaemonRoutes(r chi.Router, h *handler.Handler, queries *db.Queries)
 		r.Post("/tasks/{taskId}/fail", h.FailTask)
 		r.Post("/tasks/{taskId}/messages", h.ReportTaskMessages)
 		r.Get("/tasks/{taskId}/messages", h.ListTaskMessages)
+		r.Post("/tasks/{taskId}/forks/{forkId}/start", h.DaemonForkStarted)
+		r.Post("/tasks/{taskId}/forks/{forkId}/complete", h.DaemonForkCompleted)
+		r.Post("/tasks/{taskId}/forks/{forkId}/fail", h.DaemonForkFailed)
 	})
 }

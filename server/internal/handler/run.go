@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/multica-ai/multicode/server/internal/service"
 	"github.com/multica-ai/multicode/server/pkg/agent"
 	db "github.com/multica-ai/multicode/server/pkg/db/generated"
@@ -398,7 +399,7 @@ func (h *Handler) ListRunEvents(w http.ResponseWriter, r *http.Request) {
 	if afterSeq > 0 {
 		rows, err := h.Queries.ListRunEvents(ctx, db.ListRunEventsParams{
 			RunID: parseUUID(runID),
-			Seq:   afterSeq,
+			Seq:   pgtype.Int8{Int64: afterSeq, Valid: true},
 			Limit: limit,
 		})
 		if err != nil {

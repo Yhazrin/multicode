@@ -9,7 +9,7 @@ export type IssueStatus =
 
 export type IssuePriority = "urgent" | "high" | "medium" | "low" | "none";
 
-export type IssueAssigneeType = "member" | "agent";
+export type IssueAssigneeType = "member" | "agent" | "team";
 
 export interface IssueReaction {
   id: string;
@@ -18,6 +18,45 @@ export interface IssueReaction {
   actor_id: string;
   emoji: string;
   created_at: string;
+}
+
+export interface IssueDependency {
+  id: string;
+  issue_id: string;
+  depends_on_issue_id: string;
+  type: "blocks" | "blocked_by" | "related";
+  created_at: string;
+}
+
+export interface SubtaskPreview {
+  title: string;
+  description: string;
+  deliverable: string;
+  depends_on: number[];
+  assignee_type?: string | null;
+  assignee_id?: string | null;
+}
+
+export interface DecomposePreview {
+  subtasks: SubtaskPreview[];
+  plan_summary: string;
+  risks: string[];
+}
+
+export interface DecomposeResponse {
+  run_id: string;
+  status: string;
+  preview?: DecomposePreview | null;
+  error?: string;
+}
+
+export interface ConfirmDecomposeRequest {
+  subtasks: SubtaskPreview[];
+}
+
+export interface ConfirmDecomposeResponse {
+  issues: Issue[];
+  total: number;
 }
 
 export interface Issue {
@@ -36,6 +75,7 @@ export interface Issue {
   parent_issue_id: string | null;
   position: number;
   due_date: string | null;
+  issue_kind?: "goal" | "task";
   repo_id: string | null;
   reactions?: IssueReaction[];
   latest_task_status?: string | null;

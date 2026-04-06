@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS mcp_servers;
+ALTER TABLE issue DROP COLUMN IF EXISTS issue_kind;

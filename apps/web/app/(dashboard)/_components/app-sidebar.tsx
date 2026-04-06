@@ -49,6 +49,7 @@ import { clearLoggedInCookie } from "@/features/auth/auth-cookie";
 import { useWorkspaceStore } from "@/features/workspace";
 import { useInboxStore } from "@/features/inbox";
 import { useModalStore } from "@/features/modals";
+import { toast } from "sonner";
 
 const primaryNav = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -167,7 +168,7 @@ export function AppSidebar() {
             <Tooltip>
               <TooltipTrigger
                 className="flex h-7 flex-1 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => useModalStore.getState().open("search")}
+                onClick={() => toast.info("Search is coming soon")}
               >
                 <Search className="size-3" aria-hidden="true" />
                 <span className="flex-1 text-left">Search...</span>
@@ -181,7 +182,7 @@ export function AppSidebar() {
               <TooltipTrigger
                 aria-label="New issue"
                 data-testid="new-issue-button"
-                className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-background text-foreground shadow-sm dark:shadow-none hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="relative flex h-7 w-7 items-center justify-center rounded-xl bg-background text-foreground shadow-sm dark:shadow-none hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 onClick={() => useModalStore.getState().open("create-issue")}
               >
                 <SquarePen className="size-3.5" aria-hidden="true" />
@@ -205,7 +206,7 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         isActive={isActive}
                         render={<Link href={item.href} data-testid={`sidebar-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground border-l-2 border-l-transparent data-active:border-l-brand"
+                        className="text-muted-foreground hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
                       >
                         <item.icon aria-hidden="true" />
                         <span>{item.label}</span>
@@ -233,7 +234,7 @@ export function AppSidebar() {
                       <SidebarMenuButton
                         isActive={isActive}
                         render={<Link href={item.href} data-testid={`sidebar-nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`} />}
-                        className="text-muted-foreground hover:not-data-active:bg-sidebar-accent/70 data-active:bg-sidebar-accent data-active:text-sidebar-accent-foreground border-l-2 border-l-transparent data-active:border-l-brand"
+                        className="text-muted-foreground hover:data-active:bg-primary/10 data-active:bg-primary data-active:text-primary-foreground rounded-xl data-active:font-semibold data-active:px-3"
                       >
                         <item.icon aria-hidden="true" />
                         <span>{item.label}</span>

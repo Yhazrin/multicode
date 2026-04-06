@@ -11,7 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countRunEvents = `-- name: CountRunEvents :one
+SELECT COUNT(*) FROM run_events
+WHERE run_id = $1
+`
+
+func (q *Queries) CountRunEvents(ctx context.Context, runID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countRunEvents, runID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createRunEvent = `-- name: CreateRunEvent :one
+
 INSERT INTO run_events (run_id, event_type, payload)
 VALUES ($1, $2, $3)
 RETURNING id, run_id, seq, event_type, payload, created_at
@@ -23,6 +36,7 @@ type CreateRunEventParams struct {
 	Payload   []byte      `json:"payload"`
 }
 
+// Run Events: persistent event log for replay / catchup.
 func (q *Queries) CreateRunEvent(ctx context.Context, arg CreateRunEventParams) (RunEvent, error) {
 	row := q.db.QueryRow(ctx, createRunEvent, arg.RunID, arg.EventType, arg.Payload)
 	var i RunEvent
@@ -37,6 +51,27 @@ func (q *Queries) CreateRunEvent(ctx context.Context, arg CreateRunEventParams) 
 	return i, err
 }
 
+const deleteRunEvents = `-- name: DeleteRunEvents :exec
+DELETE FROM run_events WHERE run_id = $1
+`
+
+func (q *Queries) DeleteRunEvents(ctx context.Context, runID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteRunEvents, runID)
+	return err
+}
+
+const getLatestRunEventSeq = `-- name: GetLatestRunEventSeq :one
+SELECT COALESCE(MAX(seq), 0) FROM run_events
+WHERE run_id = $1
+`
+
+func (q *Queries) GetLatestRunEventSeq(ctx context.Context, runID pgtype.UUID) (interface{}, error) {
+	row := q.db.QueryRow(ctx, getLatestRunEventSeq, runID)
+	var coalesce interface{}
+	err := row.Scan(&coalesce)
+	return coalesce, err
+}
+
 const listRunEvents = `-- name: ListRunEvents :many
 SELECT id, run_id, seq, event_type, payload, created_at FROM run_events
 WHERE run_id = $1 AND seq > $2
@@ -46,7 +81,7 @@ LIMIT $3
 
 type ListRunEventsParams struct {
 	RunID pgtype.UUID `json:"run_id"`
-	Seq   int64       `json:"seq"`
+	Seq   pgtype.Int8 `json:"seq"`
 	Limit int32       `json:"limit"`
 }
 
@@ -114,37 +149,4 @@ func (q *Queries) ListRunEventsAll(ctx context.Context, arg ListRunEventsAllPara
 		return nil, err
 	}
 	return items, nil
-}
-
-const countRunEvents = `-- name: CountRunEvents :one
-SELECT COUNT(*) FROM run_events
-WHERE run_id = $1
-`
-
-func (q *Queries) CountRunEvents(ctx context.Context, runID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, countRunEvents, runID)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
-}
-
-const getLatestRunEventSeq = `-- name: GetLatestRunEventSeq :one
-SELECT COALESCE(MAX(seq), 0) FROM run_events
-WHERE run_id = $1
-`
-
-func (q *Queries) GetLatestRunEventSeq(ctx context.Context, runID pgtype.UUID) (int64, error) {
-	row := q.db.QueryRow(ctx, getLatestRunEventSeq, runID)
-	var seq int64
-	err := row.Scan(&seq)
-	return seq, err
-}
-
-const deleteRunEvents = `-- name: DeleteRunEvents :exec
-DELETE FROM run_events WHERE run_id = $1
-`
-
-func (q *Queries) DeleteRunEvents(ctx context.Context, runID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteRunEvents, runID)
-	return err
 }

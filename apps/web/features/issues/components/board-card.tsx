@@ -68,7 +68,8 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showDescription = storeProperties.description && issue.description;
   const showAssignee = storeProperties.assignee && issue.assignee_type && issue.assignee_id;
   const showDueDate = storeProperties.dueDate && issue.due_date;
-  const showBottom = showAssignee || showDueDate;
+  // Always show bottom bar when editable so assignee picker is accessible
+  const showBottom = editable || showDueDate;
 
   const borderClass = PRIORITY_BORDER[issue.priority] ?? "";
 
@@ -97,29 +98,34 @@ export const BoardCardContent = memo(function BoardCardContent({
       {/* Row 3: Assignee, priority badge, due date */}
       {(showAssignee || showPriority || showDueDate) && (
         <div className="mt-3 flex items-center gap-2">
-          {showAssignee &&
-            (editable ? (
-              <PickerWrapper>
-                <AssigneePicker
-                  assigneeType={issue.assignee_type}
-                  assigneeId={issue.assignee_id}
-                  onUpdate={handleUpdate}
-                  trigger={
+          {editable ? (
+            <PickerWrapper>
+              <AssigneePicker
+                assigneeType={issue.assignee_type}
+                assigneeId={issue.assignee_id}
+                onUpdate={handleUpdate}
+                trigger={
+                  issue.assignee_type && issue.assignee_id ? (
                     <ActorAvatar
                       actorType={issue.assignee_type!}
                       actorId={issue.assignee_id!}
                       size={22}
                     />
-                  }
-                />
-              </PickerWrapper>
-            ) : (
-              <ActorAvatar
-                actorType={issue.assignee_type!}
-                actorId={issue.assignee_id!}
-                size={22}
+                  ) : (
+                    <span className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                      Assign to...
+                    </span>
+                  )
+                }
               />
-            ))}
+            </PickerWrapper>
+          ) : showAssignee ? (
+            <ActorAvatar
+              actorType={issue.assignee_type!}
+              actorId={issue.assignee_id!}
+              size={22}
+            />
+          ) : null}
           {showPriority &&
             (editable ? (
               <PickerWrapper>

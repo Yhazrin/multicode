@@ -1090,3 +1090,17 @@ func (h *Handler) SetAgentSkills(w http.ResponseWriter, r *http.Request) {
 	h.publish(protocol.EventAgentStatus, uuidToString(agent.WorkspaceID), actorType, actorID, map[string]any{"agent_id": uuidToString(agent.ID), "skills": resp})
 	writeJSON(w, http.StatusOK, resp)
 }
+
+// SearchMarketplace searches the skill marketplace (currently returns empty results).
+func (h *Handler) SearchMarketplace(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, []SkillResponse{})
+}
+
+// ListSkillAgents lists agents that have a specific skill.
+func (h *Handler) ListSkillAgents(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if _, ok := h.loadSkillForUser(w, r, id); !ok {
+		return
+	}
+	writeJSON(w, http.StatusOK, []any{})
+}

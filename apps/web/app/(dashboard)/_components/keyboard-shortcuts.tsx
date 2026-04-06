@@ -20,10 +20,11 @@ export function KeyboardShortcuts() {
           e.preventDefault();
           useModalStore.getState().open("create-issue");
           break;
-        case "/":
-          e.preventDefault();
-          useModalStore.getState().open("search");
-          break;
+        // TODO: Implement search modal before re-enabling this shortcut
+        // case "/":
+        //   e.preventDefault();
+        //   useModalStore.getState().open("search");
+        //   break;
         case "1":
           e.preventDefault();
           router.push("/inbox");

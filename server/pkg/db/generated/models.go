@@ -6,7 +6,7 @@ package db
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
-	pgvector_go "github.com/pgvector/pgvector-go"
+	"github.com/pgvector/pgvector-go"
 )
 
 type ActivityLog struct {
@@ -47,7 +47,7 @@ type AgentMemory struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	AgentID     pgtype.UUID        `json:"agent_id"`
 	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
+	Embedding   pgvector.Vector    `json:"embedding"`
 	Metadata    []byte             `json:"metadata"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
@@ -220,6 +220,7 @@ type Issue struct {
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 	Number             int32              `json:"number"`
+	IssueKind          string             `json:"issue_kind"`
 	RepoID             pgtype.UUID        `json:"repo_id"`
 }
 
@@ -346,15 +347,6 @@ type Run struct {
 	ErrorSeverity    pgtype.Text        `json:"error_severity"`
 }
 
-type RunEvent struct {
-	ID        pgtype.UUID        `json:"id"`
-	RunID     pgtype.UUID        `json:"run_id"`
-	Seq       int64              `json:"seq"`
-	EventType string             `json:"event_type"`
-	Payload   []byte             `json:"payload"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-}
-
 type RunArtifact struct {
 	ID           pgtype.UUID        `json:"id"`
 	RunID        pgtype.UUID        `json:"run_id"`
@@ -379,6 +371,15 @@ type RunContinuation struct {
 	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
 
+type RunEvent struct {
+	ID        pgtype.UUID        `json:"id"`
+	RunID     pgtype.UUID        `json:"run_id"`
+	Seq       pgtype.Int8        `json:"seq"`
+	EventType string             `json:"event_type"`
+	Payload   []byte             `json:"payload"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type RunHandoff struct {
 	ID            pgtype.UUID        `json:"id"`
 	SourceRunID   pgtype.UUID        `json:"source_run_id"`
@@ -391,7 +392,23 @@ type RunHandoff struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
-// RunStep is defined in run_steps.sql.go (sqlc-generated).
+type RunStep struct {
+	ID               pgtype.UUID        `json:"id"`
+	RunID            pgtype.UUID        `json:"run_id"`
+	Seq              int32              `json:"seq"`
+	ToolName         string             `json:"tool_name"`
+	ToolInput        []byte             `json:"tool_input"`
+	ToolOutput       pgtype.Text        `json:"tool_output"`
+	IsError          bool               `json:"is_error"`
+	StartedAt        pgtype.Timestamptz `json:"started_at"`
+	CompletedAt      pgtype.Timestamptz `json:"completed_at"`
+	StepType         string             `json:"step_type"`
+	CallID           pgtype.Text        `json:"call_id"`
+	ErrorCategory    pgtype.Text        `json:"error_category"`
+	ErrorSubcategory pgtype.Text        `json:"error_subcategory"`
+	ErrorSeverity    pgtype.Text        `json:"error_severity"`
+	ExclusionReason  pgtype.Text        `json:"exclusion_reason"`
+}
 
 type RunTodo struct {
 	ID          pgtype.UUID        `json:"id"`

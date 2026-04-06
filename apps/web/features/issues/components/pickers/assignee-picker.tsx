@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Lock, UserMinus } from "lucide-react";
-import type { Agent, IssueAssigneeType, UpdateIssueRequest } from "@/shared/types";
+import { useState, useEffect } from "react";
+import { Lock, UserMinus, Users } from "lucide-react";
+import type { Agent, IssueAssigneeType, Team, UpdateIssueRequest } from "@/shared/types";
 import { useAuthStore } from "@/features/auth";
 import { useWorkspaceStore, useActorName } from "@/features/workspace";
 import { ActorAvatar } from "@/components/common/actor-avatar";
@@ -12,6 +12,7 @@ import {
   PickerSection,
   PickerEmpty,
 } from "./property-picker";
+import { api } from "@/shared/api";
 
 export function canAssignAgent(agent: Agent, userId: string | undefined, memberRole: string | undefined): boolean {
   if (agent.visibility !== "private") return true;
@@ -43,6 +44,8 @@ export function AssigneePicker({
   const open = controlledOpen ?? internalOpen;
   const setOpen = controlledOnOpenChange ?? setInternalOpen;
   const [filter, setFilter] = useState("");
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [loadingTeams, setLoadingTeams] = useState(false);
   const user = useAuthStore((s) => s.user);
   const members = useWorkspaceStore((s) => s.members);
   const agents = useWorkspaceStore((s) => s.agents);
@@ -51,6 +54,17 @@ export function AssigneePicker({
   const currentMember = members.find((m) => m.user_id === user?.id);
   const memberRole = currentMember?.role;
 
+  // Fetch teams when picker opens
+  useEffect(() => {
+    if (!open) return;
+    if (teams.length > 0) return; // already loaded
+    setLoadingTeams(true);
+    api.listTeams()
+      .then((data) => setTeams(data.filter((t) => !t.archived_at)))
+      .catch(() => { /* silent fail */ })
+      .finally(() => setLoadingTeams(false));
+  }, [open]);
+
   const query = filter.toLowerCase();
   const filteredMembers = members.filter((m) =>
     m.name.toLowerCase().includes(query),
@@ -58,13 +72,18 @@ export function AssigneePicker({
   const filteredAgents = agents.filter((a) =>
     !a.archived_at && a.name.toLowerCase().includes(query),
   );
+  const filteredTeams = teams.filter((t) =>
+    t.name.toLowerCase().includes(query),
+  );
 
   const isSelected = (type: string, id: string) =>
     assigneeType === type && assigneeId === id;
 
   const triggerLabel =
     assigneeType && assigneeId
-      ? getActorName(assigneeType, assigneeId)
+      ? assigneeType === "team"
+        ? teams.find((t) => t.id === assigneeId)?.name ?? "Team"
+        : getActorName(assigneeType, assigneeId)
       : "Unassigned";
 
   return (
@@ -83,7 +102,13 @@ export function AssigneePicker({
       trigger={
         customTrigger ? customTrigger : assigneeType && assigneeId ? (
           <>
-            <ActorAvatar actorType={assigneeType} actorId={assigneeId} size={18} />
+            {assigneeType === "team" ? (
+              <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md bg-primary/10">
+                <Users className="h-3 w-3 text-primary" aria-hidden="true" />
+              </div>
+            ) : (
+              <ActorAvatar actorType={assigneeType} actorId={assigneeId} size={18} />
+            )}
             <span className="truncate">{triggerLabel}</span>
           </>
         ) : (
@@ -155,8 +180,39 @@ export function AssigneePicker({
         </PickerSection>
       )}
 
+      {/* Teams */}
+      {(filteredTeams.length > 0 || loadingTeams) && (
+        <PickerSection label="Teams">
+          {loadingTeams ? (
+            <PickerItem selected={false} disabled onClick={() => {}}>
+              <span className="text-muted-foreground text-xs">Loading teams...</span>
+            </PickerItem>
+          ) : (
+            filteredTeams.map((t) => (
+              <PickerItem
+                key={t.id}
+                selected={isSelected("team", t.id)}
+                onClick={() => {
+                  onUpdate({
+                    assignee_type: "team",
+                    assignee_id: t.id,
+                  });
+                  setOpen(false);
+                }}
+              >
+                <div className="flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-md bg-primary/10">
+                  <Users className="h-3 w-3 text-primary" aria-hidden="true" />
+                </div>
+                <span>{t.name}</span>
+              </PickerItem>
+            ))
+          )}
+        </PickerSection>
+      )}
+
       {filteredMembers.length === 0 &&
         filteredAgents.length === 0 &&
+        filteredTeams.length === 0 &&
         filter && <PickerEmpty />}
     </PropertyPicker>
   );

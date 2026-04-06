@@ -108,7 +108,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
   const {
     timeline, loading: timelineLoading, error: timelineError, submitting, submitComment, submitReply,
     editComment, deleteComment, toggleReaction: handleToggleReaction,
-  } = useIssueTimeline(id, user?.id);
+  } = useIssueTimeline(id, user?.id, workspace?.id);
 
   const {
     reactions: issueReactions, loading: reactionsLoading,

@@ -200,7 +200,7 @@ export function BoardView({
 
       <DragOverlay>
         {activeIssue ? (
-          <div className="w-[260px] sm:w-[280px] lg:w-[300px] cursor-grabbing opacity-95 shadow-lg dark:shadow-none scale-[1.02]">
+          <div className="w-[260px] min-w-[260px] max-w-[320px] cursor-grabbing opacity-95 shadow-lg dark:shadow-none">
             <BoardCardContent issue={activeIssue} />
           </div>
         ) : null}

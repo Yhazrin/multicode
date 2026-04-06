@@ -736,7 +736,15 @@ func (h *Handler) CancelTask(w http.ResponseWriter, r *http.Request) {
 	task, err := h.TaskService.CancelTask(r.Context(), parseUUID(taskID))
 	if err != nil {
 		slog.Warn("cancel task failed", "task_id", taskID, "error", err)
-		writeError(w, http.StatusBadRequest, err.Error())
+		// Distinguish not-found vs invalid-transition errors
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "no rows in result set") || strings.Contains(errMsg, "load task") {
+			writeError(w, http.StatusNotFound, errMsg)
+		} else if strings.Contains(errMsg, "cannot transition") {
+			writeError(w, http.StatusConflict, errMsg)
+		} else {
+			writeError(w, http.StatusBadRequest, errMsg)
+		}
 		return
 	}
 

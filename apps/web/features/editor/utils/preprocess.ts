@@ -18,7 +18,9 @@ import { preprocessMentionShortcodes } from "@/components/markdown/mentions";
  */
 export function preprocessMarkdown(markdown: string): string {
   if (!markdown) return "";
-  const step1 = preprocessMentionShortcodes(markdown);
+  // Normalize literal \n sequences (from AI output) to actual newlines before parsing.
+  const normalized = markdown.replace(/\\n/g, "\n");
+  const step1 = preprocessMentionShortcodes(normalized);
   const step2 = preprocessLinks(step1);
   return step2;
 }

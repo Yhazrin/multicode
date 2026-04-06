@@ -29,7 +29,7 @@ function commentToTimelineEntry(c: Comment): TimelineEntry {
   };
 }
 
-export function useIssueTimeline(issueId: string, userId?: string) {
+export function useIssueTimeline(issueId: string, userId?: string, workspaceId?: string) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,13 @@ export function useIssueTimeline(issueId: string, userId?: string) {
 
   // Initial fetch + reset on id change
   useEffect(() => {
+    // Skip if workspace is not yet available
+    if (!workspaceId) {
+      setTimeline([]);
+      setLoading(false);
+      return;
+    }
+
     setTimeline([]);
     setLoading(true);
     setError(null);
@@ -55,16 +62,17 @@ export function useIssueTimeline(issueId: string, userId?: string) {
         toast.error("Failed to load activity");
       })
       .finally(() => setLoading(false));
-  }, [issueId]);
+  }, [issueId, workspaceId]);
 
   // Reconnect recovery
   useWSReconnect(
     useCallback(() => {
+      if (!workspaceId) return;
       api.listTimeline(issueId).then(setTimeline).catch((e) => {
         console.error(e);
         toast.error("Failed to refresh timeline after reconnect");
       });
-    }, [issueId]),
+    }, [issueId, workspaceId]),
   );
 
   // --- WS event handlers ---

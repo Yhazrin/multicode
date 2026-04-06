@@ -9,20 +9,14 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	pgvector_go "github.com/pgvector/pgvector-go"
+	"github.com/pgvector/pgvector-go"
 )
-
-const createAgentMemory = `-- name: CreateAgentMemory :one
-INSERT INTO agent_memory (workspace_id, agent_id, content, embedding, metadata, expires_at)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content
-`
 
 type CreateAgentMemoryParams struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	AgentID     pgtype.UUID        `json:"agent_id"`
 	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
+	Embedding   pgvector.Vector   `json:"embedding"`
 	Metadata    []byte             `json:"metadata"`
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
 }
@@ -51,19 +45,10 @@ func (q *Queries) CreateAgentMemory(ctx context.Context, arg CreateAgentMemoryPa
 	return i, err
 }
 
-const deleteAgentMemory = `-- name: DeleteAgentMemory :exec
-DELETE FROM agent_memory
-WHERE id = $1
-`
-
-func (q *Queries) DeleteAgentMemory(ctx context.Context, id pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteAgentMemory, id)
-	return err
-}
-
-const deleteExpiredMemory = `-- name: DeleteExpiredMemory :exec
-DELETE FROM agent_memory
-WHERE expires_at IS NOT NULL AND expires_at < now()
+const createAgentMemory = `-- name: CreateAgentMemory :one
+INSERT INTO agent_memory (workspace_id, agent_id, content, embedding, metadata, expires_at)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, NULL::text AS tsv_content
 `
 
 func (q *Queries) DeleteExpiredMemory(ctx context.Context) error {
@@ -71,34 +56,246 @@ func (q *Queries) DeleteExpiredMemory(ctx context.Context) error {
 	return err
 }
 
-const getAgentMemory = `-- name: GetAgentMemory :one
-SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content FROM agent_memory
-WHERE id = $1
+const deleteExpiredMemory = `-- name: DeleteExpiredMemory :exec
+DELETE FROM agent_memory WHERE expires_at IS NOT NULL AND expires_at < now()
 `
 
-func (q *Queries) GetAgentMemory(ctx context.Context, id pgtype.UUID) (AgentMemory, error) {
-	row := q.db.QueryRow(ctx, getAgentMemory, id)
-	var i AgentMemory
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.AgentID,
-		&i.Content,
-		&i.Embedding,
-		&i.Metadata,
-		&i.CreatedAt,
-		&i.ExpiresAt,
-		&i.TsvContent,
-	)
-	return i, err
+type SearchAgentMemoryParams struct {
+	Embedding pgvector.Vector `json:"embedding"`
+	AgentID   pgtype.UUID    `json:"agent_id"`
+	Limit     int32          `json:"limit"`
 }
 
-const listAgentMemory = `-- name: ListAgentMemory :many
-SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content FROM agent_memory
-WHERE agent_id = $1
+type SearchAgentMemoryRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Content     string             `json:"content"`
+	Embedding   pgvector.Vector   `json:"embedding"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	TsvContent  interface{}        `json:"tsv_content"`
+	Similarity  int32              `json:"similarity"`
+}
+
+func (q *Queries) SearchAgentMemory(ctx context.Context, arg SearchAgentMemoryParams) ([]SearchAgentMemoryRow, error) {
+	rows, err := q.db.Query(ctx, searchAgentMemory, arg.Embedding, arg.AgentID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchAgentMemoryRow{}
+	for rows.Next() {
+		var i SearchAgentMemoryRow
+		err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.Content,
+			&i.Embedding,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.TsvContent,
+			&i.Similarity,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchAgentMemory = `-- name: SearchAgentMemory :many
+SELECT *, 1 - (embedding <=> $1) AS similarity
+FROM agent_memory
+WHERE agent_id = $2
+  AND (expires_at IS NULL OR expires_at > now())
+ORDER BY embedding <=> $1
+LIMIT $3
+`
+
+type SearchWorkspaceMemoryParams struct {
+	Embedding pgvector.Vector `json:"embedding"`
+	WorkspaceID pgtype.UUID   `json:"workspace_id"`
+	Limit     int32           `json:"limit"`
+}
+
+type SearchWorkspaceMemoryRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Content     string             `json:"content"`
+	Embedding   pgvector.Vector   `json:"embedding"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	TsvContent  interface{}        `json:"tsv_content"`
+	Similarity  int32              `json:"similarity"`
+}
+
+func (q *Queries) SearchWorkspaceMemory(ctx context.Context, arg SearchWorkspaceMemoryParams) ([]SearchWorkspaceMemoryRow, error) {
+	rows, err := q.db.Query(ctx, searchWorkspaceMemory, arg.Embedding, arg.WorkspaceID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchWorkspaceMemoryRow{}
+	for rows.Next() {
+		var i SearchWorkspaceMemoryRow
+		err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.Content,
+			&i.Embedding,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.TsvContent,
+			&i.Similarity,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchWorkspaceMemory = `-- name: SearchWorkspaceMemory :many
+SELECT *, 1 - (embedding <=> $1) AS similarity
+FROM agent_memory
+WHERE workspace_id = $2
+  AND (expires_at IS NULL OR expires_at > now())
+ORDER BY embedding <=> $1
+LIMIT $3
+`
+
+type ListRecentWorkspaceMemoryParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Limit      int32       `json:"limit"`
+}
+
+type ListRecentWorkspaceMemoryRow struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Content     string             `json:"content"`
+	Embedding   pgvector.Vector   `json:"embedding"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	TsvContent  interface{}        `json:"tsv_content"`
+	Similarity  float64            `json:"similarity"`
+}
+
+func (q *Queries) ListRecentWorkspaceMemory(ctx context.Context, arg ListRecentWorkspaceMemoryParams) ([]ListRecentWorkspaceMemoryRow, error) {
+	rows, err := q.db.Query(ctx, listRecentWorkspaceMemory, arg.WorkspaceID, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListRecentWorkspaceMemoryRow{}
+	for rows.Next() {
+		var i ListRecentWorkspaceMemoryRow
+		err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.Content,
+			&i.Embedding,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.TsvContent,
+			&i.Similarity,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRecentWorkspaceMemory = `-- name: ListRecentWorkspaceMemory :many
+SELECT *, 0.0 AS similarity FROM agent_memory
+WHERE workspace_id = $1
   AND (expires_at IS NULL OR expires_at > now())
 ORDER BY created_at DESC
 LIMIT $2
+`
+
+type SearchWorkspaceMemoryBM25Params struct {
+	SearchQuery  string      `json:"search_query"`
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	LimitCount  int32       `json:"limit_count"`
+}
+
+type SearchWorkspaceMemoryBM25Row struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	AgentID     pgtype.UUID        `json:"agent_id"`
+	Content     string             `json:"content"`
+	Embedding   pgvector.Vector   `json:"embedding"`
+	Metadata    []byte             `json:"metadata"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	TsvContent  interface{}        `json:"tsv_content"`
+	Bm25Score   int32              `json:"bm25_score"`
+}
+
+func (q *Queries) SearchWorkspaceMemoryBM25(ctx context.Context, arg SearchWorkspaceMemoryBM25Params) ([]SearchWorkspaceMemoryBM25Row, error) {
+	rows, err := q.db.Query(ctx, searchWorkspaceMemoryBM25, arg.SearchQuery, arg.WorkspaceID, arg.LimitCount)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SearchWorkspaceMemoryBM25Row{}
+	for rows.Next() {
+		var i SearchWorkspaceMemoryBM25Row
+		err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.AgentID,
+			&i.Content,
+			&i.Embedding,
+			&i.Metadata,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.TsvContent,
+			&i.Bm25Score,
+		)
+		if err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchWorkspaceMemoryBM25 = `-- name: SearchWorkspaceMemoryBM25 :many
+SELECT *, ts_rank(tsv_content, plainto_tsquery('english', $1)) AS bm25_score FROM agent_memory
+WHERE workspace_id = $2
+  AND (expires_at IS NULL OR expires_at > now())
+  AND plainto_tsquery('english', $1) @@ tsv_content
+ORDER BY ts_rank(tsv_content, plainto_tsquery('english', $1)) DESC
+LIMIT $3
 `
 
 type ListAgentMemoryParams struct {
@@ -115,7 +312,7 @@ func (q *Queries) ListAgentMemory(ctx context.Context, arg ListAgentMemoryParams
 	items := []AgentMemory{}
 	for rows.Next() {
 		var i AgentMemory
-		if err := rows.Scan(
+		err := rows.Scan(
 			&i.ID,
 			&i.WorkspaceID,
 			&i.AgentID,
@@ -125,7 +322,8 @@ func (q *Queries) ListAgentMemory(ctx context.Context, arg ListAgentMemoryParams
 			&i.CreatedAt,
 			&i.ExpiresAt,
 			&i.TsvContent,
-		); err != nil {
+		)
+		if err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -136,306 +334,15 @@ func (q *Queries) ListAgentMemory(ctx context.Context, arg ListAgentMemoryParams
 	return items, nil
 }
 
-const listRecentWorkspaceMemory = `-- name: ListRecentWorkspaceMemory :many
-SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content, 0.0 AS similarity FROM agent_memory
-WHERE workspace_id = $1
-  AND (expires_at IS NULL OR expires_at > now())
-ORDER BY created_at DESC
-LIMIT $2
+const listAgentMemory = `-- name: ListAgentMemory :many
+SELECT * FROM agent_memory WHERE agent_id = $1 LIMIT $2
 `
 
-type ListRecentWorkspaceMemoryParams struct {
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	Limit       int32       `json:"limit"`
+func (q *Queries) DeleteAgentMemory(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteAgentMemory, id)
+	return err
 }
 
-type ListRecentWorkspaceMemoryRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	TsvContent  interface{}        `json:"tsv_content"`
-	Similarity  float64            `json:"similarity"`
-}
-
-// Recent memories across all agents in a workspace (no embedding required).
-func (q *Queries) ListRecentWorkspaceMemory(ctx context.Context, arg ListRecentWorkspaceMemoryParams) ([]ListRecentWorkspaceMemoryRow, error) {
-	rows, err := q.db.Query(ctx, listRecentWorkspaceMemory, arg.WorkspaceID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListRecentWorkspaceMemoryRow{}
-	for rows.Next() {
-		var i ListRecentWorkspaceMemoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AgentID,
-			&i.Content,
-			&i.Embedding,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.TsvContent,
-			&i.Similarity,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const searchAgentMemory = `-- name: SearchAgentMemory :many
-SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content, 1 - (embedding <=> $1) AS similarity
-FROM agent_memory
-WHERE agent_id = $2
-  AND (expires_at IS NULL OR expires_at > now())
-ORDER BY embedding <=> $1
-LIMIT $3
+const deleteAgentMemory = `-- name: DeleteAgentMemory :exec
+DELETE FROM agent_memory WHERE id = $1
 `
-
-type SearchAgentMemoryParams struct {
-	Embedding pgvector_go.Vector `json:"embedding"`
-	AgentID   pgtype.UUID        `json:"agent_id"`
-	Limit     int32              `json:"limit"`
-}
-
-type SearchAgentMemoryRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	TsvContent  interface{}        `json:"tsv_content"`
-	Similarity  int32              `json:"similarity"`
-}
-
-// Semantic search: find memories closest to the given embedding for a specific agent.
-func (q *Queries) SearchAgentMemory(ctx context.Context, arg SearchAgentMemoryParams) ([]SearchAgentMemoryRow, error) {
-	rows, err := q.db.Query(ctx, searchAgentMemory, arg.Embedding, arg.AgentID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SearchAgentMemoryRow{}
-	for rows.Next() {
-		var i SearchAgentMemoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AgentID,
-			&i.Content,
-			&i.Embedding,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.TsvContent,
-			&i.Similarity,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const searchAgentMemoryBM25 = `-- name: SearchAgentMemoryBM25 :many
-
-SELECT am.id, am.workspace_id, am.agent_id, am.content, am.embedding, am.metadata, am.created_at, am.expires_at, am.tsv_content,
-       ts_rank(am.tsv_content, plainto_tsquery('english', $1)) AS bm25_score
-FROM agent_memory am
-WHERE am.agent_id = $2
-  AND am.tsv_content @@ plainto_tsquery('english', $1)
-  AND (am.expires_at IS NULL OR am.expires_at > now())
-ORDER BY ts_rank(am.tsv_content, plainto_tsquery('english', $1)) DESC
-LIMIT $3
-`
-
-type SearchAgentMemoryBM25Params struct {
-	SearchQuery string      `json:"search_query"`
-	AgentID     pgtype.UUID `json:"agent_id"`
-	LimitCount  int32       `json:"limit_count"`
-}
-
-type SearchAgentMemoryBM25Row struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	TsvContent  interface{}        `json:"tsv_content"`
-	Bm25Score   float32            `json:"bm25_score"`
-}
-
-// NOTE: BM25 queries use plainto_tsquery for sqlc compatibility.
-// BM25 full-text search for a specific agent.
-func (q *Queries) SearchAgentMemoryBM25(ctx context.Context, arg SearchAgentMemoryBM25Params) ([]SearchAgentMemoryBM25Row, error) {
-	rows, err := q.db.Query(ctx, searchAgentMemoryBM25, arg.SearchQuery, arg.AgentID, arg.LimitCount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SearchAgentMemoryBM25Row{}
-	for rows.Next() {
-		var i SearchAgentMemoryBM25Row
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AgentID,
-			&i.Content,
-			&i.Embedding,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.TsvContent,
-			&i.Bm25Score,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const searchWorkspaceMemory = `-- name: SearchWorkspaceMemory :many
-SELECT id, workspace_id, agent_id, content, embedding, metadata, created_at, expires_at, tsv_content, 1 - (embedding <=> $1) AS similarity
-FROM agent_memory
-WHERE workspace_id = $2
-  AND (expires_at IS NULL OR expires_at > now())
-ORDER BY embedding <=> $1
-LIMIT $3
-`
-
-type SearchWorkspaceMemoryParams struct {
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	Limit       int32              `json:"limit"`
-}
-
-type SearchWorkspaceMemoryRow struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	TsvContent  interface{}        `json:"tsv_content"`
-	Similarity  int32              `json:"similarity"`
-}
-
-// Semantic search across all agents in a workspace.
-func (q *Queries) SearchWorkspaceMemory(ctx context.Context, arg SearchWorkspaceMemoryParams) ([]SearchWorkspaceMemoryRow, error) {
-	rows, err := q.db.Query(ctx, searchWorkspaceMemory, arg.Embedding, arg.WorkspaceID, arg.Limit)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SearchWorkspaceMemoryRow{}
-	for rows.Next() {
-		var i SearchWorkspaceMemoryRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AgentID,
-			&i.Content,
-			&i.Embedding,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.TsvContent,
-			&i.Similarity,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const searchWorkspaceMemoryBM25 = `-- name: SearchWorkspaceMemoryBM25 :many
-SELECT am.id, am.workspace_id, am.agent_id, am.content, am.embedding, am.metadata, am.created_at, am.expires_at, am.tsv_content,
-       ts_rank(am.tsv_content, plainto_tsquery('english', $1)) AS bm25_score
-FROM agent_memory am
-WHERE am.workspace_id = $2
-  AND am.tsv_content @@ plainto_tsquery('english', $1)
-  AND (am.expires_at IS NULL OR am.expires_at > now())
-ORDER BY ts_rank(am.tsv_content, plainto_tsquery('english', $1)) DESC
-LIMIT $3
-`
-
-type SearchWorkspaceMemoryBM25Params struct {
-	SearchQuery string      `json:"search_query"`
-	WorkspaceID pgtype.UUID `json:"workspace_id"`
-	LimitCount  int32       `json:"limit_count"`
-}
-
-type SearchWorkspaceMemoryBM25Row struct {
-	ID          pgtype.UUID        `json:"id"`
-	WorkspaceID pgtype.UUID        `json:"workspace_id"`
-	AgentID     pgtype.UUID        `json:"agent_id"`
-	Content     string             `json:"content"`
-	Embedding   pgvector_go.Vector `json:"embedding"`
-	Metadata    []byte             `json:"metadata"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
-	TsvContent  interface{}        `json:"tsv_content"`
-	Bm25Score   float32            `json:"bm25_score"`
-}
-
-// BM25 full-text search across all agents in a workspace.
-func (q *Queries) SearchWorkspaceMemoryBM25(ctx context.Context, arg SearchWorkspaceMemoryBM25Params) ([]SearchWorkspaceMemoryBM25Row, error) {
-	rows, err := q.db.Query(ctx, searchWorkspaceMemoryBM25, arg.SearchQuery, arg.WorkspaceID, arg.LimitCount)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []SearchWorkspaceMemoryBM25Row{}
-	for rows.Next() {
-		var i SearchWorkspaceMemoryBM25Row
-		if err := rows.Scan(
-			&i.ID,
-			&i.WorkspaceID,
-			&i.AgentID,
-			&i.Content,
-			&i.Embedding,
-			&i.Metadata,
-			&i.CreatedAt,
-			&i.ExpiresAt,
-			&i.TsvContent,
-			&i.Bm25Score,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}

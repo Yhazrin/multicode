@@ -28,6 +28,31 @@ const (
 	PhaseCancelled  = "cancelled"
 )
 
+// allowedRunTransitions defines valid run phase transitions.
+var allowedRunTransitions = map[string][]string{
+	PhasePending:   {PhasePlanning, PhaseExecuting, PhaseFailed, PhaseCancelled},
+	PhasePlanning:  {PhaseExecuting, PhaseFailed, PhaseCancelled},
+	PhaseExecuting: {PhaseReviewing, PhaseCompleted, PhaseFailed, PhaseCancelled},
+	PhaseReviewing: {PhaseCompleted, PhaseFailed, PhaseCancelled},
+	PhaseCompleted: {},
+	PhaseFailed:    {},
+	PhaseCancelled: {},
+}
+
+// CanRunTransition returns true if transitioning from oldPhase to newPhase is allowed.
+func CanRunTransition(oldPhase, newPhase string) bool {
+	allowed, ok := allowedRunTransitions[oldPhase]
+	if !ok {
+		return false
+	}
+	for _, p := range allowed {
+		if p == newPhase {
+			return true
+		}
+	}
+	return false
+}
+
 // RunQuerier abstracts the database operations used by RunOrchestrator,
 // enabling test doubles (stubQueries) to be injected.
 type RunQuerier interface {
@@ -186,13 +211,17 @@ func (o *RunOrchestrator) StartRun(ctx context.Context, runID string) (db.Run, e
 }
 
 // AdvancePhase moves the run to a new phase and broadcasts run:phase_changed.
+// Returns an error if the transition is not allowed by the run phase state machine.
 func (o *RunOrchestrator) AdvancePhase(ctx context.Context, runID string, newPhase string) (db.Run, error) {
-	// Read current phase before update for the broadcast payload.
 	current, readErr := o.Queries.GetRun(ctx, util.ParseUUID(runID))
 	if readErr != nil {
 		return db.Run{}, fmt.Errorf("get run for phase: %w", readErr)
 	}
 	oldPhase := current.Phase
+
+	if !CanRunTransition(oldPhase, newPhase) {
+		return db.Run{}, fmt.Errorf("cannot transition run from %s to %s", oldPhase, newPhase)
+	}
 
 	run, err := o.Queries.UpdateRunPhase(ctx, db.UpdateRunPhaseParams{
 		ID:    util.ParseUUID(runID),

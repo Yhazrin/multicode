@@ -17,7 +17,7 @@ UPDATE runs SET
     phase = 'cancelled',
     completed_at = now(),
     updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND status NOT IN ('completed','failed','cancelled')
 RETURNING id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at, error_category, error_severity
 `
 
@@ -56,7 +56,7 @@ UPDATE runs SET
     phase = 'completed',
     completed_at = now(),
     updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND status = 'active'
 RETURNING id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at, error_category, error_severity
 `
 
@@ -171,7 +171,7 @@ UPDATE runs SET
     phase = 'failed',
     completed_at = now(),
     updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND status = 'active'
 RETURNING id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at, error_category, error_severity
 `
 
@@ -269,40 +269,6 @@ func (q *Queries) GetRunForUpdate(ctx context.Context, id pgtype.UUID) (Run, err
 		&i.UpdatedAt,
 		&i.ErrorCategory,
 		&i.ErrorSeverity,
-	)
-	return i, err
-}
-
-const getRunByTask = `-- name: GetRunByTask :one
-SELECT id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at FROM runs
-WHERE task_id = $1
-ORDER BY created_at DESC
-LIMIT 1
-`
-
-func (q *Queries) GetRunByTask(ctx context.Context, taskID pgtype.UUID) (Run, error) {
-	row := q.db.QueryRow(ctx, getRunByTask, taskID)
-	var i Run
-	err := row.Scan(
-		&i.ID,
-		&i.WorkspaceID,
-		&i.IssueID,
-		&i.TaskID,
-		&i.AgentID,
-		&i.ParentRunID,
-		&i.TeamID,
-		&i.Phase,
-		&i.Status,
-		&i.SystemPrompt,
-		&i.ModelName,
-		&i.PermissionMode,
-		&i.InputTokens,
-		&i.OutputTokens,
-		&i.EstimatedCostUsd,
-		&i.StartedAt,
-		&i.CompletedAt,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -512,7 +478,7 @@ UPDATE runs SET
     phase = 'executing',
     started_at = now(),
     updated_at = now()
-WHERE id = $1
+WHERE id = $1 AND phase = 'pending'
 RETURNING id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at, error_category, error_severity
 `
 
@@ -656,6 +622,41 @@ func (q *Queries) UpdateRunTokens(ctx context.Context, arg UpdateRunTokensParams
 		arg.OutputTokens,
 		arg.EstimatedCostUsd,
 	)
+	var i Run
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.IssueID,
+		&i.TaskID,
+		&i.AgentID,
+		&i.ParentRunID,
+		&i.TeamID,
+		&i.Phase,
+		&i.Status,
+		&i.SystemPrompt,
+		&i.ModelName,
+		&i.PermissionMode,
+		&i.InputTokens,
+		&i.OutputTokens,
+		&i.EstimatedCostUsd,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ErrorCategory,
+		&i.ErrorSeverity,
+	)
+	return i, err
+}
+
+const getRunByTask = `-- name: GetRunByTask :one
+SELECT id, workspace_id, issue_id, task_id, agent_id, parent_run_id, team_id, phase, status, system_prompt, model_name, permission_mode, input_tokens, output_tokens, estimated_cost_usd, started_at, completed_at, created_at, updated_at, error_category, error_severity
+FROM runs
+WHERE task_id = $1
+`
+
+func (q *Queries) GetRunByTask(ctx context.Context, taskID pgtype.UUID) (Run, error) {
+	row := q.db.QueryRow(ctx, getRunByTask, taskID)
 	var i Run
 	err := row.Scan(
 		&i.ID,
