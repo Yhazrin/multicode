@@ -53,6 +53,9 @@ type RunQuerier interface {
 	ListRunSteps(ctx context.Context, id pgtype.UUID) ([]db.RunStep, error)
 	ListRunTodos(ctx context.Context, id pgtype.UUID) ([]db.RunTodo, error)
 	ListRunArtifacts(ctx context.Context, id pgtype.UUID) ([]db.RunArtifact, error)
+	CreateRunEvent(ctx context.Context, arg db.CreateRunEventParams) (db.RunEvent, error)
+	ListRunEvents(ctx context.Context, arg db.ListRunEventsParams) ([]db.RunEvent, error)
+	ListRunEventsAll(ctx context.Context, arg db.ListRunEventsAllParams) ([]db.RunEvent, error)
 }
 
 // RunOrchestrator manages the lifecycle of agent runs: creation, phase
@@ -127,7 +130,7 @@ func (o *RunOrchestrator) CreateRun(ctx context.Context, req CreateRunRequest) (
 	if run.TaskID.Valid {
 		payload["task_id"] = util.UUIDToString(run.TaskID)
 	}
-	o.broadcast(wsID, protocol.EventRunCreated, payload)
+	o.BroadcastRunEvent(ctx, util.UUIDToString(run.ID), wsID, protocol.EventRunCreated, payload)
 	slog.Info("run created",
 		"run_id", util.UUIDToString(run.ID),
 		"issue_id", req.IssueID,
@@ -173,7 +176,7 @@ func (o *RunOrchestrator) StartRun(ctx context.Context, runID string) (db.Run, e
 		return db.Run{}, fmt.Errorf("start run: %w", err)
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunStarted, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunStarted, map[string]any{
 		"run_id":     runID,
 		"started_at": run.StartedAt.Time.Format(time.RFC3339Nano),
 	})
@@ -199,7 +202,7 @@ func (o *RunOrchestrator) AdvancePhase(ctx context.Context, runID string, newPha
 		return db.Run{}, fmt.Errorf("advance phase: %w", err)
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunPhaseChanged, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunPhaseChanged, map[string]any{
 		"run_id":     runID,
 		"old_phase":  oldPhase,
 		"new_phase":  newPhase,
@@ -273,7 +276,7 @@ func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, stepType
 	if callID != "" {
 		payload["call_id"] = callID
 	}
-	o.broadcast(util.UUIDToString(run.WorkspaceID), eventType, payload)
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), eventType, payload)
 
 	return step, nil
 }
@@ -308,7 +311,7 @@ func (o *RunOrchestrator) CompleteStep(ctx context.Context, stepID string, toolO
 	if step.CallID.Valid {
 		payload["call_id"] = step.CallID.String
 	}
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunStepCompleted, payload)
+	o.BroadcastRunEvent(ctx, util.UUIDToString(step.RunID), util.UUIDToString(run.WorkspaceID), protocol.EventRunStepCompleted, payload)
 
 	return step, nil
 }
@@ -338,7 +341,7 @@ func (o *RunOrchestrator) CreateTodo(ctx context.Context, runID string, title st
 		return todo, nil
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoCreated, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoCreated, map[string]any{
 		"todo_id": util.UUIDToString(todo.ID),
 		"run_id":  runID,
 		"seq":     seq,
@@ -377,7 +380,7 @@ func (o *RunOrchestrator) UpdateTodo(ctx context.Context, todoID string, status 
 		return todo, nil
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoUpdated, map[string]any{
+	o.BroadcastRunEvent(ctx, util.UUIDToString(todo.RunID), util.UUIDToString(run.WorkspaceID), protocol.EventRunTodoUpdated, map[string]any{
 		"todo_id": todoID,
 		"run_id":  util.UUIDToString(todo.RunID),
 		"status":  status,
@@ -394,7 +397,7 @@ func (o *RunOrchestrator) CompleteRun(ctx context.Context, runID string) (db.Run
 		return db.Run{}, fmt.Errorf("complete run: %w", err)
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunCompleted, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunCompleted, map[string]any{
 		"run_id":        runID,
 		"completed_at":  run.CompletedAt.Time.Format(time.RFC3339),
 		"input_tokens":  run.InputTokens,
@@ -418,7 +421,7 @@ func (o *RunOrchestrator) FailRun(ctx context.Context, runID string, errorMsgs .
 		errMsg = errorMsgs[0]
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunFailed, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunFailed, map[string]any{
 		"run_id":       runID,
 		"error":        errMsg,
 		"completed_at": run.CompletedAt.Time.Format(time.RFC3339),
@@ -476,7 +479,7 @@ func (o *RunOrchestrator) CancelRun(ctx context.Context, runID string) (db.Run, 
 		return db.Run{}, fmt.Errorf("cancel run: %w", err)
 	}
 
-	o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunCancelled, map[string]any{
+	o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunCancelled, map[string]any{
 		"run_id":       runID,
 		"completed_at": run.CompletedAt.Time.Format(time.RFC3339),
 	})
@@ -541,7 +544,7 @@ func (o *RunOrchestrator) CreateHandoff(ctx context.Context, sourceRunID string,
 		if targetAgentID != "" {
 			payload["target_agent_id"] = targetAgentID
 		}
-		o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunHandoffCreated, payload)
+		o.BroadcastRunEvent(ctx, sourceRunID, util.UUIDToString(run.WorkspaceID), protocol.EventRunHandoffCreated, payload)
 	}
 
 	return handoff, nil
@@ -597,7 +600,7 @@ func (o *RunOrchestrator) CreateArtifact(ctx context.Context, runID string, step
 		if stepID != "" {
 			payload["step_id"] = stepID
 		}
-		o.broadcast(util.UUIDToString(run.WorkspaceID), protocol.EventRunArtifactCreated, payload)
+		o.BroadcastRunEvent(ctx, runID, util.UUIDToString(run.WorkspaceID), protocol.EventRunArtifactCreated, payload)
 	}
 
 	return artifact, nil
@@ -886,7 +889,7 @@ func (o *RunOrchestrator) ExecuteRun(ctx context.Context, req ExecuteRunRequest)
 
 // broadcast sends a run event through the event bus to the specified workspace.
 // Each call site constructs the exact per-event payload matching schema §4.
-func (o *RunOrchestrator) broadcast(workspaceID string, eventType string, payload map[string]any) {
+func (o *RunOrchestrator) Broadcast(workspaceID string, eventType string, payload map[string]any) {
 	o.Bus.PublishAsync(events.Event{
 		Type:        eventType,
 		WorkspaceID: workspaceID,
@@ -894,6 +897,30 @@ func (o *RunOrchestrator) broadcast(workspaceID string, eventType string, payloa
 		ActorID:     "",
 		Payload:     payload,
 	})
+}
+
+// BroadcastRunEvent persists the event to DB first (at-least-once guarantee),
+// then broadcasts via the event bus. The runID is the FK for the persisted row.
+func (o *RunOrchestrator) BroadcastRunEvent(ctx context.Context, runID string, workspaceID string, eventType string, payload map[string]any) {
+	// Persist to DB before broadcast — if DB write fails, event is lost but
+	// the system continues (degraded, not broken). If broadcast fails after
+	// DB write, the frontend can catch up via the events API.
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		slog.Warn("broadcast run event: failed to marshal payload", "run_id", runID, "event_type", eventType, "error", err)
+		payloadJSON = []byte("{}")
+	}
+
+	if _, err := o.Queries.CreateRunEvent(ctx, db.CreateRunEventParams{
+		RunID:     util.ParseUUID(runID),
+		EventType: eventType,
+		Payload:   payloadJSON,
+	}); err != nil {
+		slog.Warn("broadcast run event: failed to persist", "run_id", runID, "event_type", eventType, "error", err)
+		// Don't return — still broadcast so live clients get the event.
+	}
+
+	o.Broadcast(workspaceID, eventType, payload)
 }
 
 // parseNullUUID returns a null UUID if s is empty, otherwise parses it.

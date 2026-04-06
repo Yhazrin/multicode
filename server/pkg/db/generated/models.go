@@ -344,6 +344,15 @@ type Run struct {
 	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
 }
 
+type RunEvent struct {
+	ID        pgtype.UUID        `json:"id"`
+	RunID     pgtype.UUID        `json:"run_id"`
+	Seq       int64              `json:"seq"`
+	EventType string             `json:"event_type"`
+	Payload   []byte             `json:"payload"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type RunArtifact struct {
 	ID           pgtype.UUID        `json:"id"`
 	RunID        pgtype.UUID        `json:"run_id"`
@@ -380,17 +389,7 @@ type RunHandoff struct {
 	CreatedAt     pgtype.Timestamptz `json:"created_at"`
 }
 
-type RunStep struct {
-	ID          pgtype.UUID        `json:"id"`
-	RunID       pgtype.UUID        `json:"run_id"`
-	Seq         int32              `json:"seq"`
-	ToolName    string             `json:"tool_name"`
-	ToolInput   []byte             `json:"tool_input"`
-	ToolOutput  pgtype.Text        `json:"tool_output"`
-	IsError     bool               `json:"is_error"`
-	StartedAt   pgtype.Timestamptz `json:"started_at"`
-	CompletedAt pgtype.Timestamptz `json:"completed_at"`
-}
+// RunStep is defined in run_steps.sql.go (sqlc-generated).
 
 type RunTodo struct {
 	ID          pgtype.UUID        `json:"id"`

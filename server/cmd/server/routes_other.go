@@ -56,6 +56,7 @@ func registerSkillRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) 
 		r.Get("/", h.ListSkills)
 		r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/", h.CreateSkill)
 		r.With(middleware.RequireWorkspaceRole(queries, "owner", "admin")).Post("/import", h.ImportSkill)
+		r.Get("/marketplace/search", h.SearchMarketplace)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", h.GetSkill)
 			r.Put("/", h.UpdateSkill)
@@ -63,6 +64,7 @@ func registerSkillRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) 
 			r.Get("/files", h.ListSkillFiles)
 			r.Put("/files", h.UpsertSkillFile)
 			r.Delete("/files/{fileId}", h.DeleteSkillFile)
+			r.Get("/agents", h.ListSkillAgents)
 		})
 	})
 }
@@ -134,6 +136,7 @@ func registerRuntimePolicyRoutes(r chi.Router, h *handler.Handler, queries *db.Q
 // registerRunRoutes registers run lifecycle routes.
 func registerRunRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) {
 	r.Route("/api/runs", func(r chi.Router) {
+		r.Use(middleware.RequireWorkspaceMember(queries))
 		r.Get("/", h.ListRuns)
 		r.Post("/", h.CreateRun)
 		r.Route("/{runId}", func(r chi.Router) {
@@ -142,11 +145,13 @@ func registerRunRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) {
 			r.Post("/cancel", h.CancelRun)
 			r.Post("/complete", h.CompleteRun)
 			r.Post("/execute", h.ExecuteRun)
+			r.Post("/retry", h.RetryRun)
 			r.Get("/steps", h.GetRunSteps)
 			r.Post("/steps", h.RecordStep)
 			r.Get("/todos", h.GetRunTodos)
 			r.Post("/todos", h.CreateRunTodo)
 			r.Get("/artifacts", h.GetRunArtifacts)
+				r.Get("/events", h.ListRunEvents)
 		})
 		r.Get("/by-issue/{issueId}", h.ListRunsByIssue)
 		r.Patch("/todos/{todoId}", h.UpdateRunTodo)
