@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Eye, Copy, Check, ChevronRight } from "lucide-react";
+import { toast } from "sonner";
 import type { Agent, PromptSection } from "@/shared/types";
 import { agentsApi } from "@/shared/api/agents";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,7 @@ export function PromptPreviewTab({ agent }: { agent: Agent }) {
       await navigator.clipboard.writeText(fullPrompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch { toast.error("Failed to copy"); }
   }, [fullPrompt]);
 
   if (loading) {

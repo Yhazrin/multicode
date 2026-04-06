@@ -431,7 +431,7 @@ function ContextPreviewTab({ taskId }: { taskId: string }) {
                     className="mt-2 h-6 text-[10px]"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      try { await navigator.clipboard.writeText(section.content); } catch {}
+                      try { await navigator.clipboard.writeText(section.content); } catch { toast.error("Failed to copy"); }
                     }}
                   >
                     <Copy className="mr-1 h-3 w-3" /> Copy section
