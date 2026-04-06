@@ -9,6 +9,11 @@ import { shortDate } from "@/shared/utils";
 import { PriorityIcon } from "./priority-icon";
 import { PRIORITY_CONFIG } from "@/features/issues/config";
 import { AgentStatusDot, getAgentIssueStatus } from "./agent-status-dot";
+import { CalendarDays } from "lucide-react";
+
+function isOverdue(date: string): boolean {
+  return new Date(date).getTime() < Date.now();
+}
 
 export const ListRow = memo(function ListRow({ issue }: { issue: Issue }) {
   const selected = useIssueSelectionStore((s) => s.selectedIds.has(issue.id));
@@ -49,7 +54,8 @@ export const ListRow = memo(function ListRow({ issue }: { issue: Issue }) {
           </span>
         )}
         {issue.due_date && (
-          <span className="shrink-0 text-xs text-muted-foreground">
+          <span className={`shrink-0 flex items-center gap-1 text-xs ${isOverdue(issue.due_date) ? "text-destructive" : "text-muted-foreground"}`}>
+            <CalendarDays className="size-3" aria-hidden="true" />
             {shortDate(issue.due_date)}
           </span>
         )}

@@ -13,6 +13,7 @@ import {
   Wrench,
   Paperclip,
   MessageSquare,
+  AlertCircle,
 } from "lucide-react";
 
 interface StepCardProps {
@@ -24,7 +25,7 @@ interface StepCardProps {
 function stepIcon(step: RunStep) {
   if (step.step_type === "thinking") return <Brain className="h-3.5 w-3.5 text-purple-500" />;
   if (step.step_type === "text") return <MessageSquare className="h-3.5 w-3.5 text-blue-500" />;
-  if (step.step_type === "error") return <Wrench className="h-3.5 w-3.5 text-red-500" />;
+  if (step.step_type === "error") return <AlertCircle className="h-3.5 w-3.5 text-red-500" />;
   switch (step.tool_name) {
     case "read_file":
     case "Read":

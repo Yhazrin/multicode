@@ -11,31 +11,33 @@ export function sortIssues(
   field: SortField,
   direction: SortDirection
 ): Issue[] {
+  const dir = direction === "desc" ? -1 : 1;
   const sorted = [...issues].sort((a, b) => {
     switch (field) {
       case "priority":
-        return (
+        return dir * (
           (PRIORITY_RANK[a.priority] ?? 99) -
           (PRIORITY_RANK[b.priority] ?? 99)
         );
       case "due_date": {
+        // Nulls always sort to the end regardless of direction
         if (!a.due_date && !b.due_date) return 0;
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return (
+        return dir * (
           new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
         );
       }
       case "created_at":
-        return (
+        return dir * (
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         );
       case "title":
-        return a.title.localeCompare(b.title);
+        return dir * a.title.localeCompare(b.title);
       case "position":
       default:
-        return a.position - b.position;
+        return dir * (a.position - b.position);
     }
   });
-  return direction === "desc" ? sorted.reverse() : sorted;
+  return sorted;
 }

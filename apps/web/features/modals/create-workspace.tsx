@@ -35,7 +35,7 @@ export function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
       value
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, ""),
+        .replace(/^-+|-+$/g, ""),
     );
   };
 
@@ -49,8 +49,8 @@ export function CreateWorkspaceModal({ onClose }: { onClose: () => void }) {
         name: name.trim(),
         slug: slug.trim(),
       });
-      onClose();
       await switchWorkspace(ws.id);
+      onClose();
     } catch {
       toast.error("Failed to create workspace");
     } finally {

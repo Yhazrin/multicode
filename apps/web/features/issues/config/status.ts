@@ -1,15 +1,5 @@
 import type { IssueStatus } from "@/shared/types";
 
-export const STATUS_ORDER: IssueStatus[] = [
-  "backlog",
-  "todo",
-  "in_progress",
-  "in_review",
-  "done",
-  "blocked",
-  "cancelled",
-];
-
 export const ALL_STATUSES: IssueStatus[] = [
   "backlog",
   "todo",
@@ -19,6 +9,8 @@ export const ALL_STATUSES: IssueStatus[] = [
   "blocked",
   "cancelled",
 ];
+
+export const STATUS_ORDER: IssueStatus[] = ALL_STATUSES;
 
 /** Statuses shown as board columns (excludes cancelled). */
 export const BOARD_STATUSES: IssueStatus[] = [

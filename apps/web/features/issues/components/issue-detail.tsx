@@ -293,7 +293,7 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
             key={`title-${id}`}
             defaultValue={issue.title}
             placeholder="Issue title"
-            className="w-full text-2xl font-bold leading-snug tracking-tight"
+            className="w-full text-balance text-2xl font-bold leading-snug tracking-tight"
             onBlur={(value) => {
               const trimmed = value.trim();
               if (trimmed && trimmed !== issue.title) handleUpdateField({ title: trimmed });

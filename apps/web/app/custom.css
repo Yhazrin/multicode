@@ -110,6 +110,33 @@
   box-shadow: var(--shadow-elevated);
 }
 
+/* Premium shimmer loading — gradient sweep replacing default pulse */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted) 25%,
+    color-mix(in oklch, var(--muted) 60%, var(--background)) 50%,
+    var(--muted) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* Slide-up entrance for modals/overlays */
+@keyframes slide-up-fade {
+  0% { opacity: 0; transform: translateY(8px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-slide-up-fade {
+  animation: slide-up-fade 0.25s var(--ease-out-expo) forwards;
+}
+
 /* Sonner toast: align icon to first line of text, not vertically centered */
 [data-sonner-toast] {
   align-items: flex-start !important;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import { Accordion } from "@base-ui/react/accordion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -56,7 +56,7 @@ export function ListView({
         multiple
         className="space-y-1"
         value={expandedStatuses}
-        onValueChange={(value: string[]) => {
+        onValueChange={useCallback((value: string[]) => {
           for (const status of visibleStatuses) {
             const wasExpanded = expandedStatuses.includes(status);
             const isExpanded = value.includes(status);
@@ -64,7 +64,7 @@ export function ListView({
               toggleListCollapsed(status as IssueStatus);
             }
           }
-        }}
+        }, [visibleStatuses, expandedStatuses, toggleListCollapsed])}
       >
         {visibleStatuses.map((status) => {
           const cfg = STATUS_CONFIG[status];

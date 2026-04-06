@@ -48,7 +48,7 @@ function InfiniteScrollSentinel({
   }, [loadingMore, onLoadMore]);
 
   return (
-    <div ref={ref} className="flex justify-center py-3">
+    <div ref={ref} className="flex justify-center py-3" data-testid="infinite-scroll-sentinel">
       {loadingMore && (
         <span className="text-xs text-muted-foreground">Loading…</span>
       )}

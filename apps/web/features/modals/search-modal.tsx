@@ -22,19 +22,28 @@ export function SearchModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const searchSeq = useRef(0);
+
   const doSearch = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
       return;
     }
+    const seq = ++searchSeq.current;
     setLoading(true);
     try {
       const res = await api.searchIssues(q.trim(), 20);
-      setResults(res.issues ?? []);
+      if (seq === searchSeq.current) {
+        setResults(res.issues ?? []);
+      }
     } catch {
-      setResults([]);
+      if (seq === searchSeq.current) {
+        setResults([]);
+      }
     } finally {
-      setLoading(false);
+      if (seq === searchSeq.current) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -59,14 +68,15 @@ export function SearchModal({ onClose }: { onClose: () => void }) {
   };
 
   return (
-    <CommandDialog open onOpenChange={(v) => { if (!v) onClose(); }} title="Search issues" description="Search issues by title, description, or number">
+    <CommandDialog open onOpenChange={(v) => { if (!v) onClose(); }} title="Search issues" description="Search issues by title, description, or number" className="animate-slide-up-fade">
       <CommandInput
         placeholder="Search issues by title, description, or number..."
         value={query}
         onValueChange={handleChange}
         autoFocus
+        data-testid="search-input"
       />
-      <CommandList>
+      <CommandList data-testid="search-results">
         {!query.trim() && !loading && (
           <CommandEmpty>Type to search issues</CommandEmpty>
         )}

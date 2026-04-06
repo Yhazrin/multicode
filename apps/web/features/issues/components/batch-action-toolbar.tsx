@@ -50,6 +50,7 @@ export function BatchActionToolbar() {
       for (const id of ids) {
         useIssueStore.getState().updateIssue(id, updates);
       }
+      clear();
       toast.success(`Updated ${count} issue${count > 1 ? "s" : ""}`);
     } catch {
       toast.error("Failed to update issues");

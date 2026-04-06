@@ -104,12 +104,15 @@ const MentionList = forwardRef<MentionListRef, MentionListProps>(
           return true;
         }
         if (event.key === "Enter") {
-          selectItem(selectedIndex);
+          // Read current index from ref to avoid stale closure
+          const el = itemRefs.current.find((b) => b?.matches(":focus, [data-selected]"));
+          const idx = el ? itemRefs.current.indexOf(el) : 0;
+          selectItem(idx >= 0 ? idx : 0);
           return true;
         }
         return false;
       },
-    }));
+    }), [items, selectItem]);
 
     if (items.length === 0) {
       return (

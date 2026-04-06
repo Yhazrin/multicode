@@ -36,14 +36,15 @@ export function DependenciesSection({
   const [showAddDep, setShowAddDep] = useState(false);
   const [addDepTaskId, setAddDepTaskId] = useState("");
 
+  const issues = useIssueStore((s) => s.issues);
+
   const depIdentifierMap = useMemo(() => {
-    const issues = useIssueStore.getState().issues;
     const map: Record<string, string> = {};
     for (const issue of issues) {
       map[issue.id] = issue.identifier;
     }
     return map;
-  }, [dependencies]);
+  }, [issues, dependencies]);
 
   const handleAddDependency = async () => {
     if (!taskId || !addDepTaskId.trim()) return;
