@@ -1221,16 +1221,19 @@ function TasksTab({ agent }: { agent: Agent }) {
   const issues = useIssueStore((s) => s.issues);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     api
       .listAgentTasks(agent.id)
-      .then(setTasks)
+      .then((data) => { if (!cancelled) setTasks(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load tasks");
         setTasks([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [agent.id]);
 
   if (loading) {
@@ -1269,7 +1272,9 @@ function TasksTab({ agent }: { agent: Agent }) {
     if (aIsActive && !bIsActive) return -1;
     if (!aIsActive && bIsActive) return 1;
     if (aIsActive && bIsActive) return aActive - bActive;
-    return (new Date(b.created_at).getTime() || 0) - (new Date(a.created_at).getTime() || 0);
+    const aTime = new Date(b.created_at).getTime();
+    const bTime = new Date(a.created_at).getTime();
+    return (isNaN(aTime) ? 0 : aTime) - (isNaN(bTime) ? 0 : bTime);
   });
 
   const issueMap = new Map(issues.map((i) => [i.id, i]));
@@ -1329,14 +1334,14 @@ function TasksTab({ agent }: { agent: Agent }) {
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
                     {isRunning && task.started_at
-                      ? `Started ${new Date(task.started_at).toLocaleString()}`
+                      ? `Started ${(() => { const d = new Date(task.started_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}`
                       : task.status === "dispatched" && task.dispatched_at
-                        ? `Dispatched ${new Date(task.dispatched_at).toLocaleString()}`
+                        ? `Dispatched ${(() => { const d = new Date(task.dispatched_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}`
                         : task.status === "completed" && task.completed_at
-                          ? `Completed ${new Date(task.completed_at).toLocaleString()}`
+                          ? `Completed ${(() => { const d = new Date(task.completed_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}`
                           : task.status === "failed" && task.completed_at
-                            ? `Failed ${new Date(task.completed_at).toLocaleString()}`
-                            : `Queued ${new Date(task.created_at).toLocaleString()}`}
+                            ? `Failed ${(() => { const d = new Date(task.completed_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}`
+                            : `Queued ${(() => { const d = new Date(task.created_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}`}
                   </div>
                 </div>
                 <span className={`shrink-0 text-xs font-medium ${config.color}`}>

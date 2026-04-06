@@ -1,13 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { api } from "@/shared/api";
 import type { TaskDependency } from "@/shared/types";
 
 export function useDependencyStatuses(dependencies: TaskDependency[]) {
   const [depStatuses, setDepStatuses] = useState<Record<string, string>>({});
+  const statusesRef = useRef(depStatuses);
+  statusesRef.current = depStatuses;
 
   useEffect(() => {
     if (dependencies.length === 0) return;
-    const missing = dependencies.filter((d) => !(d.depends_on_id in depStatuses));
+    const missing = dependencies.filter((d) => !(d.depends_on_id in statusesRef.current));
     if (missing.length === 0) return;
     Promise.allSettled(
       missing.map(async (dep) => {
@@ -25,7 +27,7 @@ export function useDependencyStatuses(dependencies: TaskDependency[]) {
         setDepStatuses((prev) => ({ ...prev, ...updates }));
       }
     });
-  }, [dependencies, depStatuses]);
+  }, [dependencies]);
 
   return depStatuses;
 }

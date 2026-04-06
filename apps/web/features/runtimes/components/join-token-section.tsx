@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   KeyRound,
   AlertCircle,
@@ -75,16 +75,19 @@ export function JoinTokenSection({ workspaceId }: { workspaceId: string }) {
   const [copied, setCopied] = useState(false);
 
   const fetchTokens = useCallback(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     runtimesApi
       .listJoinTokens(workspaceId)
-      .then(setTokens)
+      .then((data) => { if (!cancelled) setTokens(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load join tokens");
         setTokens([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [workspaceId]);
 
   useEffect(() => {

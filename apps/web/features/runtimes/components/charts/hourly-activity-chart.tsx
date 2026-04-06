@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { BarChart3, AlertCircle } from "lucide-react";
 import {
   BarChart,
@@ -26,16 +26,19 @@ export function HourlyActivityChart({ runtimeId }: { runtimeId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     api
       .getRuntimeTaskActivity(runtimeId)
-      .then(setData)
+      .then((data) => { if (!cancelled) setData(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load activity data");
         setData([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [runtimeId]);
 
   const chartData = useMemo(() => {

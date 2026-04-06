@@ -21,7 +21,8 @@ export function DueDatePicker({
   trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
-  const date = dueDate ? new Date(dueDate) : undefined;
+  const rawDate = dueDate ? new Date(dueDate) : undefined;
+  const date = rawDate && !isNaN(rawDate.getTime()) ? rawDate : undefined;
   const isOverdue = date ? date < new Date() : false;
 
   return (

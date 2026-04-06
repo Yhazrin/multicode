@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ShieldCheck,
   AlertCircle,
@@ -47,16 +47,19 @@ export function AuditLogSection({ runtimeId }: { runtimeId: string }) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     runtimesApi
       .getRuntimeAuditLogs(runtimeId)
-      .then(setLogs)
+      .then((data) => { if (!cancelled) setLogs(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load audit logs");
         setLogs([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [runtimeId]);
 
   if (loading) {

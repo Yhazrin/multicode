@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { GitBranch } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,12 @@ export function DependencyBadges({ issueId }: DependencyBadgesProps) {
   const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    api.listIssueDependencies(issueId).then(setDependencies).catch(() => {}).finally(() => setLoaded(true));
+    let cancelled = false;
+    api.listIssueDependencies(issueId)
+      .then((deps) => { if (!cancelled) setDependencies(deps); })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setLoaded(true); });
+    return () => { cancelled = true; };
   }, [issueId]);
 
   const depIdentifierMap = useMemo(() => {

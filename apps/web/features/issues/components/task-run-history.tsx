@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { ChevronRight, ChevronUp, Loader2, Clock, CheckCircle2, XCircle, ExternalLink, AlertCircle, AlertTriangle } from "lucide-react";
 import { api } from "@/shared/api";
@@ -33,13 +33,16 @@ export function TaskRunHistory({ issueId }: TaskRunHistoryProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    let cancelled = false;
     setError(null);
     api
       .listTasksByIssue(issueId)
-      .then(setTasks)
+      .then((data) => { if (!cancelled) setTasks(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load execution history");
       });
+    return () => { cancelled = true; };
   }, [issueId]);
 
   // Refresh when a task completes

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { BarChart3, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { RuntimeUsage } from "@/shared/types";
@@ -30,16 +30,19 @@ export function UsageSection({ runtimeId }: { runtimeId: string }) {
   const [days, setDays] = useState<TimeRange>(30);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
     api
       .getRuntimeUsage(runtimeId, { days: 90 }) // always fetch 90d, filter client-side
-      .then(setUsage)
+      .then((data) => { if (!cancelled) setUsage(data); })
       .catch((e: unknown) => {
+        if (cancelled) return;
         setError(e instanceof Error ? e.message : "Failed to load usage data");
         setUsage([]);
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
   }, [runtimeId]);
 
   if (loading) {
