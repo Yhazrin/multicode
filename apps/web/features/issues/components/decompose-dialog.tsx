@@ -182,7 +182,7 @@ export function DecomposeDialog({ issueId, open, onOpenChange, onComplete }: Dec
                   <p className="text-xs font-medium text-destructive mb-1">Risks</p>
                   <ul className="space-y-0.5">
                     {preview.risks.map((risk, idx) => (
-                      <li key={idx} className="text-xs text-muted-foreground">- {risk}</li>
+                      <li key={`risk-${idx}-${risk}`} className="text-xs text-muted-foreground">- {risk}</li>
                     ))}
                   </ul>
                 </div>
