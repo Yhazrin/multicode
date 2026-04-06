@@ -212,7 +212,7 @@ export function useIssueTimeline(issueId: string, userId?: string, workspaceId?:
         setSubmitting(false);
       }
     },
-    [issueId, userId],
+    [issueId, userId, submitting],
   );
 
   const submitReply = useCallback(

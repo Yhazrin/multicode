@@ -157,11 +157,12 @@ func (h *Handler) RemoveReaction(w http.ResponseWriter, r *http.Request) {
 // groupReactions fetches reactions for the given comment IDs and groups them by comment_id.
 func (h *Handler) groupReactions(r *http.Request, commentIDs []pgtype.UUID) map[string][]ReactionResponse {
 	if len(commentIDs) == 0 {
-		return nil
+		return map[string][]ReactionResponse{}
 	}
 	reactions, err := h.Queries.ListReactionsByCommentIDs(r.Context(), commentIDs)
 	if err != nil {
-		return nil
+		slog.Warn("groupReactions: failed to list reactions", "error", err)
+		return map[string][]ReactionResponse{}
 	}
 	grouped := make(map[string][]ReactionResponse, len(commentIDs))
 	for _, rx := range reactions {

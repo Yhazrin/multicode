@@ -67,12 +67,12 @@ func (h *Handler) attachmentToResponse(a db.Attachment) AttachmentResponse {
 // groupAttachments loads attachments for multiple comments and groups them by comment ID.
 func (h *Handler) groupAttachments(r *http.Request, commentIDs []pgtype.UUID) map[string][]AttachmentResponse {
 	if len(commentIDs) == 0 {
-		return nil
+		return map[string][]AttachmentResponse{}
 	}
 	attachments, err := h.Queries.ListAttachmentsByCommentIDs(r.Context(), commentIDs)
 	if err != nil {
 		slog.Error("failed to load attachments for comments", "error", err)
-		return nil
+		return map[string][]AttachmentResponse{}
 	}
 	grouped := make(map[string][]AttachmentResponse, len(commentIDs))
 	for _, a := range attachments {

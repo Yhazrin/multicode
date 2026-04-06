@@ -49,7 +49,10 @@ func resolveWorkspaceID(r *http.Request) string {
 func writeError(w http.ResponseWriter, status int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	body, _ := json.Marshal(map[string]string{"error": msg})
+	body, err := json.Marshal(map[string]string{"error": msg})
+	if err != nil {
+		body = []byte(`{"error":"internal error"}`)
+	}
 	w.Write(body)
 }
 

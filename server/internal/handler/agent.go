@@ -333,7 +333,9 @@ func (h *Handler) CreateAgent(w http.ResponseWriter, r *http.Request) {
 
 	if runtime.Status == "online" {
 		h.TaskService.ReconcileAgentStatus(r.Context(), agent.ID)
-		agent, _ = h.Queries.GetAgent(r.Context(), agent.ID)
+		if updatedAgent, err := h.Queries.GetAgent(r.Context(), agent.ID); err == nil {
+			agent = updatedAgent
+		}
 	}
 
 	resp := agentToResponse(agent)

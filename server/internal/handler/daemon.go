@@ -601,7 +601,11 @@ for _, msg := range req.Messages {
 
 		var inputJSON []byte
 		if msg.Input != nil {
-			inputJSON, _ = json.Marshal(msg.Input)
+			var err error
+			inputJSON, err = json.Marshal(msg.Input)
+			if err != nil {
+				slog.Warn("failed to marshal task message input", "task_id", taskID, "error", err)
+			}
 		}
 		if _, err := h.Queries.CreateTaskMessage(r.Context(), db.CreateTaskMessageParams{
 			TaskID:  parseUUID(taskID),

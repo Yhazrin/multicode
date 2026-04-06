@@ -49,7 +49,7 @@ export function useCollaborationData(
       const data = await api.listAgentMessages(agentId, taskId ? { task_id: taskId } : undefined);
       setMessages(data);
       setMessagesError(null);
-      api.markAgentMessagesRead(agentId).catch(() => {});
+      api.markAgentMessagesRead(agentId).catch((e) => console.error("markAgentMessagesRead failed:", e));
     } catch (e) {
       const message = e instanceof Error ? e.message : "Failed to load messages";
       setMessagesError(message);

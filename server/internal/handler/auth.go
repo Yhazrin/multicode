@@ -246,7 +246,9 @@ func (h *Handler) SendCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Best-effort cleanup of expired codes
-	_ = h.Queries.DeleteExpiredVerificationCodes(r.Context())
+	if err := h.Queries.DeleteExpiredVerificationCodes(r.Context()); err != nil {
+		slog.Warn("failed to delete expired verification codes", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, map[string]string{"message": "Verification code sent"})
 }
@@ -275,7 +277,9 @@ func (h *Handler) VerifyCode(w http.ResponseWriter, r *http.Request) {
 
 	isMasterCode := code == "888888" && os.Getenv("ALLOW_DEV_MASTER_CODE") == "true"
 	if !isMasterCode && subtle.ConstantTimeCompare([]byte(code), []byte(dbCode.Code)) != 1 {
-		_ = h.Queries.IncrementVerificationCodeAttempts(r.Context(), dbCode.ID)
+		if err := h.Queries.IncrementVerificationCodeAttempts(r.Context(), dbCode.ID); err != nil {
+			slog.Warn("failed to increment verification code attempts", "error", err)
+		}
 		writeError(w, http.StatusBadRequest, "invalid or expired code")
 		return
 	}

@@ -226,8 +226,9 @@ func (s *CollaborationService) wouldCreateCycle(ctx context.Context, taskID, dep
 
 // StoreMemory persists an observation/pattern for an agent with an embedding.
 func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, agentID pgtype.UUID, content string, embedding pgvector_go.Vector, metadata map[string]any, expiresAt pgtype.Timestamptz) (db.AgentMemory, error) {
-	metaBytes, _ := json.Marshal(metadata)
-	if metaBytes == nil {
+	metaBytes, err := json.Marshal(metadata)
+	if err != nil {
+		slog.Warn("failed to marshal memory metadata", "error", err)
 		metaBytes = []byte("{}")
 	}
 
@@ -523,12 +524,14 @@ func bm25RowToAgentMemory(r db.SearchWorkspaceMemoryBM25Row) db.AgentMemory {
 
 // SaveCheckpoint persists an agent's intermediate execution state.
 func (s *CollaborationService) SaveCheckpoint(ctx context.Context, workspaceID, taskID pgtype.UUID, label string, state map[string]any, filesChanged []string) (db.TaskCheckpoint, error) {
-	stateBytes, _ := json.Marshal(state)
-	if stateBytes == nil {
+	stateBytes, err := json.Marshal(state)
+	if err != nil {
+		slog.Warn("failed to marshal checkpoint state", "error", err)
 		stateBytes = []byte("{}")
 	}
-	filesBytes, _ := json.Marshal(filesChanged)
-	if filesBytes == nil {
+	filesBytes, err := json.Marshal(filesChanged)
+	if err != nil {
+		slog.Warn("failed to marshal checkpoint files", "error", err)
 		filesBytes = []byte("[]")
 	}
 
