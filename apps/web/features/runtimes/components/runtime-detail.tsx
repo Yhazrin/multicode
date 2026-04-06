@@ -283,11 +283,11 @@ export function RuntimeDetail({ runtime, onUpdate }: { runtime: AgentRuntime; on
         <div className="grid grid-cols-2 gap-4 border-t pt-4">
           <InfoField
             label="Created"
-            value={new Date(runtime.created_at).toLocaleString()}
+            value={(() => { const d = new Date(runtime.created_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}
           />
           <InfoField
             label="Updated"
-            value={new Date(runtime.updated_at).toLocaleString()}
+            value={(() => { const d = new Date(runtime.updated_at); return isNaN(d.getTime()) ? "—" : d.toLocaleString(); })()}
           />
         </div>
       </div>

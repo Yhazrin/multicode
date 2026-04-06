@@ -59,7 +59,7 @@ function TokenRow({ token }: { token: RuntimeJoinToken }) {
           <Clock className="h-2.5 w-2.5" />
           {formatExpiry(token.expires_at)}
           <span>·</span>
-          <span>Created {new Date(token.created_at).toLocaleDateString()}</span>
+          <span>Created {(() => { const d = new Date(token.created_at); return isNaN(d.getTime()) ? "—" : d.toLocaleDateString(); })()}</span>
         </div>
       </div>
     </div>

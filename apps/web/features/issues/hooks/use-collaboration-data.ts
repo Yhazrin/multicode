@@ -43,37 +43,45 @@ export function useCollaborationData(
 
   const loadMessages = useCallback(async () => {
     if (!agentId) return;
+    let cancelled = false;
     setMessagesLoading(true);
     setMessagesError(null);
     try {
       const data = await api.listAgentMessages(agentId, taskId ? { task_id: taskId } : undefined);
+      if (cancelled) return;
       setMessages(data);
       setMessagesError(null);
       api.markAgentMessagesRead(agentId).catch((e) => console.error("markAgentMessagesRead failed:", e));
     } catch (e) {
+      if (cancelled) return;
       const message = e instanceof Error ? e.message : "Failed to load messages";
       setMessagesError(message);
       toast.error("Failed to load messages");
     } finally {
-      setMessagesLoading(false);
+      if (!cancelled) setMessagesLoading(false);
     }
+    return () => { cancelled = true; };
   }, [agentId, taskId]);
 
   const loadDependencies = useCallback(async () => {
     if (!taskId) return;
+    let cancelled = false;
     setDepsLoading(true);
     setDepsError(null);
     try {
       const data = await api.listTaskDependencies(taskId);
+      if (cancelled) return;
       setDependencies(data);
       setDepsError(null);
     } catch (e) {
+      if (cancelled) return;
       const message = e instanceof Error ? e.message : "Failed to load dependencies";
       setDepsError(message);
       toast.error("Failed to load dependencies");
     } finally {
-      setDepsLoading(false);
+      if (!cancelled) setDepsLoading(false);
     }
+    return () => { cancelled = true; };
   }, [taskId]);
 
   const loadCheckpoints = useCallback(async () => {
@@ -114,8 +122,12 @@ export function useCollaborationData(
 
   // Lazy-load: only load messages and dependencies on mount; others on section open
   useEffect(() => {
-    loadMessages();
-    loadDependencies();
+    const cleanupMessages = loadMessages();
+    const cleanupDeps = loadDependencies();
+    return () => {
+      cleanupMessages?.then((fn) => fn?.());
+      cleanupDeps?.then((fn) => fn?.());
+    };
   }, [loadMessages, loadDependencies]);
 
   // Debounced WS handlers — 200ms delay to avoid firehose reload
