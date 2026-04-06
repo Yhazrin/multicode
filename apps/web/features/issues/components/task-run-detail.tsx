@@ -69,7 +69,9 @@ function statusBadgeVariant(status: string): "default" | "secondary" | "destruct
 
 function formatDate(s: string | null): string {
   if (!s) return "—";
-  return new Date(s).toLocaleString(undefined, {
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return "—";
+  return d.toLocaleString(undefined, {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -319,9 +321,11 @@ function ContextPreviewTab({ taskId }: { taskId: string }) {
   }, [loadPreview]);
 
   const handleCopy = useCallback(async () => {
-    await navigator.clipboard.writeText(finalPrompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(finalPrompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
   }, [finalPrompt]);
 
   if (loading) {
@@ -424,7 +428,7 @@ function ContextPreviewTab({ taskId }: { taskId: string }) {
                     className="mt-2 h-6 text-[10px]"
                     onClick={async (e) => {
                       e.stopPropagation();
-                      await navigator.clipboard.writeText(section.content);
+                      try { await navigator.clipboard.writeText(section.content); } catch {}
                     }}
                   >
                     <Copy className="mr-1 h-3 w-3" /> Copy section

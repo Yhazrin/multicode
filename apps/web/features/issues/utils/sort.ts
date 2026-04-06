@@ -24,14 +24,15 @@ export function sortIssues(
         if (!a.due_date && !b.due_date) return 0;
         if (!a.due_date) return 1;
         if (!b.due_date) return -1;
-        return dir * (
-          new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
-        );
+        const aDue = new Date(a.due_date).getTime();
+        const bDue = new Date(b.due_date).getTime();
+        return dir * ((aDue || 0) - (bDue || 0));
       }
-      case "created_at":
-        return dir * (
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-        );
+      case "created_at": {
+        const aCreated = new Date(a.created_at).getTime();
+        const bCreated = new Date(b.created_at).getTime();
+        return dir * ((aCreated || 0) - (bCreated || 0));
+      }
       case "title":
         return dir * a.title.localeCompare(b.title);
       case "position":

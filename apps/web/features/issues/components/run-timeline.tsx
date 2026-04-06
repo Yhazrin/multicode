@@ -340,6 +340,7 @@ function TodoStatusIcon({ status }: { status: RunTodo["status"] }) {
 
 function formatRunDuration(start: string, end: string): string {
   const ms = new Date(end).getTime() - new Date(start).getTime();
+  if (isNaN(ms)) return "---";
   if (ms < 1000) return `${ms}ms`;
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return `${seconds}s`;

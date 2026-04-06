@@ -281,8 +281,9 @@ function IssueDetailHeaderImpl({
 
             {/* Copy link */}
             <DropdownMenuItem onClick={() => {
-              navigator.clipboard.writeText(window.location.href);
-              toast.success("Link copied");
+              navigator.clipboard.writeText(window.location.href)
+                .then(() => toast.success("Link copied"))
+                .catch(() => {});
             }}>
               <Link2 className="h-3.5 w-3.5" aria-hidden="true" />
               Copy link

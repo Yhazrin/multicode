@@ -60,10 +60,10 @@ export function useRealtimeSync(ws: WSClient | null) {
     ]);
 
     const refreshMap: Record<string, () => void> = {
-      inbox: () => void useInboxStore.getState().fetch(),
-      agent: () => void useWorkspaceStore.getState().refreshAgents(),
-      member: () => void useWorkspaceStore.getState().refreshMembers(),
-      task: () => void useIssueStore.getState().fetch(),
+      inbox: () => useInboxStore.getState().fetch().catch((err) => { logger.error("inbox refresh failed", err); }),
+      agent: () => useWorkspaceStore.getState().refreshAgents().catch((err) => { logger.error("agent refresh failed", err); }),
+      member: () => useWorkspaceStore.getState().refreshMembers().catch((err) => { logger.error("member refresh failed", err); }),
+      task: () => useIssueStore.getState().fetch().catch((err) => { logger.error("task refresh failed", err); }),
       workspace: () => {
         // Lightweight: only re-fetch workspace list, don't hydrate everything.
         // workspace:deleted is handled by a precise side-effect handler below.
@@ -77,7 +77,7 @@ export function useRealtimeSync(ws: WSClient | null) {
           logger.error("workspace refresh failed", err);
         });
       },
-      skill: () => void useWorkspaceStore.getState().refreshSkills(),
+      skill: () => useWorkspaceStore.getState().refreshSkills().catch((err) => { logger.error("skill refresh failed", err); }),
       // Run events are page-specific — handled by useRunTimeline hook.
       // No global store refresh needed, but register the prefix so onAny
       // doesn't log warnings for unknown prefixes.
