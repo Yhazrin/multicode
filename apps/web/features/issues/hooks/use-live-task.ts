@@ -8,7 +8,6 @@ import type {
   TaskMessagePayload,
   TaskCompletedPayload,
   TaskFailedPayload,
-  TaskCancelledPayload,
   TaskProgressPayload,
 } from "@/shared/types/events";
 import type { AgentTask } from "@/shared/types/agent";

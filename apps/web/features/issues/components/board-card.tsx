@@ -69,8 +69,6 @@ export const BoardCardContent = memo(function BoardCardContent({
   const showDescription = storeProperties.description && issue.description;
   const showAssignee = storeProperties.assignee && issue.assignee_type && issue.assignee_id;
   const showDueDate = storeProperties.dueDate && issue.due_date;
-  // Always show bottom bar when editable so assignee picker is accessible
-  const showBottom = editable || showDueDate;
 
   const borderClass = PRIORITY_BORDER[issue.priority] ?? "";
 

@@ -1,0 +1,22 @@
+[
+  {
+    "name": "issues",
+    "description": "localhost issues",
+    "strategy": "cookie",
+    "confidence": 0.25,
+    "endpoint": "localhost:8081/api/issues?limit={}&workspace_id={}",
+    "itemPath": null,
+    "recommendedColumns": [
+      "title",
+      "url"
+    ],
+    "recommendedArgs": [
+      {
+        "name": "limit",
+        "type": "int",
+        "required": false,
+        "default": 20
+      }
+    ]
+  }
+]

@@ -6,7 +6,6 @@ import { useWSEvent } from "@/features/realtime";
 import { toast } from "sonner";
 import type { Run, RunStep, RunTodo } from "@/shared/types";
 import type {
-  RunCreatedPayload,
   RunStartedPayload,
   RunPhaseChangedPayload,
   RunCompletedPayload,

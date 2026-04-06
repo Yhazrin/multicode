@@ -3,7 +3,6 @@
 import { useState } from "react";
 import {
   ChevronRight,
-  ChevronUp,
   Clock,
   FileText,
   CheckCircle2,

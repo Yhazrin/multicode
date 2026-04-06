@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
-import { ChevronRight, ChevronUp, Loader2, Clock, CheckCircle2, XCircle, ExternalLink, AlertCircle, AlertTriangle } from "lucide-react";
+import { ChevronRight, Loader2, Clock, CheckCircle2, XCircle, ExternalLink, AlertCircle, AlertTriangle } from "lucide-react";
 import { api } from "@/shared/api";
 import { toast } from "sonner";
 import { useWSEvent } from "@/features/realtime";
-import type { TaskCompletedPayload, TaskFailedPayload, TaskCancelledPayload } from "@/shared/types/events";
+import type { TaskCompletedPayload } from "@/shared/types/events";
 import type { AgentTask } from "@/shared/types/agent";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";

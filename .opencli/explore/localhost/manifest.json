@@ -1,0 +1,16 @@
+{
+  "site": "localhost",
+  "target_url": "http://localhost:3000",
+  "final_url": "http://localhost:3000/issues",
+  "title": "Multicode — AI-Native Task Management",
+  "framework": {
+    "nextjs": false,
+    "nuxt": false,
+    "react": true,
+    "vue2": false,
+    "vue3": false
+  },
+  "stores": [],
+  "top_strategy": "public",
+  "explored_at": "2026-04-06T10:35:20.117Z"
+}

@@ -17,7 +17,7 @@ interface CheckpointsSectionProps {
 }
 
 export function CheckpointsSection({
-  taskId,
+  taskId: _taskId,
   checkpoints,
   cpsLoading,
   cpsError,

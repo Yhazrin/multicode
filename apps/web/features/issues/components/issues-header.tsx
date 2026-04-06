@@ -56,7 +56,6 @@ import {
   useIssuesScopeStore,
   type IssuesScope,
 } from "@/features/issues/stores/issues-scope-store";
-import { filterIssues } from "@/features/issues/utils/filter";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import type { Issue } from "@/shared/types";
 

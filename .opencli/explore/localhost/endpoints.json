@@ -1,0 +1,18 @@
+[
+  {
+    "pattern": "localhost:8081/api/issues?limit={}&workspace_id={}",
+    "method": "GET",
+    "url": "http://localhost:8081/api/issues?limit=200&workspace_id=4fb4a259-b2aa-4508-9d04-f8917cee7075",
+    "status": null,
+    "contentType": "",
+    "score": 5,
+    "queryParams": [
+      "limit",
+      "workspace_id"
+    ],
+    "itemPath": null,
+    "itemCount": 0,
+    "detectedFields": {},
+    "authIndicators": []
+  }
+]
