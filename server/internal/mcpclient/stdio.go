@@ -162,7 +162,11 @@ func (c *StdioClient) Connect(ctx context.Context) error {
 		"jsonrpc": "2.0",
 		"method":  "notifications/initialized",
 	}
-	data, _ := json.Marshal(notif)
+	data, err := json.Marshal(notif)
+	if err != nil {
+		slog.Warn("failed to marshal initialized notification", "error", err)
+		return err
+	}
 	c.stdin.Write(append(data, '\n'))
 
 	slog.Debug("MCP stdio client connected", "command", c.config.Command, "server", c.config.Name)
@@ -183,8 +187,12 @@ func (c *StdioClient) Disconnect(ctx context.Context) error {
 		"jsonrpc": "2.0",
 		"method":  "notifications/cancelled",
 	}
-	data, _ := json.Marshal(notif)
-	c.stdin.Write(append(data, '\n'))
+	data, err := json.Marshal(notif)
+	if err != nil {
+		slog.Warn("failed to marshal cancelled notification", "error", err)
+	} else {
+		c.stdin.Write(append(data, '\n'))
+	}
 	c.stdin.Close()
 
 	// Wait for process to exit, kill if it doesn't.
