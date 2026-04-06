@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { WSEventType } from "@/shared/types";
 import { useWS } from "./provider";
+import { ConnectionState } from "@/shared/api/ws-client";
 
 type EventHandler = (payload: unknown) => void;
 
@@ -30,4 +31,26 @@ export function useWSReconnect(callback: () => void) {
     const unsub = onReconnect(callback);
     return unsub;
   }, [callback, onReconnect]);
+}
+
+/**
+ * Hook that returns the current WebSocket connection state.
+ * Re-renders when the state changes.
+ */
+export function useConnectionState(): ConnectionState {
+  const { client } = useWS();
+  const [state, setState] = useState<ConnectionState>(
+    client?.connectionState ?? ConnectionState.Idle,
+  );
+
+  useEffect(() => {
+    if (!client) {
+      setState(ConnectionState.Idle);
+      return;
+    }
+    setState(client.connectionState);
+    return client.onConnectionStateChange((next) => setState(next));
+  }, [client]);
+
+  return state;
 }

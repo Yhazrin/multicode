@@ -49,7 +49,7 @@ import { clearLoggedInCookie } from "@/features/auth/auth-cookie";
 import { useWorkspaceStore } from "@/features/workspace";
 import { useInboxStore } from "@/features/inbox";
 import { useModalStore } from "@/features/modals";
-import { toast } from "sonner";
+import { ConnectionStatus } from "@/components/connection-status";
 
 const primaryNav = [
   { href: "/inbox", label: "Inbox", icon: Inbox },
@@ -168,7 +168,7 @@ export function AppSidebar() {
             <Tooltip>
               <TooltipTrigger
                 className="flex h-7 flex-1 items-center gap-1.5 rounded-md border border-input bg-background px-2 text-xs text-muted-foreground hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                onClick={() => toast.info("Search is coming soon")}
+                onClick={() => useModalStore.getState().open("search")}
               >
                 <Search className="size-3" aria-hidden="true" />
                 <span className="flex-1 text-left">Search...</span>
@@ -247,6 +247,7 @@ export function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
         <SidebarFooter>
+          <ConnectionStatus />
           <div className="flex items-center gap-2.5 px-2 py-1.5">
             <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-medium text-primary-foreground">
               {user?.name?.charAt(0)?.toUpperCase() ?? user?.email?.charAt(0)?.toUpperCase() ?? "?"}

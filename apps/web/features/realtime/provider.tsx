@@ -28,6 +28,7 @@ type EventHandler = (payload: unknown) => void;
 interface WSContextValue {
   subscribe: (event: WSEventType, handler: EventHandler) => () => void;
   onReconnect: (callback: () => void) => () => void;
+  client: WSClient | null;
 }
 
 const WSContext = createContext<WSContextValue | null>(null);
@@ -78,8 +79,8 @@ export function WSProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ subscribe, onReconnect: onReconnectCb }),
-    [subscribe, onReconnectCb],
+    () => ({ subscribe, onReconnect: onReconnectCb, client: wsClient }),
+    [subscribe, onReconnectCb, wsClient],
   );
 
   return (

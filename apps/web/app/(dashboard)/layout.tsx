@@ -45,7 +45,9 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider className="h-svh">
-      <AppSidebar />
+      <ErrorBoundary>
+        <AppSidebar />
+      </ErrorBoundary>
       <SidebarInset className="overflow-hidden">
         <ErrorBoundary>
           {workspace ? (
@@ -57,7 +59,9 @@ export default function DashboardLayout({
           )}
         </ErrorBoundary>
       </SidebarInset>
-      <AIAssistant />
+      <ErrorBoundary>
+        <AIAssistant />
+      </ErrorBoundary>
       <KeyboardShortcuts />
     </SidebarProvider>
   );
