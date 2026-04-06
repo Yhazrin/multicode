@@ -107,8 +107,8 @@ export const BoardCardContent = memo(function BoardCardContent({
                 trigger={
                   issue.assignee_type && issue.assignee_id ? (
                     <ActorAvatar
-                      actorType={issue.assignee_type!}
-                      actorId={issue.assignee_id!}
+                      actorType={issue.assignee_type}
+                      actorId={issue.assignee_id}
                       size={22}
                     />
                   ) : (
