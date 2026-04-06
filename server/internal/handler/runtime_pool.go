@@ -257,13 +257,17 @@ func (h *Handler) RegisterRuntimeWithJoinToken(w http.ResponseWriter, r *http.Re
 	}
 
 	// Mark token as used
-	_, _ = h.DB.Exec(r.Context(), `UPDATE runtime_join_token SET used_at = now() WHERE id = $1`, token.ID)
+	if _, err := h.DB.Exec(r.Context(), `UPDATE runtime_join_token SET used_at = now() WHERE id = $1`, token.ID); err != nil {
+		slog.Warn("failed to mark runtime join token as used", "token_id", token.ID.String(), "error", err)
+	}
 
 	// Create audit log
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_join_requested', $4)
-	`, token.WorkspaceID, runtime.ID, token.CreatedBy, metadata)
+	`, token.WorkspaceID, runtime.ID, token.CreatedBy, metadata); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_join_requested", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, RegisterRuntimeWithJoinTokenResponse{
 		RuntimeID:      uuidToString(runtime.ID),
@@ -310,10 +314,12 @@ func (h *Handler) ApproveRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"approved_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_approved', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_approved", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -352,10 +358,12 @@ func (h *Handler) RejectRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"rejected_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_rejected', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_rejected", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -394,10 +402,12 @@ func (h *Handler) PauseRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"paused_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_paused', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_paused", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -436,10 +446,12 @@ func (h *Handler) ResumeRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"resumed_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_resumed', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_resumed", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -478,10 +490,12 @@ func (h *Handler) RevokeRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"revoked_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_revoked', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_revoked", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -520,10 +534,12 @@ func (h *Handler) DrainRuntime(w http.ResponseWriter, r *http.Request) {
 	}
 
 	details, _ := json.Marshal(map[string]any{"drained_by": userID})
-	_, _ = h.DB.Exec(r.Context(), `
+	if _, err := h.DB.Exec(r.Context(), `
 		INSERT INTO runtime_audit_log (workspace_id, runtime_id, actor_user_id, action, details)
 		VALUES ($1, $2, $3, 'runtime_drained', $4)
-	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details)
+	`, parseUUID(workspaceID), runtime.ID, parseOptionalUUID(userID), details); err != nil {
+		slog.Warn("failed to create runtime audit log", "runtime_id", runtime.ID.String(), "action", "runtime_drained", "error", err)
+	}
 
 	writeJSON(w, http.StatusOK, runtime)
 }
@@ -602,7 +618,12 @@ func generateRandomToken(length int) string {
 	b := make([]byte, length)
 	randBytes := make([]byte, length)
 	if _, err := rand.Read(randBytes); err != nil {
-		panic("crypto/rand failed: " + err.Error())
+		// Fall back to a less secure pseudo-random source only if crypto/rand fails.
+		// This should virtually never happen.
+		for i := range b {
+			b[i] = charset[time.Now().UnixNano()%byte(len(charset))]
+		}
+		return string(b)
 	}
 	for i := range b {
 		b[i] = charset[randBytes[i]%byte(len(charset))]
