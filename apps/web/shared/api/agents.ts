@@ -9,7 +9,7 @@ import type {
   SendMessageRequest,
   AgentMemory,
   StoreMemoryRequest,
-  RecallMemoryRequest,
+
   PromptPreviewResponse,
   TaskContextPreviewResponse,
 } from "@/shared/types";
@@ -156,13 +156,6 @@ export const agentsApi = {
 
   async storeMemory(agentId: string, data: StoreMemoryRequest): Promise<AgentMemory> {
     return apiFetch(`/api/agents/${agentId}/memory`, {
-      method: "POST",
-      body: JSON.stringify(data),
-    });
-  },
-
-  async recallMemory(agentId: string, data: RecallMemoryRequest): Promise<AgentMemory[]> {
-    return apiFetch(`/api/agents/${agentId}/memory/recall`, {
       method: "POST",
       body: JSON.stringify(data),
     });
