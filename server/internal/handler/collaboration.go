@@ -240,7 +240,10 @@ func (h *Handler) GetReadyTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	agentID := chi.URLParam(r, "agentID")
+	agentID := r.URL.Query().Get("agentID")
+	if agentID == "" {
+		agentID = chi.URLParam(r, "agentID")
+	}
 	if agentID == "" {
 		writeError(w, http.StatusBadRequest, "agentID is required")
 		return

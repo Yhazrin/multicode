@@ -37,6 +37,7 @@ type IssueResponse struct {
 	DueDate            *string                 `json:"due_date"`
 	CreatedAt          string                  `json:"created_at"`
 	UpdatedAt          string                  `json:"updated_at"`
+	IssueKind          string                  `json:"issue_kind"`
 	LatestTaskStatus   *string                 `json:"latest_task_status,omitempty"`
 	Reactions          []IssueReactionResponse `json:"reactions,omitempty"`
 	Attachments        []AttachmentResponse    `json:"attachments,omitempty"`
@@ -76,6 +77,7 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 		CreatorID:     uuidToString(i.CreatorID),
 		ParentIssueID: uuidToPtr(i.ParentIssueID),
 		RepoID:        uuidToPtr(i.RepoID),
+		IssueKind:     i.IssueKind,
 		Position:      i.Position,
 		DueDate:       timestampToPtr(i.DueDate),
 		CreatedAt:     timestampToString(i.CreatedAt),
@@ -212,6 +214,7 @@ type CreateIssueRequest struct {
 	ParentIssueID      *string `json:"parent_issue_id"`
 	RepoID             *string `json:"repo_id"`
 	DueDate            *string `json:"due_date"`
+	IssueKind          string  `json:"issue_kind"`
 }
 
 func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
@@ -320,6 +323,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		DueDate:            dueDate,
 		Number:             issueNumber,
 		RepoID:             repoID,
+		IssueKind:          req.IssueKind,
 	})
 	if err != nil {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)

@@ -150,10 +150,10 @@ func registerRunRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) {
 			r.Post("/steps", h.RecordStep)
 			r.Get("/todos", h.GetRunTodos)
 			r.Post("/todos", h.CreateRunTodo)
+			r.Patch("/todos/{todoId}", h.UpdateRunTodo)
 			r.Get("/artifacts", h.GetRunArtifacts)
-				r.Get("/events", h.ListRunEvents)
+			r.Get("/events", h.ListRunEvents)
 		})
 		r.Get("/by-issue/{issueId}", h.ListRunsByIssue)
-		r.Patch("/todos/{todoId}", h.UpdateRunTodo)
 	})
 }

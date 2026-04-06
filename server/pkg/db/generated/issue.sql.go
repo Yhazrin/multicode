@@ -29,9 +29,10 @@ const createIssue = `-- name: CreateIssue :one
 INSERT INTO issue (
     workspace_id, title, description, status, priority,
     assignee_type, assignee_id, creator_type, creator_id,
-    parent_issue_id, position, due_date, number, repo_id
+    parent_issue_id, position, due_date, number, repo_id, issue_kind
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+    COALESCE(NULLIF($15, ''), 'task')
 ) RETURNING id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, issue_kind, repo_id
 `
 
@@ -50,6 +51,7 @@ type CreateIssueParams struct {
 	DueDate       pgtype.Timestamptz `json:"due_date"`
 	Number        int32              `json:"number"`
 	RepoID        pgtype.UUID        `json:"repo_id"`
+	IssueKind     string             `json:"issue_kind"`
 }
 
 func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error) {
@@ -68,6 +70,7 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		arg.DueDate,
 		arg.Number,
 		arg.RepoID,
+		arg.IssueKind,
 	)
 	var i Issue
 	err := row.Scan(

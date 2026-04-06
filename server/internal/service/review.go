@@ -47,7 +47,7 @@ func (s *ReviewService) ReviewTask(ctx context.Context, taskID pgtype.UUID) (*db
 	// Broadcast reviewed event
 	s.broadcastReviewEvent(ctx, protocol.EventTaskReviewed, task, "approved", "auto-approved")
 
-	completed, err := s.Queries.CompleteAgentTask(ctx, db.CompleteAgentTaskParams{
+	completed, err := s.Queries.CompleteTaskReview(ctx, db.CompleteTaskReviewParams{
 		ID:        taskID,
 		Result:    task.Result,
 		SessionID: task.SessionID,
@@ -87,7 +87,7 @@ func (s *ReviewService) SubmitManualReview(ctx context.Context, taskID, reviewer
 
 		s.broadcastReviewEvent(ctx, protocol.EventTaskReviewed, task, "approved", feedback)
 
-		completed, err := s.Queries.CompleteAgentTask(ctx, db.CompleteAgentTaskParams{
+		completed, err := s.Queries.CompleteTaskReview(ctx, db.CompleteTaskReviewParams{
 			ID:        taskID,
 			Result:    task.Result,
 			SessionID: task.SessionID,

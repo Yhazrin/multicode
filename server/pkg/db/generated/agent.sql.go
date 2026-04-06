@@ -439,7 +439,7 @@ func (q *Queries) CreateTaskReview(ctx context.Context, arg CreateTaskReviewPara
 const failAgentTask = `-- name: FailAgentTask :one
 UPDATE agent_task_queue
 SET status = 'failed', completed_at = now(), error = $2
-WHERE id = $1 AND status IN ('dispatched', 'running')
+WHERE id = $1 AND status IN ('dispatched', 'running', 'in_review')
 RETURNING id, agent_id, issue_id, status, priority, dispatched_at, started_at, completed_at, result, error, created_at, context, runtime_id, session_id, work_dir, trigger_comment_id, review_status, review_count, max_reviews, chain_source_task_id, chain_reason
 `
 

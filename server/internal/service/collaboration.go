@@ -41,6 +41,7 @@ func (s *CollaborationService) SendMessage(ctx context.Context, workspaceID, fro
 		ToAgentID:   toAgentID,
 		TaskID:      taskID,
 		Content:     content,
+		Metadata:    []byte("{}"),
 		MessageType: messageType,
 		ReplyToID:   replyToID,
 	})

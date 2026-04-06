@@ -120,7 +120,7 @@ LIMIT 1;
 -- name: FailAgentTask :one
 UPDATE agent_task_queue
 SET status = 'failed', completed_at = now(), error = $2
-WHERE id = $1 AND status IN ('dispatched', 'running')
+WHERE id = $1 AND status IN ('dispatched', 'running', 'in_review')
 RETURNING *;
 
 -- name: FailStaleTasks :many
