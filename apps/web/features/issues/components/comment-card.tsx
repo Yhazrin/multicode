@@ -403,7 +403,7 @@ const CommentCard = memo(function CommentCard({
                 }
               />
               <TooltipContent side="top">
-                {new Date(entry.created_at).toLocaleString()}
+                {(() => { const d = new Date(entry.created_at); return isNaN(d.getTime()) ? "" : d.toLocaleString(); })()}
               </TooltipContent>
             </Tooltip>
 

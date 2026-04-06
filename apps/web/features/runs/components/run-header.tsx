@@ -71,7 +71,7 @@ export function RunHeader({ run, steps }: RunHeaderProps) {
         </span>
         <span className="flex items-center gap-1">
           <DollarSign className="h-3 w-3" aria-hidden="true" />
-          ${run.estimated_cost_usd.toFixed(4)}
+          ${(run.estimated_cost_usd ?? 0).toFixed(4)}
         </span>
         <span>{run.input_tokens.toLocaleString()} in / {run.output_tokens.toLocaleString()} out</span>
         <span>{completedSteps}/{steps.length} steps{erroredSteps > 0 ? ` (${erroredSteps} errors)` : ""}</span>

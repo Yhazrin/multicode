@@ -2,6 +2,7 @@
 
 import { Copy, Check } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
+import { toast } from "sonner";
 
 interface StepInputRendererProps {
   toolName: string;
@@ -20,7 +21,9 @@ function CopyButton({ text }: { text: string }) {
       setCopied(true);
       if (timerRef.current) clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      toast.error("Failed to copy");
+    }
   };
 
   return (

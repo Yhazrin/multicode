@@ -91,17 +91,20 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
       setIssueLoading(false);
       return;
     }
+    let cancelled = false;
     setIssueLoading(true);
     api
       .getIssue(id)
       .then((iss) => {
-        useIssueStore.getState().addIssue(iss);
+        if (!cancelled) useIssueStore.getState().addIssue(iss);
       })
       .catch((e) => {
+        if (cancelled) return;
         console.error(e);
         toast.error("Failed to load issue");
       })
-      .finally(() => setIssueLoading(false));
+      .finally(() => { if (!cancelled) setIssueLoading(false); });
+    return () => { cancelled = true; };
   }, [id, issue?.id]);
 
   // Custom hooks — encapsulate timeline, reactions, subscribers

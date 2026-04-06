@@ -25,6 +25,7 @@ import type { TaskReport, TaskTimelineEvent } from "@/shared/types/agent";
 import type { TaskCheckpoint } from "@/shared/types/collaboration";
 import type { TaskContextSection } from "@/shared/types/prompt-preview";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -325,7 +326,9 @@ function ContextPreviewTab({ taskId }: { taskId: string }) {
       await navigator.clipboard.writeText(finalPrompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      toast.error("Failed to copy");
+    }
   }, [finalPrompt]);
 
   if (loading) {
