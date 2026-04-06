@@ -145,6 +145,7 @@ func NewRouter(pool *pgxpool.Pool, hub *realtime.Hub, bus *events.Bus, toolReg *
 			registerTeamRoutes(r, h, queries)
 			registerRuntimePolicyRoutes(r, h, queries)
 			registerMCPServerRoutes(r, h, queries)
+				registerWebhookRoutes(r, h, queries)
 		})
 	})
 

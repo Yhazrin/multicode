@@ -14,6 +14,7 @@ func registerIssueRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) 
 		r.Post("/", h.CreateIssue)
 		r.Post("/batch-update", h.BatchUpdateIssues)
 		r.Post("/batch-delete", h.BatchDeleteIssues)
+		r.Get("/search", h.SearchIssues)
 		r.Route("/{id}", func(r chi.Router) {
 			r.Get("/", h.GetIssue)
 			r.Put("/", h.UpdateIssue)

@@ -10,7 +10,7 @@ import (
 // registerDaemonRoutes registers daemon API routes.
 func registerDaemonRoutes(r chi.Router, h *handler.Handler, queries *db.Queries) {
 	r.Route("/api/daemon", func(r chi.Router) {
-		r.Use(middleware.Auth(queries))
+		r.Use(middleware.DaemonAuth(queries))
 
 		r.Post("/register", h.DaemonRegister)
 		r.Post("/deregister", h.DaemonDeregister)

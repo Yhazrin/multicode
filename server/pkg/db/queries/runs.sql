@@ -12,6 +12,12 @@ RETURNING *;
 SELECT * FROM runs
 WHERE id = $1;
 
+-- name: GetRunByTask :one
+SELECT * FROM runs
+WHERE task_id = $1
+ORDER BY created_at DESC
+LIMIT 1;
+
 -- name: GetRunForUpdate :one
 SELECT * FROM runs
 WHERE id = $1

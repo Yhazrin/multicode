@@ -6,7 +6,7 @@ package db
 
 import (
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/pgvector/pgvector-go"
+	pgvector_go "github.com/pgvector/pgvector-go"
 )
 
 type ActivityLog struct {
@@ -47,7 +47,7 @@ type AgentMemory struct {
 	WorkspaceID pgtype.UUID        `json:"workspace_id"`
 	AgentID     pgtype.UUID        `json:"agent_id"`
 	Content     string             `json:"content"`
-	Embedding   pgvector.Vector    `json:"embedding"`
+	Embedding   pgvector_go.Vector `json:"embedding"`
 	Metadata    []byte             `json:"metadata"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
@@ -590,6 +590,16 @@ type VerificationCode struct {
 	Used      bool               `json:"used"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 	Attempts  int32              `json:"attempts"`
+}
+
+type Webhook struct {
+	ID          pgtype.UUID        `json:"id"`
+	WorkspaceID pgtype.UUID        `json:"workspace_id"`
+	Url         string             `json:"url"`
+	Secret      string             `json:"secret"`
+	EventTypes  []string           `json:"event_types"`
+	IsActive    bool               `json:"is_active"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
 
 type Workspace struct {

@@ -157,9 +157,9 @@ func (s *stubQueries) CreateRunStep(_ context.Context, p db.CreateRunStepParams)
 		ID:        id,
 		RunID:     p.RunID,
 		Seq:       p.Seq,
-		StepType:  p.StepType,
+
 		ToolName:  p.ToolName,
-		CallID:    p.CallID,
+
 		ToolInput:  p.ToolInput,
 		ToolOutput: p.ToolOutput,
 		IsError:    p.IsError,

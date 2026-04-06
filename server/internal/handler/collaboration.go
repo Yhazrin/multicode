@@ -509,7 +509,11 @@ func (h *Handler) ListAgentMemory(w http.ResponseWriter, r *http.Request) {
 
 	resp := make([]MemoryResponse, len(memories))
 	for i, m := range memories {
-		resp[i] = memoryToResponse(m, 0)
+		resp[i] = memoryToResponse(db.AgentMemory{
+			ID: m.ID, WorkspaceID: m.WorkspaceID, AgentID: m.AgentID,
+			Content: m.Content, Embedding: m.Embedding, Metadata: m.Metadata,
+			CreatedAt: m.CreatedAt, ExpiresAt: m.ExpiresAt, TsvContent: m.TsvContent,
+		}, 0)
 	}
 
 	writeJSON(w, http.StatusOK, resp)

@@ -73,10 +73,15 @@ func main() {
 	outboxRepo := events.NewOutboxRepository(pool)
 	bus.WithOutbox(outboxRepo)
 
-	// Start outbox worker for async external event delivery
-	outboxWorker := events.NewOutboxWorker(outboxRepo, events.NoOpPublisher{}, outboxPollInterval)
+	// Start outbox worker for async external event delivery via webhooks
+	webhookPublisher := events.NewWebhookPublisher(pool, queries)
+	outboxWorker := events.NewOutboxWorker(outboxRepo, webhookPublisher, outboxPollInterval)
 	outboxCtx, outboxCancel := context.WithCancel(context.Background())
 	go outboxWorker.Start(outboxCtx)
+
+	// Start outbox cleaner to prune events older than 7 days (runs hourly)
+	outboxCleaner := events.NewOutboxCleaner(queries, 1*time.Hour)
+	go outboxCleaner.Start(outboxCtx)
 
 	// Handler priority is explicit: subscribers (10) → activity (20) → notifications (30).
 	// Registration order within each tier does not matter — the bus sorts by priority.

@@ -51,7 +51,7 @@ type CreateIssueParams struct {
 	DueDate       pgtype.Timestamptz `json:"due_date"`
 	Number        int32              `json:"number"`
 	RepoID        pgtype.UUID        `json:"repo_id"`
-	IssueKind     string             `json:"issue_kind"`
+	Column15      interface{}        `json:"column_15"`
 }
 
 func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue, error) {
@@ -70,7 +70,7 @@ func (q *Queries) CreateIssue(ctx context.Context, arg CreateIssueParams) (Issue
 		arg.DueDate,
 		arg.Number,
 		arg.RepoID,
-		arg.IssueKind,
+		arg.Column15,
 	)
 	var i Issue
 	err := row.Scan(
@@ -468,6 +468,180 @@ func (q *Queries) ListIssuesWithTaskStatus(ctx context.Context, arg ListIssuesWi
 			&i.IssueKind,
 			&i.RepoID,
 			&i.LatestTaskStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listIssuesWithTaskStatusCursor = `-- name: ListIssuesWithTaskStatusCursor :many
+SELECT i.id, i.workspace_id, i.title, i.description, i.status, i.priority, i.assignee_type, i.assignee_id, i.creator_type, i.creator_id, i.parent_issue_id, i.acceptance_criteria, i.context_refs, i.position, i.due_date, i.created_at, i.updated_at, i.number, i.issue_kind, i.repo_id, COALESCE(lt.latest_task_status, '') AS latest_task_status
+FROM issue i
+LEFT JOIN LATERAL (
+    SELECT atq.status AS latest_task_status
+    FROM agent_task_queue atq
+    WHERE atq.issue_id = i.id
+    ORDER BY atq.created_at DESC
+    LIMIT 1
+) lt ON true
+WHERE i.workspace_id = $1
+  AND ($3::text IS NULL OR i.status = $3)
+  AND ($4::text IS NULL OR i.priority = $4)
+  AND ($5::uuid IS NULL OR i.assignee_id = $5)
+  AND (
+    $6::float8 IS NULL
+    OR i.position > $6::float8
+    OR (i.position = $6::float8
+        AND i.created_at < $7::timestamptz)
+    OR (i.position = $6::float8
+        AND i.created_at = $7::timestamptz
+        AND i.id > $8::uuid)
+  )
+ORDER BY i.position ASC, i.created_at DESC, i.id ASC
+LIMIT $2
+`
+
+type ListIssuesWithTaskStatusCursorParams struct {
+	WorkspaceID     pgtype.UUID        `json:"workspace_id"`
+	Limit           int32              `json:"limit"`
+	Status          pgtype.Text        `json:"status"`
+	Priority        pgtype.Text        `json:"priority"`
+	AssigneeID      pgtype.UUID        `json:"assignee_id"`
+	CursorPosition  pgtype.Float8      `json:"cursor_position"`
+	CursorCreatedAt pgtype.Timestamptz `json:"cursor_created_at"`
+	CursorID        pgtype.UUID        `json:"cursor_id"`
+}
+
+type ListIssuesWithTaskStatusCursorRow struct {
+	ID                 pgtype.UUID        `json:"id"`
+	WorkspaceID        pgtype.UUID        `json:"workspace_id"`
+	Title              string             `json:"title"`
+	Description        pgtype.Text        `json:"description"`
+	Status             string             `json:"status"`
+	Priority           string             `json:"priority"`
+	AssigneeType       pgtype.Text        `json:"assignee_type"`
+	AssigneeID         pgtype.UUID        `json:"assignee_id"`
+	CreatorType        string             `json:"creator_type"`
+	CreatorID          pgtype.UUID        `json:"creator_id"`
+	ParentIssueID      pgtype.UUID        `json:"parent_issue_id"`
+	AcceptanceCriteria []byte             `json:"acceptance_criteria"`
+	ContextRefs        []byte             `json:"context_refs"`
+	Position           float64            `json:"position"`
+	DueDate            pgtype.Timestamptz `json:"due_date"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	Number             int32              `json:"number"`
+	IssueKind          string             `json:"issue_kind"`
+	RepoID             pgtype.UUID        `json:"repo_id"`
+	LatestTaskStatus   string             `json:"latest_task_status"`
+}
+
+func (q *Queries) ListIssuesWithTaskStatusCursor(ctx context.Context, arg ListIssuesWithTaskStatusCursorParams) ([]ListIssuesWithTaskStatusCursorRow, error) {
+	rows, err := q.db.Query(ctx, listIssuesWithTaskStatusCursor,
+		arg.WorkspaceID,
+		arg.Limit,
+		arg.Status,
+		arg.Priority,
+		arg.AssigneeID,
+		arg.CursorPosition,
+		arg.CursorCreatedAt,
+		arg.CursorID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListIssuesWithTaskStatusCursorRow{}
+	for rows.Next() {
+		var i ListIssuesWithTaskStatusCursorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.AcceptanceCriteria,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+			&i.IssueKind,
+			&i.RepoID,
+			&i.LatestTaskStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const searchIssues = `-- name: SearchIssues :many
+SELECT id, workspace_id, title, description, status, priority, assignee_type, assignee_id, creator_type, creator_id, parent_issue_id, acceptance_criteria, context_refs, position, due_date, created_at, updated_at, number, issue_kind, repo_id FROM issue
+WHERE workspace_id = $1
+  AND (
+    title ILIKE '%' || $2 || '%'
+    OR description ILIKE '%' || $2 || '%'
+    OR CAST(number AS TEXT) = $2
+  )
+ORDER BY
+  CASE WHEN title ILIKE $2 || '%' THEN 0 ELSE 1 END,
+  position ASC, created_at DESC
+LIMIT $3
+`
+
+type SearchIssuesParams struct {
+	WorkspaceID pgtype.UUID `json:"workspace_id"`
+	Column2     pgtype.Text `json:"column_2"`
+	Limit       int32       `json:"limit"`
+}
+
+func (q *Queries) SearchIssues(ctx context.Context, arg SearchIssuesParams) ([]Issue, error) {
+	rows, err := q.db.Query(ctx, searchIssues, arg.WorkspaceID, arg.Column2, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Issue{}
+	for rows.Next() {
+		var i Issue
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.Title,
+			&i.Description,
+			&i.Status,
+			&i.Priority,
+			&i.AssigneeType,
+			&i.AssigneeID,
+			&i.CreatorType,
+			&i.CreatorID,
+			&i.ParentIssueID,
+			&i.AcceptanceCriteria,
+			&i.ContextRefs,
+			&i.Position,
+			&i.DueDate,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Number,
+			&i.IssueKind,
+			&i.RepoID,
 		); err != nil {
 			return nil, err
 		}

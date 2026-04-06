@@ -1,12 +1,21 @@
 package events
 
 import (
+	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log/slog"
+	"net/http"
+	"slices"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	db "github.com/multica-ai/alphenix/server/pkg/db/generated"
 )
 
 // OutboxRepository persists events to the outbox table for reliable delivery.
@@ -43,6 +52,162 @@ type NoOpPublisher struct{}
 // Publish does nothing.
 func (NoOpPublisher) Publish(ctx context.Context, e Event) error {
 	return nil
+}
+
+// WebhookPublisher publishes events as signed HTTP POST requests to configured webhooks.
+type WebhookPublisher struct {
+	pool       *pgxpool.Pool
+	queries    *db.Queries
+	httpClient *http.Client
+}
+
+// NewWebhookPublisher creates a WebhookPublisher.
+func NewWebhookPublisher(pool *pgxpool.Pool, queries *db.Queries) *WebhookPublisher {
+	return &WebhookPublisher{
+		pool:    pool,
+		queries: queries,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
+}
+
+// webhookPayload is the JSON body sent to webhook endpoints.
+type webhookPayload struct {
+	Type        string `json:"type"`
+	WorkspaceID string `json:"workspace_id"`
+	ActorType   string `json:"actor_type"`
+	ActorID     string `json:"actor_id"`
+	Payload     any    `json:"payload"`
+	CreatedAt   string `json:"created_at"`
+}
+
+// Publish sends the event to all active webhooks in the workspace that match the event type.
+func (p *WebhookPublisher) Publish(ctx context.Context, e Event) error {
+	webhooks, err := p.queries.ListActiveWebhooksByWorkspace(ctx, parseUUID(e.WorkspaceID))
+	if err != nil {
+		return fmt.Errorf("list webhooks: %w", err)
+	}
+
+	body, err := json.Marshal(webhookPayload{
+		Type:        e.Type,
+		WorkspaceID: e.WorkspaceID,
+		ActorType:   e.ActorType,
+		ActorID:     e.ActorID,
+		Payload:     e.Payload,
+		CreatedAt:   time.Now().UTC().Format(time.RFC3339),
+	})
+	if err != nil {
+		return fmt.Errorf("marshal payload: %w", err)
+	}
+
+	for _, wh := range webhooks {
+		if !matchesEventType(e.Type, wh.EventTypes) {
+			continue
+		}
+		if err := p.deliver(ctx, wh, body); err != nil {
+			slog.Error("webhook delivery failed",
+				"webhook_id", uuidToString(wh.ID),
+				"url", wh.Url,
+				"error", err)
+			// Continue to next webhook even if one fails.
+		}
+	}
+	return nil
+}
+
+// deliver sends a signed POST request with retry logic (3 attempts, exponential backoff).
+func (p *WebhookPublisher) deliver(ctx context.Context, wh db.Webhook, body []byte) error {
+	var lastErr error
+	for attempt := range 3 {
+		if attempt > 0 {
+			backoff := time.Duration(1<<uint(attempt-1)) * time.Second
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-time.After(backoff):
+			}
+		}
+
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, wh.Url, bytes.NewReader(body))
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("X-Signature", signPayload(wh.Secret, body))
+
+		resp, err := p.httpClient.Do(req)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		resp.Body.Close()
+
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			return nil
+		}
+		lastErr = fmt.Errorf("webhook returned status %d", resp.StatusCode)
+	}
+	return fmt.Errorf("after 3 attempts: %w", lastErr)
+}
+
+// signPayload computes HMAC-SHA256 and returns hex-encoded signature.
+func signPayload(secret string, body []byte) string {
+	mac := hmac.New(sha256.New, []byte(secret))
+	mac.Write(body)
+	return hex.EncodeToString(mac.Sum(nil))
+}
+
+// matchesEventType returns true if the event type matches any of the configured patterns.
+// Empty event_types means match all events.
+func matchesEventType(eventType string, patterns []string) bool {
+	if len(patterns) == 0 {
+		return true
+	}
+	return slices.Contains(patterns, eventType)
+}
+
+func parseUUID(s string) pgtype.UUID {
+	var u pgtype.UUID
+	_ = u.Scan(s)
+	return u
+}
+
+func uuidToString(u pgtype.UUID) string {
+	if !u.Valid {
+		return ""
+	}
+	return fmt.Sprintf("%08x-%04x-%04x-%04x-%012x",
+		u.Bytes[0:4], u.Bytes[4:6], u.Bytes[6:8], u.Bytes[8:10], u.Bytes[10:16])
+}
+
+// OutboxCleaner periodically removes old outbox rows.
+type OutboxCleaner struct {
+	queries  *db.Queries
+	interval time.Duration
+}
+
+// NewOutboxCleaner creates a cleaner that runs at the given interval.
+func NewOutboxCleaner(queries *db.Queries, interval time.Duration) *OutboxCleaner {
+	return &OutboxCleaner{queries: queries, interval: interval}
+}
+
+// Start runs the cleanup loop until the context is cancelled.
+func (c *OutboxCleaner) Start(ctx context.Context) {
+	ticker := time.NewTicker(c.interval)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if err := c.queries.CleanupOutbox(ctx); err != nil {
+				slog.Error("outbox cleanup failed", "error", err)
+			}
+		}
+	}
 }
 
 // OutboxWorker processes events from the outbox table and publishes them via a Publisher.

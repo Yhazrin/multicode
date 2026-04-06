@@ -231,7 +231,7 @@ func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, age
 		metaBytes = []byte("{}")
 	}
 
-	mem, err := s.Queries.CreateAgentMemory(ctx, db.CreateAgentMemoryParams{
+	row, err := s.Queries.CreateAgentMemory(ctx, db.CreateAgentMemoryParams{
 		WorkspaceID: workspaceID,
 		AgentID:     agentID,
 		Content:     content,
@@ -241,6 +241,16 @@ func (s *CollaborationService) StoreMemory(ctx context.Context, workspaceID, age
 	})
 	if err != nil {
 		return db.AgentMemory{}, fmt.Errorf("store memory: %w", err)
+	}
+	mem := db.AgentMemory{
+		ID:          row.ID,
+		WorkspaceID: row.WorkspaceID,
+		AgentID:     row.AgentID,
+		Content:     row.Content,
+		Embedding:   row.Embedding,
+		Metadata:    row.Metadata,
+		CreatedAt:   row.CreatedAt,
+		ExpiresAt:   row.ExpiresAt,
 	}
 
 	slog.Debug("memory stored",

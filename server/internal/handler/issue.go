@@ -2,7 +2,9 @@ package handler
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -85,13 +87,36 @@ func issueToResponse(i db.Issue, issuePrefix string) IssueResponse {
 	}
 }
 
+// issueCursor is the keyset cursor for issue pagination.
+type issueCursor struct {
+	Position  float64 `json:"p"`
+	CreatedAt string  `json:"t"` // RFC3339
+	ID        string  `json:"i"`
+}
+
+func encodeIssueCursor(c issueCursor) string {
+	b, _ := json.Marshal(c)
+	return base64.RawURLEncoding.EncodeToString(b)
+}
+
+func decodeIssueCursor(s string) (issueCursor, error) {
+	b, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return issueCursor{}, fmt.Errorf("invalid cursor encoding")
+	}
+	var c issueCursor
+	if err := json.Unmarshal(b, &c); err != nil {
+		return issueCursor{}, fmt.Errorf("invalid cursor format")
+	}
+	return c, nil
+}
+
 func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	workspaceID := resolveWorkspaceID(r)
 
 	limit := 100
-	offset := 0
 	if l := r.URL.Query().Get("limit"); l != "" {
 		if v, err := strconv.Atoi(l); err == nil {
 			if v < 0 {
@@ -101,11 +126,6 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 				v = 200
 			}
 			limit = v
-		}
-	}
-	if o := r.URL.Query().Get("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil {
-			offset = v
 		}
 	}
 
@@ -123,6 +143,95 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		assigneeFilter = parseUUID(a)
 	}
 
+	prefix := h.getIssuePrefix(ctx, parseUUID(workspaceID))
+
+	// Cursor-based pagination path
+	if cursorStr := r.URL.Query().Get("cursor"); cursorStr != "" {
+		cursor, err := decodeIssueCursor(cursorStr)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid cursor")
+			return
+		}
+		cursorTime, err := time.Parse(time.RFC3339, cursor.CreatedAt)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, "invalid cursor timestamp")
+			return
+		}
+
+		// Fetch limit+1 to determine if there are more pages
+		rows, err := h.Queries.ListIssuesWithTaskStatusCursor(ctx, db.ListIssuesWithTaskStatusCursorParams{
+			WorkspaceID:     parseUUID(workspaceID),
+			Limit:           int32(limit + 1),
+			Status:          statusFilter,
+			Priority:        priorityFilter,
+			AssigneeID:      assigneeFilter,
+			CursorPosition:  pgtype.Float8{Float64: cursor.Position, Valid: true},
+			CursorCreatedAt: pgtype.Timestamptz{Time: cursorTime, Valid: true},
+			CursorID:        parseUUID(cursor.ID),
+		})
+		if err != nil {
+			writeError(w, http.StatusInternalServerError, "failed to list issues")
+			return
+		}
+
+		hasMore := len(rows) > limit
+		if hasMore {
+			rows = rows[:limit]
+		}
+
+		resp := make([]IssueResponse, len(rows))
+		for i, row := range rows {
+			r := issueToResponse(db.Issue{
+				ID:            row.ID,
+				WorkspaceID:   row.WorkspaceID,
+				Title:         row.Title,
+				Description:   row.Description,
+				Status:        row.Status,
+				Priority:      row.Priority,
+				AssigneeType:  row.AssigneeType,
+				AssigneeID:    row.AssigneeID,
+				CreatorType:   row.CreatorType,
+				CreatorID:     row.CreatorID,
+				ParentIssueID: row.ParentIssueID,
+				Position:      row.Position,
+				DueDate:       row.DueDate,
+				CreatedAt:     row.CreatedAt,
+				UpdatedAt:     row.UpdatedAt,
+				Number:        row.Number,
+				RepoID:        row.RepoID,
+			}, prefix)
+			if row.LatestTaskStatus != "" {
+				s := row.LatestTaskStatus
+				r.LatestTaskStatus = &s
+			}
+			resp[i] = r
+		}
+
+		result := map[string]any{
+			"issues": resp,
+			"total":  len(resp),
+		}
+		if hasMore && len(resp) > 0 {
+			last := resp[len(resp)-1]
+			result["next_cursor"] = encodeIssueCursor(issueCursor{
+				Position:  last.Position,
+				CreatedAt: last.CreatedAt,
+				ID:        last.ID,
+			})
+		}
+
+		writeJSON(w, http.StatusOK, result)
+		return
+	}
+
+	// Legacy offset-based path (kept for backwards compatibility)
+	offset := 0
+	if o := r.URL.Query().Get("offset"); o != "" {
+		if v, err := strconv.Atoi(o); err == nil {
+			offset = v
+		}
+	}
+
 	rows, err := h.Queries.ListIssuesWithTaskStatus(ctx, db.ListIssuesWithTaskStatusParams{
 		WorkspaceID: parseUUID(workspaceID),
 		Limit:       int32(limit),
@@ -136,7 +245,6 @@ func (h *Handler) ListIssues(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	prefix := h.getIssuePrefix(ctx, parseUUID(workspaceID))
 	resp := make([]IssueResponse, len(rows))
 	for i, row := range rows {
 		r := issueToResponse(db.Issue{
@@ -323,7 +431,7 @@ func (h *Handler) CreateIssue(w http.ResponseWriter, r *http.Request) {
 		DueDate:            dueDate,
 		Number:             issueNumber,
 		RepoID:             repoID,
-		IssueKind:          req.IssueKind,
+		Column15:           req.IssueKind,
 	})
 	if err != nil {
 		slog.Warn("create issue failed", append(logger.RequestAttrs(r), "error", err, "workspace_id", workspaceID)...)
@@ -943,6 +1051,45 @@ func (h *Handler) BatchDeleteIssues(w http.ResponseWriter, r *http.Request) {
 	deleted := len(issues)
 	slog.Info("batch delete issues", append(logger.RequestAttrs(r), "count", deleted)...)
 	writeJSON(w, http.StatusOK, map[string]any{"deleted": deleted})
+}
+
+func (h *Handler) SearchIssues(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	workspaceID := resolveWorkspaceID(r)
+
+	q := strings.TrimSpace(r.URL.Query().Get("q"))
+	if q == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"issues": []IssueResponse{}, "total": 0})
+		return
+	}
+
+	limit := 20
+	if l := r.URL.Query().Get("limit"); l != "" {
+		if v, err := strconv.Atoi(l); err == nil && v > 0 && v <= 50 {
+			limit = v
+		}
+	}
+
+	rows, err := h.Queries.SearchIssues(ctx, db.SearchIssuesParams{
+		WorkspaceID: parseUUID(workspaceID),
+		Column2:     pgtype.Text{String: q, Valid: q != ""},
+		Limit:       int32(limit),
+	})
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "search failed")
+		return
+	}
+
+	prefix := h.getIssuePrefix(ctx, parseUUID(workspaceID))
+	resp := make([]IssueResponse, len(rows))
+	for i, issue := range rows {
+		resp[i] = issueToResponse(issue, prefix)
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"issues": resp,
+		"total":  len(resp),
+	})
 }
 
 // ── Issue identifier helpers ──────────────────────────────────────────────────

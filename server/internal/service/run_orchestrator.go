@@ -261,17 +261,10 @@ func (o *RunOrchestrator) RecordStep(ctx context.Context, runID string, stepType
 		outputVal = util.StrToText(toolOutput)
 	}
 
-	var callIDVal pgtype.Text
-	if callID != "" {
-		callIDVal = util.StrToText(callID)
-	}
-
 	step, err := o.Queries.CreateRunStep(ctx, db.CreateRunStepParams{
 		RunID:      util.ParseUUID(runID),
 		Seq:        seq,
-		StepType:   stepType,
 		ToolName:   toolName,
-		CallID:     callIDVal,
 		ToolInput:  toolInput,
 		ToolOutput: outputVal,
 		IsError:    isError,
