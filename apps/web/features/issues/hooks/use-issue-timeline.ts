@@ -32,6 +32,7 @@ function commentToTimelineEntry(c: Comment): TimelineEntry {
 export function useIssueTimeline(issueId: string, userId?: string, workspaceId?: string) {
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [replySubmitting, setReplySubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -221,7 +222,8 @@ export function useIssueTimeline(issueId: string, userId?: string, workspaceId?:
 
   const submitReply = useCallback(
     async (parentId: string, content: string, attachmentIds?: string[]) => {
-      if (!content.trim() || !userId) return;
+      if (!content.trim() || replySubmitting || !userId) return;
+      setReplySubmitting(true);
       try {
         const comment = await api.createComment(issueId, content, "comment", parentId, attachmentIds);
         setTimeline((prev) => {
@@ -230,9 +232,11 @@ export function useIssueTimeline(issueId: string, userId?: string, workspaceId?:
         });
       } catch {
         toast.error("Failed to send reply");
+      } finally {
+        setReplySubmitting(false);
       }
     },
-    [issueId, userId],
+    [issueId, userId, replySubmitting],
   );
 
   const editComment = useCallback(
@@ -364,6 +368,7 @@ export function useIssueTimeline(issueId: string, userId?: string, workspaceId?:
     loading,
     error,
     submitting,
+    replySubmitting,
     submitComment,
     submitReply,
     editComment,
