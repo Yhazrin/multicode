@@ -123,7 +123,7 @@ function TaskRunEntry({ task }: { task: AgentTask }) {
       setItems(buildTimeline(msgs));
     }).catch((e) => {
       console.error(e);
-      setItems([]);
+      setItems(null); // reset to null so user can retry by re-expanding
     });
   }, [task.id, items]);
 

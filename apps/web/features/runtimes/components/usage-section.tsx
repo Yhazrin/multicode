@@ -153,7 +153,7 @@ export function UsageSection({ runtimeId }: { runtimeId: string }) {
 
       {/* Heatmap + Hourly */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <ActivityHeatmap usage={usage} />
+        <ActivityHeatmap usage={filtered} />
         <HourlyActivityChart runtimeId={runtimeId} />
       </div>
 
