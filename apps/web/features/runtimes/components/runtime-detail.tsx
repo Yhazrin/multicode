@@ -12,7 +12,7 @@ import { UsageSection } from "./usage-section";
 import { AuditLogSection } from "./audit-log-section";
 import { JoinTokenSection } from "./join-token-section";
 import { Button } from "@/components/ui/button";
-import { Pause, Play, Ban, RotateCcw } from "lucide-react";
+import { Pause, Play, Ban } from "lucide-react";
 
 function getCliVersion(metadata: Record<string, unknown>): string | null {
   if (

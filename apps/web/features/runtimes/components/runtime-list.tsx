@@ -13,7 +13,6 @@ function RuntimeListItem({
   onClick: () => void;
 }) {
   const isPending = runtime.approval_status === "pending";
-  const isApproved = runtime.approval_status === "approved";
 
   return (
     <button

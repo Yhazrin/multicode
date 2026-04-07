@@ -641,7 +641,6 @@ function SkillDetail({
 export default function SkillsPage() {
   const isLoading = useAuthStore((s) => s.isLoading);
   const skills = useWorkspaceStore((s) => s.skills);
-  const refreshSkills = useWorkspaceStore((s) => s.refreshSkills);
   const upsertSkill = useWorkspaceStore((s) => s.upsertSkill);
   const removeSkill = useWorkspaceStore((s) => s.removeSkill);
   const [selectedId, setSelectedId] = useState<string>("");
