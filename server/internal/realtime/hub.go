@@ -365,6 +365,7 @@ func (c *Client) writePump() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()
+		c.hub.unregister <- c
 		c.conn.Close()
 	}()
 
@@ -378,12 +379,13 @@ func (c *Client) writePump() {
 				return
 			}
 			if err := c.conn.WriteMessage(websocket.TextMessage, message); err != nil {
-				slog.Warn("websocket write error", "error", err)
+				slog.Warn("websocket write error", "user_id", c.userID, "workspace_id", c.workspaceID, "error", err)
 				return
 			}
 		case <-ticker.C:
 			c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				slog.Warn("websocket ping error", "user_id", c.userID, "workspace_id", c.workspaceID, "error", err)
 				return
 			}
 		}
