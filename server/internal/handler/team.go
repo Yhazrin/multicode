@@ -160,12 +160,10 @@ func (h *Handler) GetTeam(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if team.LeadAgentID.Valid {
-		leadID := uuidToString(team.LeadAgentID)
 		agent, err := h.Queries.GetAgent(r.Context(), team.LeadAgentID)
 		if err == nil {
 			lead := agentToResponse(agent)
 			resp.LeadAgent = &lead
-			_ = leadID // silence unused variable warning
 		}
 	}
 

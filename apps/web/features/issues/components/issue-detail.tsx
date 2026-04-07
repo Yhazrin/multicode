@@ -403,9 +403,11 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                             })}
                           </CommandGroup>
                         )}
-                        {agents.filter((a) => !a.archived_at).length > 0 && (
-                          <CommandGroup heading="Agents">
-                            {agents.filter((a) => !a.archived_at).map((a) => {
+                        {(() => {
+                          const activeAgents = agents.filter((a) => !a.archived_at);
+                          return activeAgents.length > 0 ? (
+                            <CommandGroup heading="Agents">
+                              {activeAgents.map((a) => {
                               const sub = subscribers.find((s) => s.user_type === "agent" && s.user_id === a.id);
                               const isSubbed = !!sub;
                               return (
@@ -421,7 +423,8 @@ export function IssueDetail({ issueId, onDelete, defaultSidebarOpen = true, layo
                               );
                             })}
                           </CommandGroup>
-                        )}
+                        ) : null;
+                        })()}
                       </CommandList>
                     </Command>
                   </PopoverContent>
