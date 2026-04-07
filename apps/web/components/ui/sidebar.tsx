@@ -84,12 +84,12 @@ function SidebarProvider({
         const parsed = Number(stored)
         if (!isNaN(parsed)) _setWidth(parsed)
       }
-    } catch {}
+    } catch (_) { /* ignore localStorage errors */ }
   }, [])
   const setWidth = React.useCallback((w: number) => {
     const clamped = Math.max(SIDEBAR_WIDTH_MIN, Math.min(SIDEBAR_WIDTH_MAX, w))
     _setWidth(clamped)
-    try { localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped)); } catch {}
+    try { localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, String(clamped)); } catch (_) { /* ignore localStorage errors */ }
   }, [])
 
   // This is the internal state of the sidebar.

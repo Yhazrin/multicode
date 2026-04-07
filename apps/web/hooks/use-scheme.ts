@@ -14,7 +14,7 @@ function getSnapshot(): ThemeScheme {
     if (stored && SCHEMES.includes(stored as ThemeScheme)) {
       return stored as ThemeScheme;
     }
-  } catch {}
+  } catch (_) { /* ignore localStorage errors (e.g., private browsing) */ }
   return "zinc";
 }
 
@@ -45,7 +45,7 @@ export function useScheme() {
 
   const setScheme = useCallback((next: ThemeScheme) => {
     currentScheme = next;
-    try { localStorage.setItem(STORAGE_KEY, next); } catch {}
+    try { localStorage.setItem(STORAGE_KEY, next); } catch (_) { /* ignore localStorage errors */ }
     applySchemeClass(next);
     emitChange();
   }, []);
