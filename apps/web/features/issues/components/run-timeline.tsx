@@ -179,41 +179,71 @@ function RunEntry({
 // ─── RunStepLog (tool invocation steps) ────────────────────────────────────
 
 function RunStepLog({ steps }: { steps: RunStep[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+  const hasActive = steps.some(s => !s.completed_at && !s.is_error);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2">
+      <CollapsibleTrigger
+        className={cn(
+          "flex items-center gap-2 text-[11px] rounded-lg px-3 py-1.5 w-full transition-all border",
+          "hover:bg-accent/20",
+          hasActive
+            ? "border-info/30 text-foreground"
+            : "border-border/40 text-muted-foreground",
+        )}
+      >
         <ChevronRight
           className={cn("h-3 w-3 transition-transform", open && "rotate-90")}
         />
         <Wrench className="h-3 w-3" />
-        <span>Steps ({steps.length})</span>
+        <span className="font-medium">Steps</span>
+        <span className="text-muted-foreground">({steps.length})</span>
+        {hasActive && (
+          <span className="ml-auto relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-info" />
+          </span>
+        )}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-4 mt-1 space-y-0.5 max-h-48 overflow-y-auto rounded border bg-muted/30 px-3 py-2">
-          {steps.map((step, idx) => (
-            <div
-              key={step.id ?? idx}
-              className="flex items-center gap-2 text-[11px] py-0.5"
-            >
-              {step.is_error ? (
-                <AlertCircle className="h-3 w-3 shrink-0 text-destructive" />
-              ) : step.completed_at ? (
-                <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
-              ) : (
-                <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
-              )}
-              <span className="font-mono text-foreground">
-                {step.tool_name}
-              </span>
-              {step.tool_output && step.completed_at && (
-                <span className="text-muted-foreground truncate max-w-[200px]">
-                  {truncate(step.tool_output, 80)}
+        <div className="mt-1 ml-2 pl-3 border-l border-border/40 space-y-1 max-h-48 overflow-y-auto">
+          {steps.map((step, idx) => {
+            const isRunning = !step.completed_at && !step.is_error;
+            const isError = step.is_error;
+            return (
+              <div
+                key={step.id ?? idx}
+                className={cn(
+                  "flex items-center gap-2 text-[11px] rounded-md px-2 py-1",
+                  "border",
+                  isRunning && "border-info/20 bg-info/5",
+                  isError && "border-destructive/20 bg-destructive/5",
+                  step.completed_at && !isError && "border-transparent",
+                  !step.completed_at && !isError && !isRunning && "border-border/30",
+                )}
+              >
+                {isError ? (
+                  <AlertCircle className="h-3 w-3 shrink-0 text-destructive" />
+                ) : step.completed_at ? (
+                  <CheckCircle2 className="h-3 w-3 shrink-0 text-success" />
+                ) : (
+                  <Loader2 className="h-3 w-3 shrink-0 animate-spin text-info" />
+                )}
+                <span className={cn(
+                  "font-mono",
+                  isRunning ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {step.tool_name}
                 </span>
-              )}
-            </div>
-          ))}
+                {step.tool_output && step.completed_at && (
+                  <span className="text-muted-foreground truncate max-w-[200px]">
+                    {truncate(step.tool_output, 80)}
+                  </span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </CollapsibleContent>
     </Collapsible>
@@ -223,33 +253,61 @@ function RunStepLog({ steps }: { steps: RunStep[] }) {
 // ─── RunTodoList (agent todo items) ────────────────────────────────────────
 
 function RunTodoList({ todos }: { todos: RunTodo[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
+  const completedCount = todos.filter((t) => t.status === "completed").length;
+  const hasBlocked = todos.some((t) => t.status === "blocked");
+  const hasInProgress = todos.some((t) => t.status === "in_progress");
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2">
+      <CollapsibleTrigger
+        className={cn(
+          "flex items-center gap-2 text-[11px] rounded-lg px-3 py-1.5 w-full transition-all border",
+          "hover:bg-accent/20",
+          hasBlocked
+            ? "border-destructive/30 text-foreground"
+            : hasInProgress
+              ? "border-info/30 text-foreground"
+              : "border-border/40 text-muted-foreground",
+        )}
+      >
         <ChevronRight
           className={cn("h-3 w-3 transition-transform", open && "rotate-90")}
         />
         <ListTodo className="h-3 w-3" />
-        <span>
-          Todos ({todos.filter((t) => t.status === "completed").length}/
-          {todos.length})
+        <span className="font-medium">Todos</span>
+        <span className="text-muted-foreground">
+          ({completedCount}/{todos.length})
         </span>
+        {hasBlocked && (
+          <AlertCircle className="h-3 w-3 text-destructive ml-auto" />
+        )}
+        {hasInProgress && !hasBlocked && (
+          <span className="ml-auto relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 animate-ping" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-info" />
+          </span>
+        )}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-4 mt-1 space-y-1 rounded border bg-muted/30 px-3 py-2">
+        <div className="mt-1 ml-2 pl-3 border-l border-border/40 space-y-1">
           {todos.map((todo) => (
             <div
               key={todo.id}
-              className="flex items-start gap-2 text-[11px]"
+              className={cn(
+                "flex items-start gap-2 text-[11px] rounded-md px-3 py-1.5 border",
+                todo.status === "completed" && "border-transparent bg-transparent",
+                todo.status === "in_progress" && "border-info/20 bg-info/5",
+                todo.status === "blocked" && "border-destructive/20 bg-destructive/5",
+                todo.status === "pending" && "border-border/30",
+              )}
             >
               <TodoStatusIcon status={todo.status} />
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <span
                   className={cn(
-                    todo.status === "completed" &&
-                      "line-through text-muted-foreground",
+                    todo.status === "completed" && "line-through text-muted-foreground",
+                    todo.status === "blocked" && "text-destructive",
                   )}
                 >
                   {todo.title}
@@ -277,24 +335,29 @@ function RunTodoList({ todos }: { todos: RunTodo[] }) {
 
 function RunSystemPrompt({ prompt }: { prompt: string }) {
   const [open, setOpen] = useState(false);
-  const preview = truncate(prompt, 120);
+  const preview = truncate(prompt, 100);
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors px-2">
+      <CollapsibleTrigger
+        className={cn(
+          "flex items-center gap-2 text-[11px] rounded-lg px-3 py-1.5 w-full transition-all border",
+          "hover:bg-accent/20 border-border/40 text-muted-foreground",
+        )}
+      >
         <ChevronRight
           className={cn("h-3 w-3 transition-transform", open && "rotate-90")}
         />
         <FileText className="h-3 w-3" />
         <span>System prompt</span>
         {!open && (
-          <span className="text-muted-foreground/60 truncate max-w-[200px]">
+          <span className="text-muted-foreground/50 truncate max-w-[200px]">
             — {preview}
           </span>
         )}
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-4 mt-1 rounded border bg-muted/30 px-3 py-2 max-h-48 overflow-y-auto">
+        <div className="mt-1 ml-2 pl-3 border-l border-border/40 rounded-md border bg-muted/20 px-3 py-2 max-h-48 overflow-y-auto">
           <pre className="text-[11px] text-foreground whitespace-pre-wrap break-words font-mono">
             {prompt}
           </pre>
