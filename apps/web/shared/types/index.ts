@@ -33,6 +33,9 @@ export type {
   RuntimePolicy,
   CreateRuntimePolicyRequest,
   UpdateRuntimePolicyRequest,
+  AgentTool,
+  AgentTrigger,
+  AgentTriggerType,
 } from "./agent";
 export type {
   Team,

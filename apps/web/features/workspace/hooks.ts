@@ -1,15 +1,18 @@
 "use client";
 
 import { useCallback } from "react";
-import { useWorkspaceStore } from "./store";
+import { useQuery } from "@tanstack/react-query";
+import { useWorkspaceId } from "@core/hooks";
+import { memberListOptions, agentListOptions } from "@core/workspace/queries";
 
 export function useActorName() {
-  const members = useWorkspaceStore((s) => s.members);
-  const agents = useWorkspaceStore((s) => s.agents);
+  const wsId = useWorkspaceId();
+  const { data: members = [] } = useQuery(memberListOptions(wsId ?? ""));
+  const { data: agents = [] } = useQuery(agentListOptions(wsId ?? ""));
 
   const getMemberName = useCallback(
     (userId: string) => {
-      const m = members.find((m) => m.user_id === userId);
+      const m = members.find((m: { user_id: string }) => m.user_id === userId);
       return m?.name ?? "Unknown";
     },
     [members],
@@ -17,7 +20,7 @@ export function useActorName() {
 
   const getAgentName = useCallback(
     (agentId: string) => {
-      const a = agents.find((a) => a.id === agentId);
+      const a = agents.find((a: { id: string }) => a.id === agentId);
       return a?.name ?? "Unknown Agent";
     },
     [agents],
@@ -48,8 +51,8 @@ export function useActorName() {
 
   const getActorAvatarUrl = useCallback(
     (type: string, id: string): string | null => {
-      if (type === "member") return members.find((m) => m.user_id === id)?.avatar_url ?? null;
-      if (type === "agent") return agents.find((a) => a.id === id)?.avatar_url ?? null;
+      if (type === "member") return members.find((m: { user_id: string }) => m.user_id === id)?.avatar_url ?? null;
+      if (type === "agent") return agents.find((a: { id: string }) => a.id === id)?.avatar_url ?? null;
       return null;
     },
     [members, agents],

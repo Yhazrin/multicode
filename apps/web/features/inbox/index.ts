@@ -11,3 +11,6 @@ export {
   useArchiveAllReadInbox,
   useArchiveCompletedInbox,
 } from "@core/inbox";
+
+// Stub store for backwards compatibility with components still using Zustand
+export { useInboxStore } from "./store";
