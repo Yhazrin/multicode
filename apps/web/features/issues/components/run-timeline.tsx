@@ -90,18 +90,38 @@ function RunEntry({
       : null;
 
   const totalTokens = run.input_tokens + run.output_tokens;
+  const isActive = run.phase === "planning" || run.phase === "executing" || run.phase === "reviewing";
+  const isTerminal = run.phase === "completed" || run.phase === "failed" || run.phase === "cancelled";
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <CollapsibleTrigger className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs hover:bg-accent/30 transition-colors border border-transparent hover:border-border">
+      <CollapsibleTrigger
+        className={cn(
+          "flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs transition-all",
+          // Base card style
+          "border bg-card hover:bg-accent/20",
+          // Active runs: animated glow
+          isActive && "active-run-card",
+          // Terminal runs: muted styling
+          isTerminal && run.phase === "completed" && "border-border/60 opacity-80",
+          isTerminal && run.phase === "failed" && "border-destructive/30 opacity-80",
+          isTerminal && run.phase === "cancelled" && "border-muted opacity-60",
+          // Inactive pending
+          run.phase === "pending" && "border-border/40 opacity-60",
+          open && !isActive && "bg-accent/10",
+        )}
+      >
         <ChevronRight
           className={cn(
             "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
             open && "rotate-90",
           )}
         />
-        <RunPhaseIcon phase={run.phase} />
-        <span className="text-muted-foreground">
+        <RunPhaseIcon phase={run.phase} isActive={isActive} />
+        <span className={cn(
+          "min-w-[90px]",
+          isActive ? "text-foreground font-medium" : "text-muted-foreground"
+        )}>
           {(() => { const d = new Date(run.created_at); return isNaN(d.getTime()) ? "\u2014" : d.toLocaleString(undefined, {
             month: "short",
             day: "numeric",
@@ -113,21 +133,19 @@ function RunEntry({
           <span className="text-muted-foreground">{duration}</span>
         )}
         {run.model_name && (
-          <Badge variant="outline" className="text-[10px] px-1 py-0 h-4">
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-muted-foreground">
             {run.model_name}
           </Badge>
         )}
-        {run.permission_mode && run.permission_mode !== "default" && (
-          <Badge variant="secondary" className="text-[10px] px-1 py-0 h-4">
-            {run.permission_mode}
-          </Badge>
+        {totalTokens > 0 && (
+          <span className="text-[10px] text-muted-foreground ml-auto">
+            {totalTokens.toLocaleString()} tokens
+          </span>
         )}
-        <span className="ml-auto">
-          <RunPhaseBadge phase={run.phase} />
-        </span>
+        <RunPhaseBadge phase={run.phase} />
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <div className="ml-5 mt-1 space-y-2">
+        <div className="mt-1 ml-2 space-y-1.5 pl-3 border-l border-border/40">
           {/* Token usage summary */}
           {totalTokens > 0 && (
             <div className="flex items-center gap-3 text-[10px] text-muted-foreground px-2">
@@ -288,14 +306,22 @@ function RunSystemPrompt({ prompt }: { prompt: string }) {
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-function RunPhaseIcon({ phase }: { phase: Run["phase"] }) {
+function RunPhaseIcon({ phase, isActive }: { phase: Run["phase"]; isActive?: boolean }) {
   switch (phase) {
     case "pending":
       return <Circle className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />;
     case "planning":
     case "executing":
     case "reviewing":
-      return <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-info" />;
+      return (
+        <span className="relative flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          {/* Pulse ring for active runs */}
+          {isActive && (
+            <span className="absolute inline-flex h-full w-full rounded-full bg-info/30 animate-ping" />
+          )}
+          <Loader2 className={cn("h-3.5 w-3.5 shrink-0 animate-spin text-info relative z-10", isActive && "text-info")} />
+        </span>
+      );
     case "completed":
       return <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-success" />;
     case "failed":
@@ -308,14 +334,26 @@ function RunPhaseIcon({ phase }: { phase: Run["phase"] }) {
 }
 
 function RunPhaseBadge({ phase }: { phase: Run["phase"] }) {
+  const isActive = phase === "planning" || phase === "executing" || phase === "reviewing";
+
+  if (isActive) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] text-info font-medium">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-full w-full rounded-full bg-info opacity-75 animate-ping" />
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-info" />
+        </span>
+        {phase}
+      </span>
+    );
+  }
+
   const variant =
     phase === "completed"
-      ? "default"
+      ? "secondary"
       : phase === "failed"
         ? "destructive"
-        : phase === "cancelled"
-          ? "secondary"
-          : "outline";
+        : "secondary";
 
   return (
     <Badge variant={variant} className="text-[10px] px-1.5 py-0 h-4 capitalize">

@@ -409,3 +409,20 @@
     @apply font-sans;
   }
 }
+
+/* ─── Run card edge-glow for active agents ─────────────────────────────────── */
+@keyframes active-glow {
+  0%, 100% { box-shadow: 0 0 4px 0px hsl(var(--info) / 0.15), inset 0 0 0 1px hsl(var(--info) / 0.2); }
+  50%       { box-shadow: 0 0 10px 2px hsl(var(--info) / 0.30), inset 0 0 0 1px hsl(var(--info) / 0.35); }
+}
+
+.active-run-card {
+  animation: active-glow 2.5s ease-in-out infinite;
+  border-color: hsl(var(--info) / 0.35);
+}
+
+@keyframes step-flow {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}

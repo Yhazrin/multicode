@@ -3,7 +3,7 @@
 import { useEffect, type ReactNode } from "react";
 import { useAuthStore } from "./store";
 import { useWorkspaceStore } from "@/features/workspace";
-import { api, configureIssuesApi, configureAgentsApi, configureTasksApi, configureRuntimesApi } from "@/shared/api";
+import { api, configureIssuesApi, configureAgentsApi, configureTasksApi, configureRuntimesApi, configureRunsApi } from "@/shared/api";
 import { createLogger } from "@/shared/logger";
 import { setLoggedInCookie, clearLoggedInCookie } from "./auth-cookie";
 
@@ -27,6 +27,7 @@ export function AuthInitializer({ children }: { children: ReactNode }) {
       configureAgentsApi({ workspaceId: wsId });
       configureTasksApi({ workspaceId: wsId });
       configureRuntimesApi({ workspaceId: wsId });
+      configureRunsApi({ workspaceId: wsId });
     }
 
     // Fire getMe and listWorkspaces in parallel — cookie is sent automatically
