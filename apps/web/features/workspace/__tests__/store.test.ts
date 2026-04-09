@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { useWorkspaceStore } from "../store";
 
 // Mock dependencies
@@ -6,9 +6,6 @@ vi.mock("@/shared/api", () => {
   const mockApi = {
     setWorkspaceId: vi.fn(),
     listWorkspaces: vi.fn(),
-    listMembers: vi.fn(),
-    listAgents: vi.fn(),
-    listSkills: vi.fn(),
     createWorkspace: vi.fn(),
     leaveWorkspace: vi.fn(),
     deleteWorkspace: vi.fn(),
@@ -17,15 +14,20 @@ vi.mock("@/shared/api", () => {
 });
 
 vi.mock("@/features/issues", () => ({
-  useIssueStore: { getState: () => ({ fetch: vi.fn().mockResolvedValue(undefined), setIssues: vi.fn(), reset: vi.fn() }) },
+  useIssueStore: {
+    getState: () => ({
+      setIssues: vi.fn(),
+      issues: [],
+    }),
+  },
 }));
 
 vi.mock("@/features/inbox", () => ({
-  useInboxStore: { getState: () => ({ fetch: vi.fn().mockResolvedValue(undefined), setItems: vi.fn(), reset: vi.fn() }) },
-}));
-
-vi.mock("@/features/runtimes", () => ({
-  useRuntimeStore: { getState: () => ({ setRuntimes: vi.fn(), reset: vi.fn() }) },
+  useInboxStore: {
+    getState: () => ({
+      reset: vi.fn(),
+    }),
+  },
 }));
 
 vi.mock("sonner", () => ({ toast: { error: vi.fn() } }));
@@ -46,66 +48,48 @@ describe("workspace store", () => {
   });
 
   describe("hydrateWorkspace", () => {
-    it("returns null when workspace list is empty", async () => {
-      const result = await useWorkspaceStore.getState().hydrateWorkspace([]);
+    it("returns null when workspace list is empty", () => {
+      const result = useWorkspaceStore.getState().hydrateWorkspace([]);
       expect(result).toBeNull();
       expect(useWorkspaceStore.getState().workspace).toBeNull();
       expect(api.setWorkspaceId).toHaveBeenCalledWith(null);
     });
 
-    it("selects preferred workspace when available", async () => {
+    it("selects preferred workspace when available", () => {
       const workspaces = [
         { id: "ws-1", name: "First", slug: "first" },
         { id: "ws-2", name: "Second", slug: "second" },
       ] as any[];
 
-      vi.mocked(api.listMembers).mockResolvedValueOnce([]);
-      vi.mocked(api.listAgents).mockResolvedValueOnce([]);
-      vi.mocked(api.listSkills).mockResolvedValueOnce([]);
-
-      const result = await useWorkspaceStore.getState().hydrateWorkspace(workspaces, "ws-2");
+      const result = useWorkspaceStore.getState().hydrateWorkspace(workspaces, "ws-2");
 
       expect(result?.id).toBe("ws-2");
       expect(api.setWorkspaceId).toHaveBeenCalledWith("ws-2");
       expect(localStorage.getItem("alphenix_workspace_id")).toBe("ws-2");
     });
 
-    it("falls back to first workspace when preferred not found", async () => {
+    it("falls back to first workspace when preferred not found", () => {
       const workspaces = [
         { id: "ws-1", name: "First", slug: "first" },
       ] as any[];
 
-      vi.mocked(api.listMembers).mockResolvedValueOnce([]);
-      vi.mocked(api.listAgents).mockResolvedValueOnce([]);
-      vi.mocked(api.listSkills).mockResolvedValueOnce([]);
-
-      const result = await useWorkspaceStore.getState().hydrateWorkspace(workspaces, "nonexistent");
+      const result = useWorkspaceStore.getState().hydrateWorkspace(workspaces, "nonexistent");
 
       expect(result?.id).toBe("ws-1");
     });
 
-    it("loads members, agents, and skills in parallel", async () => {
+    it("sets workspace state when workspace is selected", () => {
       const workspaces = [{ id: "ws-1", name: "WS", slug: "ws" }] as any[];
-      const members = [{ id: "m-1" }] as any[];
-      const agents = [{ id: "a-1" }] as any[];
-      const skills = [{ id: "s-1" }] as any[];
 
-      vi.mocked(api.listMembers).mockResolvedValueOnce(members);
-      vi.mocked(api.listAgents).mockResolvedValueOnce(agents);
-      vi.mocked(api.listSkills).mockResolvedValueOnce(skills);
+      const result = useWorkspaceStore.getState().hydrateWorkspace(workspaces);
 
-      await useWorkspaceStore.getState().hydrateWorkspace(workspaces);
-
-      expect(api.listMembers).toHaveBeenCalledWith("ws-1");
-      expect(api.listAgents).toHaveBeenCalledWith({ workspace_id: "ws-1", include_archived: true });
-      expect(useWorkspaceStore.getState().members).toEqual(members);
-      expect(useWorkspaceStore.getState().agents).toEqual(agents);
-      expect(useWorkspaceStore.getState().skills).toEqual(skills);
+      expect(result?.id).toBe("ws-1");
+      expect(useWorkspaceStore.getState().workspace?.id).toBe("ws-1");
     });
   });
 
   describe("switchWorkspace", () => {
-    it("clears stale data and re-hydrates", async () => {
+    it("clears stale data and re-hydrates", () => {
       const workspaces = [
         { id: "ws-1", name: "First", slug: "first" },
         { id: "ws-2", name: "Second", slug: "second" },
@@ -113,26 +97,21 @@ describe("workspace store", () => {
 
       useWorkspaceStore.setState({ workspaces });
 
-      vi.mocked(api.listMembers).mockResolvedValue([]);
-      vi.mocked(api.listAgents).mockResolvedValue([]);
-      vi.mocked(api.listSkills).mockResolvedValue([]);
-
-      await useWorkspaceStore.getState().switchWorkspace("ws-2");
+      useWorkspaceStore.getState().switchWorkspace("ws-2");
 
       expect(api.setWorkspaceId).toHaveBeenCalledWith("ws-2");
       expect(localStorage.getItem("alphenix_workspace_id")).toBe("ws-2");
       expect(useWorkspaceStore.getState().workspace?.id).toBe("ws-2");
     });
 
-    it("does nothing for unknown workspace ID", async () => {
+    it("does nothing for unknown workspace ID", () => {
       useWorkspaceStore.setState({
         workspaces: [{ id: "ws-1", name: "First", slug: "first" }] as any[],
         workspace: { id: "ws-1" } as any,
       });
 
-      await useWorkspaceStore.getState().switchWorkspace("unknown");
+      useWorkspaceStore.getState().switchWorkspace("unknown");
 
-      // Should not have changed
       expect(useWorkspaceStore.getState().workspace?.id).toBe("ws-1");
     });
   });

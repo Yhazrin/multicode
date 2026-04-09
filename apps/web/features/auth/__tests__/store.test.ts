@@ -8,6 +8,15 @@ vi.mock("@/shared/api", () => ({
     sendCode: vi.fn(),
     verifyCode: vi.fn(),
     logout: vi.fn(),
+    googleLogin: vi.fn(),
+  },
+  api: {
+    getMe: vi.fn(),
+    setToken: vi.fn(),
+    setWorkspaceId: vi.fn(),
+    verifyCode: vi.fn(),
+    logout: vi.fn(),
+    googleLogin: vi.fn(),
   },
 }));
 
@@ -17,7 +26,7 @@ vi.mock("../auth-cookie", () => ({
   clearLoggedInCookie: vi.fn(),
 }));
 
-import { authApi } from "@/shared/api";
+import { api, authApi } from "@/shared/api";
 import { setLoggedInCookie, clearLoggedInCookie } from "../auth-cookie";
 
 describe("auth store", () => {
@@ -59,18 +68,15 @@ describe("auth store", () => {
       expect(authApi.verifyCode).toHaveBeenCalledWith("test@example.com", "123456");
       expect(user).toEqual(mockUser);
       expect(useAuthStore.getState().user).toEqual(mockUser);
-      // Cookie is set by server response, not by client code
     });
   });
 
   describe("logout", () => {
-    it("clears all auth state", async () => {
-      vi.mocked(authApi.logout).mockResolvedValueOnce(undefined);
+    it("clears all auth state", () => {
       useAuthStore.setState({ user: { id: "u-1", email: "test@example.com", name: "Test" } as any });
 
-      await useAuthStore.getState().logout();
+      useAuthStore.getState().logout();
 
-      expect(authApi.logout).toHaveBeenCalled();
       expect(useAuthStore.getState().user).toBeNull();
     });
   });
